@@ -96,7 +96,10 @@ export default function PracticeSessionPage() {
   if (result) {
     return (
       <>
-        <Helmet><title>Practice Results - ExamPrep</title></Helmet>
+        <Helmet>
+          <title>Practice Results - ExamPrep</title>
+          <meta name="description" content="View your practice session results with accuracy breakdown and performance summary." />
+        </Helmet>
         <div className="mx-auto max-w-2xl space-y-6">
           <div className="text-center">
             <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white ${
@@ -163,7 +166,10 @@ export default function PracticeSessionPage() {
 
   return (
     <>
-      <Helmet><title>{`Practice - Q${currentIndex + 1} - ExamPrep`}</title></Helmet>
+      <Helmet>
+        <title>{`Practice - Q${currentIndex + 1} - ExamPrep`}</title>
+        <meta name="description" content="Practice session in progress. Answer questions to improve your exam preparation." />
+      </Helmet>
 
       {/* Timer bar */}
       <div className="mb-6 flex items-center justify-between">

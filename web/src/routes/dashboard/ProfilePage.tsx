@@ -107,7 +107,10 @@ export default function ProfilePage() {
 
   return (
     <>
-      <Helmet><title>Profile - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Profile - ExamPrep</title>
+        <meta name="description" content="Your ExamPrep profile. View stats, badges, activity history, and topic mastery." />
+      </Helmet>
 
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Profile Header */}

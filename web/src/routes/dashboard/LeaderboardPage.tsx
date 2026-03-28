@@ -37,7 +37,10 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      <Helmet><title>Leaderboard - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Leaderboard - ExamPrep</title>
+        <meta name="description" content="See how you rank among other exam aspirants. Weekly and global leaderboards." />
+      </Helmet>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Leaderboard</h1>
 

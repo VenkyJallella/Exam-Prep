@@ -42,6 +42,8 @@ const AdminTests = lazy(() => import('./routes/admin/AdminTests'));
 const AdminExams = lazy(() => import('./routes/admin/AdminExams'));
 const AdminUsers = lazy(() => import('./routes/admin/AdminUsers'));
 
+const NotFoundPage = lazy(() => import('./routes/NotFoundPage'));
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
@@ -90,6 +92,9 @@ export default function App() {
             </Route>
           </Route>
         </Route>
+
+        {/* 404 Catch-all */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

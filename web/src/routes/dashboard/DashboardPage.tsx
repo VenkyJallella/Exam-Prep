@@ -14,7 +14,10 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Helmet><title>Dashboard - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Dashboard - ExamPrep</title>
+        <meta name="description" content="Your personalized exam preparation dashboard. Track progress, practice questions, and improve your scores." />
+      </Helmet>
 
       <div className="space-y-6">
         {/* Greeting */}

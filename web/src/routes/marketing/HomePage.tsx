@@ -23,6 +23,9 @@ export default function HomePage() {
       <Helmet>
         <title>ExamPrep - AI-Powered Competitive Exam Preparation</title>
         <meta name="description" content="Prepare for UPSC, JEE, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests, and performance analytics." />
+        <meta property="og:title" content="ExamPrep - AI-Powered Competitive Exam Preparation" />
+        <meta property="og:description" content="Prepare for UPSC, JEE, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests, and performance analytics." />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       {/* Hero */}

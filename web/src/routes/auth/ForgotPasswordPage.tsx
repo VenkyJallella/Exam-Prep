@@ -28,7 +28,10 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <>
-        <Helmet><title>Password Reset - ExamPrep</title></Helmet>
+        <Helmet>
+          <title>Password Reset - ExamPrep</title>
+          <meta name="description" content="Password reset instructions have been sent to your email." />
+        </Helmet>
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
           <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-lg dark:bg-gray-800">
             <div className="text-center">
@@ -64,7 +67,10 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <Helmet><title>Forgot Password - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Forgot Password - ExamPrep</title>
+        <meta name="description" content="Reset your ExamPrep password. Enter your email to receive password reset instructions." />
+      </Helmet>
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
         <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-lg dark:bg-gray-800">
           <div className="text-center">

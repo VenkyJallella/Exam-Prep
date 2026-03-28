@@ -37,7 +37,10 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <>
-        <Helmet><title>Reset Password - ExamPrep</title></Helmet>
+        <Helmet>
+          <title>Reset Password - ExamPrep</title>
+          <meta name="description" content="This password reset link is invalid or has expired." />
+        </Helmet>
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Invalid Reset Link</h1>
@@ -53,7 +56,10 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <Helmet><title>Reset Password - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Reset Password - ExamPrep</title>
+        <meta name="description" content="Set a new password for your ExamPrep account." />
+      </Helmet>
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
         <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-lg dark:bg-gray-800">
           <div className="text-center">

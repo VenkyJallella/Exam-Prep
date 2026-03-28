@@ -42,7 +42,10 @@ export default function TestResultsPage() {
 
   return (
     <>
-      <Helmet><title>Test Results - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Test Results - ExamPrep</title>
+        <meta name="description" content="View your mock test results with detailed score breakdown, accuracy analysis, and question-wise review." />
+      </Helmet>
 
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Score header */}

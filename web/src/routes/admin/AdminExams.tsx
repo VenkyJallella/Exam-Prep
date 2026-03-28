@@ -133,6 +133,7 @@ export default function AdminExams() {
     <>
       <Helmet>
         <title>Manage Exams - Admin - ExamPrep</title>
+        <meta name="description" content="Admin exam management. Create, edit, and manage competitive exams on ExamPrep." />
       </Helmet>
       <div className="space-y-6">
         <div className="flex items-center justify-between">

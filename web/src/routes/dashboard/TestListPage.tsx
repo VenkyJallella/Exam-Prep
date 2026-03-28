@@ -45,7 +45,10 @@ export default function TestListPage() {
 
   return (
     <>
-      <Helmet><title>Mock Tests - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Mock Tests - ExamPrep</title>
+        <meta name="description" content="Take full-length mock tests for UPSC, JEE, SSC, and Banking exams. Timed tests with detailed results." />
+      </Helmet>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mock Tests</h1>

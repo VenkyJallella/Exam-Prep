@@ -68,7 +68,10 @@ export default function SubscriptionPage() {
 
   return (
     <>
-      <Helmet><title>Subscription - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Subscription - ExamPrep</title>
+        <meta name="description" content="Choose the right plan for your exam preparation. Free, Pro, and Premium plans available." />
+      </Helmet>
       <div className="mx-auto max-w-5xl space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Choose Your Plan</h1>

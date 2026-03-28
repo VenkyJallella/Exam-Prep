@@ -150,7 +150,10 @@ export default function TestSessionPage() {
 
   return (
     <>
-      <Helmet><title>Test in Progress - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Test in Progress - ExamPrep</title>
+        <meta name="description" content="Mock test in progress. Answer questions within the time limit to simulate real exam conditions." />
+      </Helmet>
 
       {/* Full-screen test layout */}
       <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">

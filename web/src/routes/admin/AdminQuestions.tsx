@@ -139,7 +139,10 @@ export default function AdminQuestions() {
 
   return (
     <>
-      <Helmet><title>Manage Questions - Admin - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Manage Questions - Admin - ExamPrep</title>
+        <meta name="description" content="Admin question management. Create, edit, and manage exam questions on ExamPrep." />
+      </Helmet>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Questions</h1>

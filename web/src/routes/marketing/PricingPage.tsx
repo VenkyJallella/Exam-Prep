@@ -104,7 +104,10 @@ export default function PricingPage() {
     <>
       <Helmet>
         <title>Pricing - ExamPrep | Affordable AI Exam Preparation Plans</title>
-        <meta name="description" content="Choose your ExamPrep plan. Start free with 50 questions/day or unlock unlimited practice, advanced analytics, and AI-powered learning with Pro or Premium." />
+        <meta name="description" content="ExamPrep pricing plans. Start free, upgrade for unlimited questions, adaptive learning, and advanced analytics." />
+        <meta property="og:title" content="Pricing - ExamPrep | Affordable AI Exam Preparation Plans" />
+        <meta property="og:description" content="ExamPrep pricing plans. Start free, upgrade for unlimited questions, adaptive learning, and advanced analytics." />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       {/* Header */}

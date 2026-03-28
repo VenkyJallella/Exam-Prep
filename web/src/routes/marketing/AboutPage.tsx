@@ -34,7 +34,10 @@ export default function AboutPage() {
     <>
       <Helmet>
         <title>About ExamPrep - AI-Powered Exam Preparation Platform</title>
-        <meta name="description" content="Learn about ExamPrep, built by SOLON India Pvt Ltd. We use AI to help aspirants crack UPSC, JEE, SSC, and Banking exams with adaptive learning and smart analytics." />
+        <meta name="description" content="Learn about ExamPrep - AI-powered competitive exam preparation platform for Indian aspirants." />
+        <meta property="og:title" content="About ExamPrep - AI-Powered Exam Preparation Platform" />
+        <meta property="og:description" content="Learn about ExamPrep - AI-powered competitive exam preparation platform for Indian aspirants." />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       {/* Mission */}

@@ -40,7 +40,10 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <Helmet><title>Analytics - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Analytics - ExamPrep</title>
+        <meta name="description" content="Track your exam preparation progress with detailed analytics. View accuracy, speed, and topic mastery." />
+      </Helmet>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Performance Analytics</h1>
 

@@ -119,6 +119,9 @@ export default function ExamDetailPage() {
       <Helmet>
         <title>{exam.name} Preparation - ExamPrep | AI-Powered Practice</title>
         <meta name="description" content={`Prepare for ${exam.name} with AI-generated questions, mock tests, and adaptive learning. ${exam.questionsAvailable} questions available.`} />
+        <meta property="og:title" content={`${exam.name} Preparation - ExamPrep | AI-Powered Practice`} />
+        <meta property="og:description" content={`Prepare for ${exam.name} with AI-generated questions, mock tests, and adaptive learning. ${exam.questionsAvailable} questions available.`} />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       {/* Hero */}

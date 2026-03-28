@@ -60,7 +60,10 @@ export default function PracticePage() {
 
   return (
     <>
-      <Helmet><title>Practice - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Practice - ExamPrep</title>
+        <meta name="description" content="Practice exam questions with AI-powered adaptive difficulty. Choose your exam, topic, and start practicing." />
+      </Helmet>
 
       <div className="mx-auto max-w-2xl space-y-6">
         <div>

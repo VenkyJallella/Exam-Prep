@@ -5,16 +5,54 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { authAPI } from '@/lib/api/auth';
 import apiClient from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import FormInput from '@/components/ui/FormInput';
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { setTokens, setUser } = useAuthStore();
   const navigate = useNavigate();
 
+  const validateEmail = (value: string): string | undefined => {
+    if (!value) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
+    return undefined;
+  };
+
+  const validatePassword = (value: string): string | undefined => {
+    if (!value) return 'Password is required';
+    if (value.length < 8) return 'Password must be at least 8 characters';
+    return undefined;
+  };
+
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {
+      email: validateEmail(email),
+      password: validatePassword(password),
+    };
+    setErrors(newErrors);
+    return !newErrors.email && !newErrors.password;
+  };
+
+  const handleBlur = (field: keyof FormErrors) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    if (field === 'email') setErrors((prev) => ({ ...prev, email: validateEmail(email) }));
+    if (field === 'password') setErrors((prev) => ({ ...prev, password: validatePassword(password) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched({ email: true, password: true });
+    if (!validate()) return;
+
     setLoading(true);
 
     try {
@@ -41,6 +79,7 @@ export default function LoginPage() {
     <>
       <Helmet>
         <title>Login - ExamPrep</title>
+        <meta name="description" content="Log in to your ExamPrep account to continue your exam preparation journey." />
       </Helmet>
 
       <div className="flex min-h-screen">
@@ -75,36 +114,32 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input"
-                  placeholder="you@example.com"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <FormInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (touched.email) setErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
+                }}
+                onBlur={() => handleBlur('email')}
+                error={touched.email ? errors.email : undefined}
+                placeholder="you@example.com"
+              />
 
-              <div>
-                <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input"
-                  placeholder="Enter your password"
-                />
-              </div>
+              <FormInput
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (touched.password) setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+                }}
+                onBlur={() => handleBlur('password')}
+                error={touched.password ? errors.password : undefined}
+                placeholder="Enter your password"
+              />
 
               <div className="flex justify-end">
                 <Link to="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-500">

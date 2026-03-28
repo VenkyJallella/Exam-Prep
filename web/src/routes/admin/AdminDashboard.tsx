@@ -41,7 +41,10 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Helmet><title>Admin Dashboard - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Admin Dashboard - ExamPrep</title>
+        <meta name="description" content="Admin dashboard for ExamPrep. Monitor platform stats, users, questions, and tests." />
+      </Helmet>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
 

@@ -111,7 +111,10 @@ export default function StudyPlannerPage() {
 
   return (
     <>
-      <Helmet><title>Study Planner - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Study Planner - ExamPrep</title>
+        <meta name="description" content="Plan your exam preparation with a personalized study schedule. Set daily goals and track progress." />
+      </Helmet>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

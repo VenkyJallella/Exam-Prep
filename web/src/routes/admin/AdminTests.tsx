@@ -110,6 +110,7 @@ export default function AdminTests() {
     <>
       <Helmet>
         <title>Manage Tests - Admin - ExamPrep</title>
+        <meta name="description" content="Admin test management. Create, edit, and manage mock tests on ExamPrep." />
       </Helmet>
       <div className="space-y-6">
         <div className="flex items-center justify-between">

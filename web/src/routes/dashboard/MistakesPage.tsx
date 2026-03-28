@@ -90,7 +90,10 @@ export default function MistakesPage() {
 
   return (
     <>
-      <Helmet><title>Mistake Book - ExamPrep</title></Helmet>
+      <Helmet>
+        <title>Mistake Book - ExamPrep</title>
+        <meta name="description" content="Review and learn from your mistakes. Track wrong answers and improve your weak areas." />
+      </Helmet>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mistake Book</h1>
