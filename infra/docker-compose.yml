@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: examprep-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env
+    volumes:
+      - ../backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - examprep
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: examprep-db
+    environment:
+      POSTGRES_USER: examprep
+      POSTGRES_PASSWORD: examprep
+      POSTGRES_DB: examprep
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U examprep"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - examprep
+
+  redis:
+    image: redis:7-alpine
+    container_name: examprep-redis
+    ports:
+      - "6381:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - examprep
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  examprep:
+    driver: bridge

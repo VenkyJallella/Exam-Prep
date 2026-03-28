@@ -1,0 +1,4 @@
+-r base.txt
+
+# Monitoring
+sentry-sdk[fastapi]==2.19.2

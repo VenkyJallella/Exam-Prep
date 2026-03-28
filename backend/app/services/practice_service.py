@@ -1,0 +1,177 @@
+from uuid import UUID
+from datetime import datetime, timezone
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.practice import PracticeSession, UserAnswer, SessionStatus
+from app.models.question import Question
+from app.models.mistake import MistakeLog
+from app.models.gamification import UserGamification, XPTransaction
+from app.schemas.practice import SessionCreate, AnswerSubmit, AnswerResult, SessionResult
+from app.services import question_service
+from app.exceptions import NotFoundError, AppException
+
+# XP rewards
+XP_CORRECT_ANSWER = 10
+XP_WRONG_ANSWER = 2  # Participation XP
+XP_STREAK_BONUS = 5  # Per streak milestone
+
+
+async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -> PracticeSession:
+    # Fetch questions
+    questions = await question_service.get_questions_for_practice(
+        db,
+        topic_id=body.topic_id,
+        exam_id=body.exam_id,
+        difficulty=body.difficulty,
+        count=body.question_count,
+    )
+
+    session = PracticeSession(
+        user_id=user_id,
+        exam_id=body.exam_id,
+        topic_id=body.topic_id,
+        status=SessionStatus.IN_PROGRESS,
+        total_questions=len(questions),
+        is_adaptive=body.is_adaptive,
+        config={
+            "question_ids": [str(q.id) for q in questions],
+            "difficulty": body.difficulty,
+        },
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+async def submit_answer(
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    body: AnswerSubmit,
+) -> AnswerResult:
+    # Verify session
+    result = await db.execute(
+        select(PracticeSession).where(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == user_id,
+            PracticeSession.status == SessionStatus.IN_PROGRESS,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise NotFoundError("Active practice session")
+
+    # Get question
+    question = await question_service.get_question_by_id(db, body.question_id)
+
+    # Check answer
+    is_correct = set(body.selected_answer) == set(question.correct_answer)
+    xp = XP_CORRECT_ANSWER if is_correct else XP_WRONG_ANSWER
+
+    # Save answer
+    answer = UserAnswer(
+        user_id=user_id,
+        question_id=body.question_id,
+        session_id=session_id,
+        selected_answer=body.selected_answer,
+        is_correct=is_correct,
+        time_taken_seconds=body.time_taken_seconds,
+        xp_earned=xp,
+    )
+    db.add(answer)
+
+    # Update session counters
+    if is_correct:
+        session.correct_count += 1
+    else:
+        session.wrong_count += 1
+        # Log mistake
+        mistake = MistakeLog(
+            user_id=user_id,
+            question_id=body.question_id,
+            user_answer_id=answer.id,
+            topic_id=question.topic_id,
+            difficulty=question.difficulty,
+        )
+        db.add(mistake)
+
+    session.total_time_seconds += body.time_taken_seconds
+
+    # Update question stats
+    question.times_attempted += 1
+    if is_correct:
+        question.times_correct += 1
+
+    # Award XP
+    await _award_xp(db, user_id, xp, "correct_answer" if is_correct else "participation", answer.id)
+
+    await db.commit()
+
+    return AnswerResult(
+        is_correct=is_correct,
+        correct_answer=question.correct_answer,
+        explanation=question.explanation,
+        xp_earned=xp,
+    )
+
+
+async def complete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> SessionResult:
+    result = await db.execute(
+        select(PracticeSession).where(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == user_id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise NotFoundError("Practice session")
+
+    session.status = SessionStatus.COMPLETED
+    session.skipped_count = session.total_questions - session.correct_count - session.wrong_count
+
+    # Calculate total XP
+    xp_result = await db.execute(
+        select(func.sum(UserAnswer.xp_earned)).where(UserAnswer.session_id == session_id)
+    )
+    total_xp = xp_result.scalar() or 0
+
+    await db.commit()
+    await db.refresh(session)
+
+    answered = session.correct_count + session.wrong_count
+    accuracy = (session.correct_count / answered * 100) if answered > 0 else 0.0
+
+    return SessionResult(
+        session=session,
+        total_questions=session.total_questions,
+        correct=session.correct_count,
+        wrong=session.wrong_count,
+        skipped=session.skipped_count,
+        accuracy_pct=round(accuracy, 1),
+        total_time_seconds=session.total_time_seconds,
+        xp_earned=total_xp,
+    )
+
+
+async def _award_xp(
+    db: AsyncSession,
+    user_id: UUID,
+    amount: int,
+    reason: str,
+    reference_id: UUID | None = None,
+):
+    # Log transaction
+    tx = XPTransaction(user_id=user_id, amount=amount, reason=reason, reference_id=reference_id)
+    db.add(tx)
+
+    # Update total
+    result = await db.execute(
+        select(UserGamification).where(UserGamification.user_id == user_id)
+    )
+    gam = result.scalar_one_or_none()
+    if gam:
+        gam.total_xp += amount
+        # Level up every 500 XP
+        gam.level = (gam.total_xp // 500) + 1
