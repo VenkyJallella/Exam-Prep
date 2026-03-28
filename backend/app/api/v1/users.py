@@ -45,6 +45,15 @@ async def update_profile(
     return APIResponse(data=ProfileRead.model_validate(profile))
 
 
+@router.delete("/me")
+async def delete_account(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await user_service.delete_account(db, user)
+    return APIResponse(data={"message": "Account deleted successfully"})
+
+
 @router.get("/me/stats", response_model=APIResponse[UserStatsRead])
 async def get_my_stats(
     user: User = Depends(get_current_user),

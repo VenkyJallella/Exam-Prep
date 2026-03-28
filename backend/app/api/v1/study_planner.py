@@ -12,6 +12,13 @@ from app.services import study_planner_service
 router = APIRouter()
 
 
+class StudyLogCreate(BaseModel):
+    plan_id: UUID
+    topic_id: UUID | None = None
+    duration_minutes: int = Field(ge=1, le=720)
+    notes: str | None = Field(None, max_length=500)
+
+
 class PlanCreate(BaseModel):
     exam_id: UUID
     target_date: date
@@ -91,3 +98,24 @@ async def delete_plan(
 ):
     await study_planner_service.delete_plan(db, user.id, plan_id)
     return {"status": "success", "data": {"deleted": True}}
+
+
+@router.get("/today")
+async def get_today(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    data = await study_planner_service.get_today_schedule(db, user.id)
+    return {"status": "success", "data": data}
+
+
+@router.post("/log")
+async def log_session(
+    body: StudyLogCreate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    data = await study_planner_service.log_study_session(
+        db, user.id, body.plan_id, body.topic_id, body.duration_minutes, body.notes
+    )
+    return {"status": "success", "data": data}

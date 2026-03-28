@@ -70,7 +70,7 @@ export default function HomePage() {
             {exams.map((exam) => (
               <Link
                 key={exam.slug}
-                to="/register"
+                to={`/exams/${exam.slug}`}
                 className="card group cursor-pointer transition-shadow hover:shadow-md"
               >
                 <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl ${exam.color} text-lg font-bold text-white`}>

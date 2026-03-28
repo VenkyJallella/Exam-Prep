@@ -3,6 +3,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { useThemeStore } from '@/lib/store/themeStore';
 import { useNavigate } from 'react-router-dom';
 import { questionsAPI, QuestionRead } from '@/lib/api/questions';
+import { authAPI } from '@/lib/api/auth';
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -20,7 +21,12 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+    } catch {
+      // Proceed with local logout even if API call fails
+    }
     logout();
     navigate('/login');
   };

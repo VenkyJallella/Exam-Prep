@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import date, datetime, timezone
-from sqlalchemy import select
+from sqlalchemy import select, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.study_planner import StudyPlan
@@ -73,6 +73,84 @@ async def delete_plan(db: AsyncSession, user_id: UUID, plan_id: UUID) -> None:
         raise NotFoundError("Study plan")
     plan.is_active = False
     await db.commit()
+
+
+async def get_today_schedule(db: AsyncSession, user_id: UUID) -> dict | None:
+    """Get today's study schedule from the active plan."""
+    plan = await get_plan(db, user_id)
+    if not plan or not plan.schedule:
+        return None
+
+    today_name = date.today().strftime("%A").lower()
+    today_schedule = None
+    for day_entry in plan.schedule:
+        if day_entry.get("day") == today_name:
+            today_schedule = day_entry
+            break
+
+    if not today_schedule:
+        return None
+
+    # Check completion status from study_logs
+    from app.models.study_planner import StudyLog
+
+    log_result = await db.execute(
+        select(StudyLog).where(
+            StudyLog.user_id == user_id,
+            StudyLog.plan_id == plan.id,
+            cast(StudyLog.created_at, Date) == date.today(),
+        )
+    )
+    logs = log_result.scalars().all()
+
+    return {
+        "plan_id": str(plan.id),
+        "day": today_name,
+        "schedule": today_schedule,
+        "target_date": plan.target_date.isoformat(),
+        "daily_hours": plan.daily_hours,
+        "completed_sessions": len(logs),
+        "total_minutes_logged": sum(l.duration_minutes for l in logs),
+    }
+
+
+async def log_study_session(
+    db: AsyncSession,
+    user_id: UUID,
+    plan_id: UUID,
+    topic_id: UUID | None,
+    duration_minutes: int,
+    notes: str | None = None,
+) -> dict:
+    """Log a completed study session."""
+    from app.models.study_planner import StudyLog
+
+    plan = await db.execute(
+        select(StudyPlan).where(StudyPlan.id == plan_id, StudyPlan.user_id == user_id)
+    )
+    plan_obj = plan.scalar_one_or_none()
+    if not plan_obj:
+        raise NotFoundError("Study plan")
+
+    log = StudyLog(
+        user_id=user_id,
+        plan_id=plan_id,
+        topic_id=topic_id,
+        duration_minutes=duration_minutes,
+        notes=notes,
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(log)
+
+    return {
+        "id": str(log.id),
+        "plan_id": str(log.plan_id),
+        "topic_id": str(log.topic_id) if log.topic_id else None,
+        "duration_minutes": log.duration_minutes,
+        "notes": log.notes,
+        "created_at": log.created_at.isoformat(),
+    }
 
 
 async def _generate_schedule(

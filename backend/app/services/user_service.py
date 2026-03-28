@@ -79,3 +79,10 @@ async def get_user_stats(db: AsyncSession, user_id: UUID) -> UserStatsRead:
         total_xp=gam.total_xp if gam else 0,
         level=gam.level if gam else 1,
     )
+
+
+async def delete_account(db: AsyncSession, user: User):
+    """Soft-delete user account."""
+    user.is_active = False
+    user.email = f"deleted_{user.id}@deleted.local"  # Anonymize
+    await db.commit()

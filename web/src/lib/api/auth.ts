@@ -35,4 +35,6 @@ export const authAPI = {
 
   confirmPasswordReset: (token: string, new_password: string) =>
     apiClient.post<{ data: { message: string } }>('/auth/password/reset/confirm', { token, new_password }),
+
+  logout: () => apiClient.post('/auth/logout'),
 };

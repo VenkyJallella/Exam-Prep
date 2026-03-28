@@ -12,6 +12,11 @@ import LoadingScreen from './components/ui/LoadingScreen';
 // Marketing pages (eager load for fast landing)
 import HomePage from './routes/marketing/HomePage';
 
+// Marketing pages (lazy)
+const AboutPage = lazy(() => import('./routes/marketing/AboutPage'));
+const PricingPage = lazy(() => import('./routes/marketing/PricingPage'));
+const ExamDetailPage = lazy(() => import('./routes/marketing/ExamDetailPage'));
+
 // Lazy load all app pages
 const LoginPage = lazy(() => import('./routes/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./routes/auth/RegisterPage'));
@@ -29,6 +34,7 @@ const MistakesPage = lazy(() => import('./routes/dashboard/MistakesPage'));
 const LeaderboardPage = lazy(() => import('./routes/dashboard/LeaderboardPage'));
 const ProfilePage = lazy(() => import('./routes/dashboard/ProfilePage'));
 const StudyPlannerPage = lazy(() => import('./routes/dashboard/StudyPlannerPage'));
+const SubscriptionPage = lazy(() => import('./routes/dashboard/SubscriptionPage'));
 
 const AdminDashboard = lazy(() => import('./routes/admin/AdminDashboard'));
 const AdminQuestions = lazy(() => import('./routes/admin/AdminQuestions'));
@@ -43,6 +49,9 @@ export default function App() {
         {/* Marketing / Public */}
         <Route element={<MarketingLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/exams/:slug" element={<ExamDetailPage />} />
         </Route>
 
         {/* Auth */}
@@ -65,6 +74,7 @@ export default function App() {
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/study-planner" element={<StudyPlannerPage />} />
+            <Route path="/subscription" element={<SubscriptionPage />} />
           </Route>
         </Route>
 

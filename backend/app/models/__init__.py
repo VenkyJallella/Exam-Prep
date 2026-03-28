@@ -9,6 +9,7 @@ from app.models.analytics import PerformanceSnapshot
 from app.models.gamification import UserGamification, XPTransaction
 from app.models.study_planner import StudyPlan
 from app.models.mistake import MistakeLog
+from app.models.payment import Subscription, Payment, PlanType, PaymentStatus
 
 __all__ = [
     "Base",
@@ -31,4 +32,8 @@ __all__ = [
     "XPTransaction",
     "StudyPlan",
     "MistakeLog",
+    "Subscription",
+    "Payment",
+    "PlanType",
+    "PaymentStatus",
 ]

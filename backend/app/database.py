@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -37,3 +38,13 @@ async def init_db():
 async def close_db():
     """Dispose engine on shutdown."""
     await engine.dispose()
+
+
+@asynccontextmanager
+async def get_session():
+    """Get an async session for use outside of FastAPI dependency injection."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

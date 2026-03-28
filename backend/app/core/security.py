@@ -67,6 +67,8 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ):
     payload = decode_token(token)
+    if await is_token_blacklisted(token):
+        raise UnauthorizedError("Token has been revoked")
     if payload.get("type") != "access":
         raise UnauthorizedError("Invalid token type")
 
@@ -83,6 +85,31 @@ async def get_current_user(
         raise UnauthorizedError("User not found or inactive")
 
     return user
+
+
+async def blacklist_token(token: str):
+    """Add token to Redis blacklist until it expires."""
+    from app.core.cache import cache_set
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp = payload.get("exp", 0)
+        ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 0)
+        if ttl > 0:
+            await cache_set(f"blacklist:{token[:32]}", "1", ttl_seconds=ttl)
+    except JWTError:
+        pass  # Token already invalid, no need to blacklist
+
+
+async def is_token_blacklisted(token: str) -> bool:
+    """Check if a token is blacklisted."""
+    from app.core.cache import cache_get
+
+    try:
+        result = await cache_get(f"blacklist:{token[:32]}")
+        return result is not None
+    except Exception:
+        return False
 
 
 def require_role(*roles: str):

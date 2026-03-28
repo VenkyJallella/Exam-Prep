@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.core.security import get_current_user, oauth2_scheme, blacklist_token
+from app.models.user import User
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
@@ -47,3 +49,12 @@ async def request_reset(body: PasswordResetRequest, db: AsyncSession = Depends(g
 async def confirm_reset(body: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
     await auth_service.confirm_password_reset(db, body.token, body.new_password)
     return APIResponse(data={"message": "Password has been reset successfully"})
+
+
+@router.post("/logout")
+async def logout(
+    user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+):
+    await blacklist_token(token)
+    return APIResponse(data={"message": "Logged out successfully"})

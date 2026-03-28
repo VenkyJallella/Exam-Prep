@@ -36,3 +36,30 @@ async def progress(
 ):
     data = await analytics_service.get_progress(db, user.id, days)
     return {"status": "success", "data": data}
+
+
+@router.get("/overview")
+async def get_overview(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    data = await analytics_service.get_overview(db, user.id)
+    return {"status": "success", "data": data}
+
+
+@router.get("/weak-areas")
+async def get_weak_areas(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    data = await analytics_service.get_weak_areas(db, user.id)
+    return {"status": "success", "data": data}
+
+
+@router.get("/speed")
+async def get_speed(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    data = await analytics_service.get_speed_analytics(db, user.id)
+    return {"status": "success", "data": data}

@@ -1,8 +1,11 @@
+import asyncio
 import csv
 import io
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.core.security import get_current_user, require_role
@@ -53,6 +56,78 @@ async def list_questions(
     )
 
 
+class QuestionReportBody(BaseModel):
+    reason: str  # "incorrect", "duplicate", "unclear", "offensive", "other"
+    details: str | None = None
+
+
+@router.post("/{question_id}/report")
+async def report_question(
+    question_id: UUID,
+    body: QuestionReportBody,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Report a question for review."""
+    question = await question_service.get_question_by_id(db, question_id)
+    # Store report in question metadata or a separate mechanism
+    # For now, just log and add to question metadata
+    from app.core.cache import cache_set
+    report_key = f"question_report:{question_id}:{user.id}"
+    await cache_set(report_key, {"reason": body.reason, "details": body.details, "user_id": str(user.id)}, ttl_seconds=86400 * 30)
+    return APIResponse(data={"message": "Report submitted. Thank you for your feedback."})
+
+
+@router.post("/generate")
+async def generate_questions(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin", "moderator")),
+):
+    from app.services.task_service import create_task
+
+    task_id = await create_task("question_generation", {
+        "exam_id": body["exam_id"],
+        "topic_id": body["topic_id"],
+        "count": body.get("count", 5),
+        "difficulty": body.get("difficulty", 3),
+    })
+
+    # Run generation in background
+    asyncio.create_task(_run_generation(task_id, db, body))
+
+    return {
+        "status": "success",
+        "data": {"task_id": task_id, "message": "Generation started"},
+    }
+
+
+async def _run_generation(task_id: str, db: AsyncSession, body: dict):
+    from app.services.task_service import update_task
+    from app.ai.generator import generate_questions as gen
+    try:
+        await update_task(task_id, "in_progress")
+        questions = await gen(
+            db,
+            exam_id=UUID(body["exam_id"]),
+            topic_id=UUID(body["topic_id"]),
+            count=body.get("count", 5),
+            difficulty=body.get("difficulty", 3),
+        )
+        await update_task(task_id, "completed", {"generated": len(questions)})
+    except Exception as e:
+        await update_task(task_id, "failed", error=str(e))
+
+
+@router.get("/generate/{task_id}")
+async def get_generation_status(task_id: str, user: User = Depends(require_role("admin", "moderator"))):
+    from app.services.task_service import get_task
+    task = await get_task(task_id)
+    if not task:
+        raise AppException(404, "TASK_NOT_FOUND", "Task not found or expired")
+    return {"status": "success", "data": task}
+
+
 @router.get("/{question_id}", response_model=APIResponse[QuestionWithAnswer])
 async def get_question(
     question_id: UUID,
@@ -71,26 +146,6 @@ async def create_question(
 ):
     question = await question_service.create_question(db, body)
     return APIResponse(data=QuestionRead.model_validate(question))
-
-
-@router.post("/generate")
-async def generate_questions(
-    body: dict,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role("admin", "moderator")),
-):
-    from app.ai.generator import generate_questions as gen
-    questions = await gen(
-        db,
-        exam_id=UUID(body["exam_id"]),
-        topic_id=UUID(body["topic_id"]),
-        count=body.get("count", 5),
-        difficulty=body.get("difficulty", 3),
-    )
-    return {
-        "status": "success",
-        "data": {"generated": len(questions)},
-    }
 
 
 @router.patch("/{question_id}", response_model=APIResponse[QuestionRead])
