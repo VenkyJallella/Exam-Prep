@@ -32,6 +32,12 @@ async def leaderboard(
     }
 
 
+@router.get("/badges")
+async def get_badges():
+    from app.services.gamification_service import get_badge_definitions
+    return {"status": "success", "data": get_badge_definitions()}
+
+
 @router.get("/leaderboard/weekly")
 async def weekly_leaderboard(
     db: AsyncSession = Depends(get_db),

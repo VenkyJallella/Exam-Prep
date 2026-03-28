@@ -66,3 +66,4 @@ class QuestionFilter(BaseModel):
     question_type: str | None = None
     is_verified: bool | None = None
     language: str | None = None
+    search: str | None = None

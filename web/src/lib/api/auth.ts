@@ -29,4 +29,10 @@ export const authAPI = {
     apiClient.post<{ data: TokenResponse }>('/auth/refresh', {
       refresh_token: refreshToken,
     }),
+
+  requestPasswordReset: (email: string) =>
+    apiClient.post<{ data: { message: string; token: string | null } }>('/auth/password/reset', { email }),
+
+  confirmPasswordReset: (token: string, new_password: string) =>
+    apiClient.post<{ data: { message: string } }>('/auth/password/reset/confirm', { token, new_password }),
 };

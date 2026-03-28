@@ -8,7 +8,8 @@ from app.models.question import Question
 from app.models.mistake import MistakeLog
 from app.models.gamification import UserGamification, XPTransaction
 from app.schemas.practice import SessionCreate, AnswerSubmit, AnswerResult, SessionResult
-from app.services import question_service
+from app.services import question_service, adaptive_service
+from app.services.gamification_service import update_streak, check_and_award_badges
 from app.exceptions import NotFoundError, AppException
 
 # XP rewards
@@ -18,14 +19,22 @@ XP_STREAK_BONUS = 5  # Per streak milestone
 
 
 async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -> PracticeSession:
-    # Fetch questions
-    questions = await question_service.get_questions_for_practice(
-        db,
-        topic_id=body.topic_id,
-        exam_id=body.exam_id,
-        difficulty=body.difficulty,
-        count=body.question_count,
-    )
+    # Fetch questions: use adaptive engine when requested, otherwise standard selection
+    if body.is_adaptive:
+        questions = await adaptive_service.get_adaptive_questions(
+            db,
+            user_id=user_id,
+            exam_id=body.exam_id,
+            count=body.question_count,
+        )
+    else:
+        questions = await question_service.get_questions_for_practice(
+            db,
+            topic_id=body.topic_id,
+            exam_id=body.exam_id,
+            difficulty=body.difficulty,
+            count=body.question_count,
+        )
 
     session = PracticeSession(
         user_id=user_id,
@@ -107,6 +116,21 @@ async def submit_answer(
     # Award XP
     await _award_xp(db, user_id, xp, "correct_answer" if is_correct else "participation", answer.id)
 
+    # Count total correct for badge check
+    correct_count_result = await db.execute(
+        select(func.count()).select_from(UserAnswer).where(
+            UserAnswer.user_id == user_id, UserAnswer.is_correct == True
+        )
+    )
+    total_correct = correct_count_result.scalar() or 0
+    await check_and_award_badges(db, user_id, {"total_correct": total_correct})
+
+    # Update adaptive mastery tracking
+    if question.topic_id:
+        await adaptive_service.update_mastery(
+            db, user_id, question.topic_id, is_correct, body.time_taken_seconds
+        )
+
     await db.commit()
 
     return AnswerResult(
@@ -175,3 +199,5 @@ async def _award_xp(
         gam.total_xp += amount
         # Level up every 500 XP
         gam.level = (gam.total_xp // 500) + 1
+
+    await update_streak(db, user_id)

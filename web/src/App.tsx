@@ -15,6 +15,8 @@ import HomePage from './routes/marketing/HomePage';
 // Lazy load all app pages
 const LoginPage = lazy(() => import('./routes/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./routes/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./routes/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./routes/auth/ResetPasswordPage'));
 
 const DashboardPage = lazy(() => import('./routes/dashboard/DashboardPage'));
 const PracticePage = lazy(() => import('./routes/dashboard/PracticePage'));
@@ -30,6 +32,8 @@ const StudyPlannerPage = lazy(() => import('./routes/dashboard/StudyPlannerPage'
 
 const AdminDashboard = lazy(() => import('./routes/admin/AdminDashboard'));
 const AdminQuestions = lazy(() => import('./routes/admin/AdminQuestions'));
+const AdminTests = lazy(() => import('./routes/admin/AdminTests'));
+const AdminExams = lazy(() => import('./routes/admin/AdminExams'));
 const AdminUsers = lazy(() => import('./routes/admin/AdminUsers'));
 
 export default function App() {
@@ -44,6 +48,8 @@ export default function App() {
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Dashboard (Protected) */}
         <Route element={<AuthGuard />}>
@@ -68,6 +74,8 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/questions" element={<AdminQuestions />} />
+              <Route path="/admin/tests" element={<AdminTests />} />
+              <Route path="/admin/exams" element={<AdminExams />} />
               <Route path="/admin/users" element={<AdminUsers />} />
             </Route>
           </Route>

@@ -163,7 +163,7 @@ export default function PracticeSessionPage() {
 
   return (
     <>
-      <Helmet><title>Practice - Q{currentIndex + 1} - ExamPrep</title></Helmet>
+      <Helmet><title>{`Practice - Q${currentIndex + 1} - ExamPrep`}</title></Helmet>
 
       {/* Timer bar */}
       <div className="mb-6 flex items-center justify-between">

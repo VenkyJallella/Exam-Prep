@@ -10,6 +10,7 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     decode_token,
 )
 from app.exceptions import ConflictError, UnauthorizedError
@@ -89,3 +90,29 @@ async def refresh_tokens(db: AsyncSession, body: RefreshRequest) -> TokenRespons
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+async def request_password_reset(db: AsyncSession, email: str) -> str | None:
+    """Returns reset token if user exists, None otherwise.
+    In production, this would send an email."""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        return None  # Don't reveal if email exists
+
+    return create_reset_token(user.id)
+
+
+async def confirm_password_reset(db: AsyncSession, token: str, new_password: str):
+    payload = decode_token(token)
+    if payload.get("type") != "reset":
+        raise UnauthorizedError("Invalid reset token")
+
+    user_id = payload.get("sub")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise UnauthorizedError("User not found or inactive")
+
+    user.hashed_password = hash_password(new_password)
+    await db.commit()

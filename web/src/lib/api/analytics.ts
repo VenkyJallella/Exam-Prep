@@ -47,6 +47,11 @@ export const analyticsAPI = {
     apiClient.get<{ data: ProgressPoint[] }>('/analytics/progress', {
       params: { days: days || 30 },
     }),
+
+  activityHeatmap: (days?: number) =>
+    apiClient.get<{ data: Array<{ date: string; count: number }> }>('/analytics/activity-heatmap', {
+      params: { days: days || 90 },
+    }),
 };
 
 export const leaderboardAPI = {

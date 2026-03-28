@@ -18,6 +18,7 @@ from app.schemas.test import (
     AttemptResultResponse,
 )
 from app.exceptions import NotFoundError, AppException
+from app.services.gamification_service import update_streak, check_and_award_badges
 
 # XP rewards
 XP_TEST_COMPLETION = 50
@@ -385,6 +386,19 @@ async def submit_test(
         xp += XP_PERFECT_SCORE
     await _award_xp(db, user_id, xp, "test_completion", attempt.id)
 
+    # Count total correct answers for badge check
+    from app.models.practice import UserAnswer
+    correct_result = await db.execute(
+        select(func.count()).select_from(UserAnswer).where(
+            UserAnswer.user_id == user_id, UserAnswer.is_correct == True
+        )
+    )
+    total_correct = correct_result.scalar() or 0
+    await check_and_award_badges(db, user_id, {
+        "total_correct": total_correct,
+        "test_accuracy": round(accuracy, 1),
+    })
+
     await db.commit()
     await db.refresh(attempt)
 
@@ -543,3 +557,5 @@ async def _award_xp(
     if gam:
         gam.total_xp += amount
         gam.level = (gam.total_xp // 500) + 1
+
+    await update_streak(db, user_id)

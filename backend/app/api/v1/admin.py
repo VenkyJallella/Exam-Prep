@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,8 @@ router = APIRouter()
 class UserToggle(BaseModel):
     is_active: bool
 
+
+# ── Dashboard ────────────────────────────────────────────────────────
 
 @router.get("/dashboard")
 async def dashboard(
@@ -90,3 +92,108 @@ async def toggle_user(
 ):
     updated = await admin_service.toggle_user_active(db, user_id, body.is_active)
     return {"status": "success", "data": {"id": str(updated.id), "is_active": updated.is_active}}
+
+
+# ── Tests ────────────────────────────────────────────────────────────
+
+
+@router.get("/tests")
+async def list_tests(
+    search: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    tests = await admin_service.list_tests(db, search)
+    return {"status": "success", "data": tests}
+
+
+@router.post("/tests/{test_id}/toggle-publish")
+async def toggle_publish(
+    test_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    result = await admin_service.toggle_test_publish(db, test_id)
+    return {"status": "success", "data": result}
+
+
+@router.delete("/tests/{test_id}")
+async def delete_test(
+    test_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    await admin_service.delete_test(db, test_id)
+    return {"status": "success", "data": {"deleted": True}}
+
+
+# ── Exams / Taxonomy ────────────────────────────────────────────────
+
+
+@router.get("/exams")
+async def list_exams(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    data = await admin_service.list_exams_full(db)
+    return {"status": "success", "data": data}
+
+
+@router.post("/exams")
+async def create_exam(
+    data: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    result = await admin_service.create_exam(db, data)
+    return {"status": "success", "data": result}
+
+
+@router.delete("/exams/{exam_id}")
+async def delete_exam(
+    exam_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    await admin_service.delete_exam(db, exam_id)
+    return {"status": "success", "data": {"deleted": True}}
+
+
+@router.post("/subjects")
+async def create_subject(
+    data: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    result = await admin_service.create_subject(db, data)
+    return {"status": "success", "data": result}
+
+
+@router.delete("/subjects/{subject_id}")
+async def delete_subject(
+    subject_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    await admin_service.delete_subject(db, subject_id)
+    return {"status": "success", "data": {"deleted": True}}
+
+
+@router.post("/topics")
+async def create_topic(
+    data: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    result = await admin_service.create_topic(db, data)
+    return {"status": "success", "data": result}
+
+
+@router.delete("/topics/{topic_id}")
+async def delete_topic(
+    topic_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    await admin_service.delete_topic(db, topic_id)
+    return {"status": "success", "data": {"deleted": True}}

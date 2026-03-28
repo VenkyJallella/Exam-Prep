@@ -65,6 +65,23 @@ async def get_topic_performance(db: AsyncSession, user_id: UUID) -> list[dict]:
     ]
 
 
+async def get_activity_heatmap(db: AsyncSession, user_id: UUID, days: int = 90) -> list[dict]:
+    """Return daily activity counts for the last N days."""
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    stmt = (
+        select(
+            cast(UserAnswer.created_at, Date).label("activity_date"),
+            func.count().label("count"),
+        )
+        .where(UserAnswer.user_id == user_id, UserAnswer.created_at >= start_date)
+        .group_by(cast(UserAnswer.created_at, Date))
+        .order_by(cast(UserAnswer.created_at, Date))
+    )
+    result = await db.execute(stmt)
+    return [{"date": str(row.activity_date), "count": row.count} for row in result.all()]
+
+
 async def get_progress(db: AsyncSession, user_id: UUID, days: int = 30) -> list[dict]:
     since = datetime.now(timezone.utc) - timedelta(days=days)
 

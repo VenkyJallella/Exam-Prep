@@ -24,6 +24,12 @@ export default function AdminQuestions() {
   const [search, setSearch] = useState('');
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
 
+  // CSV Import
+  const [showImport, setShowImport] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; errors: string[] } | null>(null);
+
   // AI Generate modal
   const [showGenerate, setShowGenerate] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -86,6 +92,28 @@ export default function AdminQuestions() {
     }
   };
 
+  const handleImportCSV = async () => {
+    if (!csvFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await adminAPI.importCSV(csvFile);
+      const data = res.data.data;
+      setImportResult(data);
+      if (data.imported > 0) {
+        toast.success(`Imported ${data.imported} questions`);
+        loadQuestions();
+      }
+      if (data.errors.length > 0) {
+        toast.error(`${data.errors.length} rows had errors`);
+      }
+    } catch {
+      toast.error('CSV import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!genExam || !genTopic) {
       toast.error('Select exam and topic');
@@ -116,6 +144,9 @@ export default function AdminQuestions() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Questions</h1>
           <div className="flex gap-3">
+            <button onClick={() => { setShowImport(true); setImportResult(null); setCsvFile(null); }} className="btn-secondary text-sm">
+              Import CSV
+            </button>
             <button onClick={() => setShowGenerate(true)} className="btn-primary text-sm">
               AI Generate
             </button>
@@ -232,6 +263,56 @@ export default function AdminQuestions() {
           </div>
         )}
       </div>
+
+      {/* CSV Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Import Questions from CSV</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Expected columns: question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, exam_id, topic_id, question_type
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-700 hover:file:bg-primary-100"
+              />
+
+              {importResult && (
+                <div className="rounded-lg border p-3 text-sm">
+                  <p className="font-medium text-green-700">Imported: {importResult.imported}</p>
+                  {importResult.errors.length > 0 && (
+                    <div className="mt-2">
+                      <p className="font-medium text-red-700">Errors ({importResult.errors.length}):</p>
+                      <ul className="mt-1 max-h-32 overflow-y-auto text-xs text-red-600">
+                        {importResult.errors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setShowImport(false)} className="btn-secondary flex-1">
+                Close
+              </button>
+              <button
+                onClick={handleImportCSV}
+                disabled={importing || !csvFile}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {importing ? 'Importing...' : 'Upload & Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Generate Modal */}
       {showGenerate && (

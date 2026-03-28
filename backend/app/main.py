@@ -50,6 +50,9 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestLoggingMiddleware)
 
+    from app.core.rate_limit import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)
+
     # Exception handlers
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)

@@ -8,6 +8,7 @@ from app.models.question import Question, QuestionType, QuestionSource
 from app.ai.client import generate_questions_json
 from app.ai.prompts import QUESTION_GENERATION
 from app.config import settings
+from app.services.question_service import check_duplicate, validate_question_data
 
 logger = logging.getLogger("examprep.ai.generator")
 
@@ -45,9 +46,24 @@ async def generate_questions(
 
     raw_questions = await generate_questions_json(prompt, model=model)
 
-    # Convert to Question models
+    # Convert to Question models (with validation and dedup)
     questions = []
+    skipped = 0
     for q_data in raw_questions:
+        # Validate question data
+        validation_error = validate_question_data(q_data)
+        if validation_error:
+            logger.warning("Skipping invalid question: %s", validation_error)
+            skipped += 1
+            continue
+
+        # Check for duplicates
+        is_dup = await check_duplicate(db, q_data["question_text"])
+        if is_dup:
+            logger.info("Skipping duplicate question: %s...", q_data["question_text"][:60])
+            skipped += 1
+            continue
+
         question = Question(
             topic_id=topic_id,
             exam_id=exam_id,
@@ -65,6 +81,6 @@ async def generate_questions(
         questions.append(question)
 
     await db.commit()
-    logger.info("Generated and saved %d questions", len(questions))
+    logger.info("Generated and saved %d questions (%d skipped)", len(questions), skipped)
 
     return questions

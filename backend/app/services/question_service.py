@@ -1,3 +1,5 @@
+import hashlib
+import logging
 from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +8,50 @@ from app.models.question import Question
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionFilter
 from app.exceptions import NotFoundError
 from app.core.pagination import PaginationParams
+
+logger = logging.getLogger("examprep.question_service")
+
+
+def _question_hash(text: str) -> str:
+    """Normalize and hash question text for dedup."""
+    normalized = text.lower().strip()
+    normalized = " ".join(normalized.split())
+    return hashlib.md5(normalized.encode()).hexdigest()
+
+
+async def check_duplicate(db: AsyncSession, question_text: str) -> bool:
+    """Check if a similar question already exists."""
+    result = await db.execute(
+        select(Question).where(
+            Question.is_active == True,
+            Question.question_text.ilike(f"%{question_text[:100]}%"),
+        ).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+def validate_question_data(q_data: dict) -> str | None:
+    """Validate generated question data. Returns error string or None if valid."""
+    question_text = q_data.get("question_text", "")
+    if not question_text or len(question_text.strip()) < 10:
+        return "Question text too short (min 10 chars)"
+
+    options = q_data.get("options", {})
+    if not options:
+        return "No options provided"
+
+    for key, value in options.items():
+        if not value or not str(value).strip():
+            return f"Option '{key}' is empty"
+
+    correct_answer = q_data.get("correct_answer")
+    if not correct_answer:
+        return "No correct answer specified"
+
+    if correct_answer not in options:
+        return f"Correct answer '{correct_answer}' not found in options"
+
+    return None
 
 
 async def get_questions(
@@ -27,6 +73,8 @@ async def get_questions(
         query = query.where(Question.is_verified == filters.is_verified)
     if filters.language:
         query = query.where(Question.language == filters.language)
+    if filters.search:
+        query = query.where(Question.question_text.ilike(f"%{filters.search}%"))
 
     # Count
     count_query = select(func.count()).select_from(query.subquery())

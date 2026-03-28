@@ -1,11 +1,14 @@
+import csv
+import io
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.security import get_current_user, require_role
 from app.core.pagination import PaginationParams, PaginationMeta
 from app.models.user import User
+from app.models.question import Question, QuestionType, QuestionSource
 from app.schemas.question import (
     QuestionRead,
     QuestionWithAnswer,
@@ -14,6 +17,7 @@ from app.schemas.question import (
     QuestionFilter,
 )
 from app.schemas.common import APIResponse
+from app.exceptions import AppException
 from app.services import question_service
 
 router = APIRouter()
@@ -27,6 +31,7 @@ async def list_questions(
     question_type: str | None = None,
     is_verified: bool | None = None,
     language: str | None = None,
+    search: str | None = None,
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -38,6 +43,7 @@ async def list_questions(
         question_type=question_type,
         is_verified=is_verified,
         language=language,
+        search=search,
     )
     questions, total = await question_service.get_questions(db, filters, pagination)
     meta = PaginationMeta.create(pagination.page, pagination.per_page, total)
@@ -96,3 +102,78 @@ async def update_question(
 ):
     question = await question_service.update_question(db, question_id, body)
     return APIResponse(data=QuestionRead.model_validate(question))
+
+
+@router.post("/import-csv")
+async def import_csv(
+    file: UploadFile = File(...),
+    user: User = Depends(require_role("admin", "moderator")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import questions from CSV file.
+
+    Expected columns: question_text, option_a, option_b, option_c, option_d,
+    correct_answer, explanation, difficulty, exam_id, topic_id, question_type
+    """
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise AppException(400, "INVALID_FILE", "Please upload a CSV file")
+
+    content = await file.read()
+    decoded = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(decoded))
+
+    imported = 0
+    errors: list[str] = []
+
+    for i, row in enumerate(reader, start=2):  # row 1 is the header
+        try:
+            options = {
+                "A": row.get("option_a", "").strip(),
+                "B": row.get("option_b", "").strip(),
+                "C": row.get("option_c", "").strip(),
+                "D": row.get("option_d", "").strip(),
+            }
+            options = {k: v for k, v in options.items() if v}
+
+            if len(options) < 2:
+                errors.append(f"Row {i}: Need at least 2 options")
+                continue
+
+            correct = [c.strip().upper() for c in row.get("correct_answer", "").split(",")]
+            if not all(c in options for c in correct):
+                errors.append(f"Row {i}: Correct answer must match option keys")
+                continue
+
+            q_text = row.get("question_text", "").strip()
+            if not q_text:
+                errors.append(f"Row {i}: Missing question_text")
+                continue
+
+            q_type_str = row.get("question_type", "MCQ").strip().upper()
+            try:
+                q_type = QuestionType(q_type_str.lower())
+            except ValueError:
+                q_type = QuestionType.MCQ
+
+            exam_id_str = row.get("exam_id", "").strip()
+            topic_id_str = row.get("topic_id", "").strip()
+
+            question = Question(
+                question_text=q_text,
+                options=options,
+                correct_answer=correct,
+                explanation=row.get("explanation", "").strip() or None,
+                difficulty=int(row.get("difficulty", 3) or 3),
+                exam_id=UUID(exam_id_str) if exam_id_str else None,
+                topic_id=UUID(topic_id_str) if topic_id_str else None,
+                question_type=q_type,
+                source=QuestionSource.IMPORTED,
+                is_verified=False,
+            )
+            db.add(question)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Row {i}: {str(e)}")
+
+    await db.commit()
+    return {"status": "success", "data": {"imported": imported, "errors": errors}}
