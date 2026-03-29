@@ -350,6 +350,52 @@ export default function DashboardPage() {
             <span>More</span>
           </div>
         </div>
+
+        {/* Recommended Next Action */}
+        {!loading && (
+          <div className="card border-2 border-primary-200 bg-gradient-to-r from-primary-50 to-accent-50 dark:border-primary-800 dark:from-primary-900/10 dark:to-accent-900/10">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">What to do next?</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(() => {
+                const recommendations: Array<{ text: string; to: string; icon: string; color: string }> = [];
+
+                if (todayCount === 0) {
+                  recommendations.push({ text: 'Start your daily practice', to: '/practice', icon: '📚', color: 'bg-blue-100 dark:bg-blue-900/20' });
+                }
+
+                // Check if daily quiz done
+                const quizDone = false; // Would need API check
+                if (!quizDone) {
+                  recommendations.push({ text: 'Take today\'s Daily Quiz', to: '/daily-quiz', icon: '⚡', color: 'bg-yellow-100 dark:bg-yellow-900/20' });
+                }
+
+                if ((questionsAttempted - totalCorrect) > 5) {
+                  recommendations.push({ text: `Review ${questionsAttempted - totalCorrect} mistakes`, to: '/mistakes', icon: '🔄', color: 'bg-red-100 dark:bg-red-900/20' });
+                }
+
+                if (streak === 0) {
+                  recommendations.push({ text: 'Start a practice streak today!', to: '/practice', icon: '🔥', color: 'bg-orange-100 dark:bg-orange-900/20' });
+                }
+
+                if (topTopics.length > 0) {
+                  const weakest = topTopics.filter(t => t.accuracy_pct < 50).slice(0, 1);
+                  if (weakest.length > 0) {
+                    recommendations.push({ text: `Improve ${weakest[0].topic_name} (${weakest[0].accuracy_pct.toFixed(0)}%)`, to: '/practice', icon: '🎯', color: 'bg-purple-100 dark:bg-purple-900/20' });
+                  }
+                }
+
+                recommendations.push({ text: 'Try a coding problem', to: '/coding', icon: '💻', color: 'bg-green-100 dark:bg-green-900/20' });
+
+                return recommendations.slice(0, 3).map((r, i) => (
+                  <Link key={i} to={r.to} className={`flex items-center gap-3 rounded-xl ${r.color} p-3 transition-shadow hover:shadow-md`}>
+                    <span className="text-2xl">{r.icon}</span>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r.text}</span>
+                  </Link>
+                ));
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

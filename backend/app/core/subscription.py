@@ -22,12 +22,12 @@ logger = logging.getLogger("examprep.subscription")
 
 PLAN_LIMITS = {
     PlanType.FREE: {
-        "sessions_per_day": 3,
-        "questions_per_session": 10,
-        "coding_problems": 5,         # Only first 5 free problems
-        "analytics_days": 7,
-        "mistakes_limit": 20,
-        "mock_tests": 1,              # 1 free mock test
+        "sessions_per_day": 10,        # Generous for new app growth
+        "questions_per_session": 20,
+        "coding_problems": 999,        # All coding problems free
+        "analytics_days": 30,
+        "mistakes_limit": 50,
+        "mock_tests": 3,
         "ai_generation": False,
         "ai_explanations": False,
         "topper_comparison": False,

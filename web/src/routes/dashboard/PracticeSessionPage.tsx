@@ -151,6 +151,16 @@ export default function PracticeSessionPage() {
             <button onClick={() => navigate('/practice')} className="btn-secondary flex-1">
               Practice More
             </button>
+            <button onClick={() => {
+              const text = `I scored ${result.correct}/${result.total_questions} (${result.accuracy_pct}%) on ExamPrep practice! Can you beat me? 🎯`;
+              if (navigator.share) {
+                navigator.share({ title: 'My ExamPrep Score', text }).catch(() => {});
+              } else {
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+              }
+            }} className="btn-secondary flex-1">
+              Share Score
+            </button>
             <button onClick={() => navigate('/mistakes')} className="btn-primary flex-1">
               Review Mistakes
             </button>
