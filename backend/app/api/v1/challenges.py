@@ -21,11 +21,42 @@ def get_current_week_range():
     return monday, sunday
 
 
-WEEKLY_CHALLENGES = [
-    {"id": "answer_50", "title": "Answer 50 Questions", "description": "Answer 50 questions this week to earn bonus XP", "target": 50, "xp_reward": 100, "type": "questions"},
-    {"id": "accuracy_70", "title": "70% Accuracy", "description": "Maintain 70%+ accuracy across 20+ questions", "target": 70, "min_questions": 20, "xp_reward": 150, "type": "accuracy"},
-    {"id": "streak_5", "title": "5-Day Streak", "description": "Practice for 5 different days this week", "target": 5, "xp_reward": 200, "type": "active_days"},
+ALL_CHALLENGES = [
+    # Questions challenges
+    {"id": "answer_50", "title": "Answer 50 Questions", "description": "Answer 50 questions this week", "target": 50, "xp_reward": 100, "type": "questions"},
+    {"id": "answer_100", "title": "Century Challenge", "description": "Answer 100 questions this week", "target": 100, "xp_reward": 250, "type": "questions"},
+    {"id": "answer_200", "title": "Double Century", "description": "Answer 200 questions this week", "target": 200, "xp_reward": 500, "type": "questions"},
+    # Accuracy challenges
+    {"id": "accuracy_60", "title": "60% Accuracy", "description": "Maintain 60%+ accuracy across 30+ questions", "target": 60, "min_questions": 30, "xp_reward": 120, "type": "accuracy"},
+    {"id": "accuracy_70", "title": "Sharp Shooter", "description": "Maintain 70%+ accuracy across 20+ questions", "target": 70, "min_questions": 20, "xp_reward": 150, "type": "accuracy"},
+    {"id": "accuracy_80", "title": "Precision Master", "description": "Maintain 80%+ accuracy across 15+ questions", "target": 80, "min_questions": 15, "xp_reward": 200, "type": "accuracy"},
+    # Streak challenges
+    {"id": "streak_3", "title": "3-Day Consistency", "description": "Practice for 3 different days this week", "target": 3, "xp_reward": 80, "type": "active_days"},
+    {"id": "streak_5", "title": "5-Day Warrior", "description": "Practice for 5 different days this week", "target": 5, "xp_reward": 200, "type": "active_days"},
+    {"id": "streak_7", "title": "Perfect Week", "description": "Practice every single day this week", "target": 7, "xp_reward": 500, "type": "active_days"},
 ]
+
+
+def get_weekly_challenge_set() -> list[dict]:
+    """Get 3 challenges for this week — rotates automatically every Sunday."""
+    import hashlib
+    monday, _ = get_current_week_range()
+    # Use week's Monday as seed for deterministic rotation
+    week_seed = int(hashlib.md5(monday.isoformat().encode()).hexdigest()[:8], 16)
+
+    # Pick 1 from each category
+    q_challenges = [c for c in ALL_CHALLENGES if c["type"] == "questions"]
+    a_challenges = [c for c in ALL_CHALLENGES if c["type"] == "accuracy"]
+    s_challenges = [c for c in ALL_CHALLENGES if c["type"] == "active_days"]
+
+    return [
+        q_challenges[week_seed % len(q_challenges)],
+        a_challenges[(week_seed >> 4) % len(a_challenges)],
+        s_challenges[(week_seed >> 8) % len(s_challenges)],
+    ]
+
+
+WEEKLY_CHALLENGES = get_weekly_challenge_set()
 
 
 @router.get("")

@@ -429,3 +429,58 @@ async def bulk_delete(
     result = await db.execute(update(Question).where(Question.id.in_(ids)).values(is_active=False))
     await db.commit()
     return {"status": "success", "data": {"deleted": result.rowcount}}
+
+
+# ── AI Mock Test Generation ────────────────────────────────────
+
+
+@router.post("/tests/generate")
+async def generate_mock_test(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    """Generate a mock test following real exam pattern using AI."""
+    from app.services.mock_test_service import generate_ai_mock_test
+
+    exam_slug = body.get("exam_slug", "")
+    if not exam_slug:
+        from app.exceptions import AppException
+        raise AppException(400, "MISSING_EXAM", "exam_slug is required")
+
+    test = await generate_ai_mock_test(db, exam_slug, user.id)
+    return {
+        "status": "success",
+        "data": {
+            "id": str(test.id),
+            "title": test.title,
+            "exam_id": str(test.exam_id),
+            "duration_minutes": test.duration_minutes,
+            "total_marks": test.total_marks,
+        },
+    }
+
+
+@router.post("/tests/generate-all")
+async def generate_all_mock_tests(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    """Generate mock tests for ALL exam types at once."""
+    import asyncio
+    from app.services.mock_test_service import generate_ai_mock_test, EXAM_PATTERNS
+    from sqlalchemy import select
+    from app.models.exam import Exam
+
+    results = []
+    exams = (await db.execute(select(Exam).where(Exam.is_active == True))).scalars().all()
+
+    for exam in exams:
+        if exam.slug in EXAM_PATTERNS:
+            try:
+                test = await generate_ai_mock_test(db, exam.slug, user.id)
+                results.append({"exam": exam.name, "test": test.title, "status": "created"})
+            except Exception as e:
+                results.append({"exam": exam.name, "status": "failed", "error": str(e)})
+
+    return {"status": "success", "data": {"generated": results}}

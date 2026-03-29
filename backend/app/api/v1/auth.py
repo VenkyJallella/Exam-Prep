@@ -35,14 +35,15 @@ async def send_otp(body: dict = Body(...)):
     cache_key = f"otp:{email}"
     await cache_set(cache_key, otp, ttl_seconds=300)  # 5 min expiry
 
-    # In production: send email via SMTP/SendGrid/SES
-    # For now: log the OTP and return it in dev mode
-    logger.info("OTP for %s: %s", email, otp)
+    # Send OTP via email
+    from app.services.email_service import send_otp_email
+    await send_otp_email(email, otp)
+    logger.info("OTP sent to %s", email)
 
     from app.config import settings
     response = {"message": f"OTP sent to {email}. Valid for 5 minutes."}
     if settings.DEBUG:
-        response["otp"] = otp  # Only in dev mode
+        response["otp"] = otp  # Only in dev mode for testing
 
     return {"status": "success", "data": response}
 

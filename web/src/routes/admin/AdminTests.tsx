@@ -37,6 +37,8 @@ export default function AdminTests() {
     instructions: '',
   });
   const [creating, setCreating] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiExamSlug, setAiExamSlug] = useState('');
 
   const loadTests = () => {
     setLoading(true);
@@ -115,9 +117,33 @@ export default function AdminTests() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tests</h1>
-          <button onClick={() => setShowCreate(true)} className="btn-primary text-sm">
-            Create Test
-          </button>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1">
+              <select value={aiExamSlug} onChange={e => setAiExamSlug(e.target.value)} className="input text-sm">
+                <option value="">Select exam</option>
+                {exams.map(e => <option key={e.id} value={e.slug}>{e.name}</option>)}
+              </select>
+              <button
+                onClick={async () => {
+                  if (!aiExamSlug) { toast.error('Select an exam first'); return; }
+                  setGeneratingAI(true);
+                  try {
+                    const res = await import('@/lib/api/client').then(m => m.default.post('/admin/tests/generate', { exam_slug: aiExamSlug }));
+                    toast.success(`Mock test created: ${res.data.data.title}`);
+                    loadTests();
+                  } catch { toast.error('Failed to generate'); }
+                  finally { setGeneratingAI(false); }
+                }}
+                disabled={generatingAI || !aiExamSlug}
+                className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {generatingAI ? 'Generating...' : 'AI Generate'}
+              </button>
+            </div>
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-sm">
+              Create Test
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
