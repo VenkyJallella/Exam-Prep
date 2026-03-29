@@ -1,4 +1,13 @@
+"""Practice Session Service — Pool-first instant sessions with background refill.
+
+Flow:
+1. User clicks "Start Practice"
+2. Pull questions from pre-generated pool (instant DB query, <200ms)
+3. If pool is low, trigger async background refill (non-blocking)
+4. User gets questions immediately, pool refills in background for next session
+"""
 import logging
+import asyncio
 from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy import select, func
@@ -11,120 +20,59 @@ from app.models.mistake import MistakeLog
 from app.models.gamification import UserGamification, XPTransaction
 from app.schemas.practice import SessionCreate, AnswerSubmit, AnswerResult, SessionResult
 from app.services import question_service, adaptive_service
+from app.services.question_pool_service import get_pool_questions_for_user, LOW_POOL_THRESHOLD
 from app.services.gamification_service import update_streak, check_and_award_badges
 from app.exceptions import NotFoundError, AppException
 
 logger = logging.getLogger("examprep.practice")
 
-# XP rewards
 XP_CORRECT_ANSWER = 10
-XP_WRONG_ANSWER = 2  # Participation XP
-XP_STREAK_BONUS = 5  # Per streak milestone
+XP_WRONG_ANSWER = 2
+XP_STREAK_BONUS = 5
 
 
-async def _resolve_topic_id(db: AsyncSession, exam_id: UUID | None, subject_id: UUID | None) -> UUID | None:
-    """Pick a random topic under the subject for AI generation (needs a specific topic)."""
-    if not exam_id:
-        return None
-    query = select(Topic.id).join(Subject).where(Subject.exam_id == exam_id)
-    if subject_id:
-        query = query.where(Topic.subject_id == subject_id)
-    query = query.order_by(func.random()).limit(1)
-    result = await db.execute(query)
-    return result.scalar_one_or_none()
+async def _trigger_background_refill(exam_id: UUID, subject_id: UUID | None, topic_id: UUID | None, difficulty: int):
+    """Fire-and-forget background pool refill. Non-blocking for the user."""
+    try:
+        from app.database import AsyncSessionLocal
+        from app.services.question_pool_service import refill_pool
 
+        async with AsyncSessionLocal() as db:
+            # Find topics that need refill
+            if topic_id:
+                topic_ids = [topic_id]
+            elif subject_id:
+                result = await db.execute(select(Topic.id).where(Topic.subject_id == subject_id))
+                topic_ids = list(result.scalars().all())
+            else:
+                result = await db.execute(
+                    select(Topic.id).join(Subject).where(Subject.exam_id == exam_id)
+                )
+                topic_ids = list(result.scalars().all())
 
-async def _get_unseen_questions(
-    db: AsyncSession,
-    user_id: UUID,
-    exam_id: UUID | None,
-    subject_id: UUID | None,
-    topic_id: UUID | None,
-    difficulty: int | None,
-    count: int,
-) -> list[Question]:
-    """Get questions from DB that the user hasn't seen recently."""
-    seen_ids = await question_service._get_recently_seen_ids(db, user_id, limit=500)
+            for tid in topic_ids[:3]:  # Refill max 3 topics per trigger
+                count = await db.execute(
+                    select(func.count()).select_from(Question).where(
+                        Question.topic_id == tid,
+                        Question.difficulty == difficulty,
+                        Question.is_active == True,
+                    )
+                )
+                current = count.scalar() or 0
+                if current < LOW_POOL_THRESHOLD:
+                    await refill_pool(db, tid, exam_id, difficulty, count=10)
 
-    query = select(Question).where(Question.is_active == True)
-
-    # Exclude seen
-    if seen_ids:
-        query = query.where(Question.id.notin_(seen_ids))
-
-    # Scope
-    if topic_id:
-        query = query.where(Question.topic_id == topic_id)
-    elif subject_id:
-        topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
-        query = query.where(Question.topic_id.in_(topic_ids_q))
-    if exam_id:
-        query = query.where(Question.exam_id == exam_id)
-
-    # Difficulty: exact match first, then closest
-    if difficulty:
-        query = query.order_by(
-            func.abs(Question.difficulty - difficulty),
-            Question.difficulty.desc(),
-            func.random(),
-        )
-    else:
-        query = query.order_by(func.random())
-
-    query = query.limit(count)
-    result = await db.execute(query)
-    return list(result.scalars().all())
-
-
-async def _generate_fresh_questions(
-    db: AsyncSession,
-    exam_id: UUID,
-    topic_id: UUID | None,
-    subject_id: UUID | None,
-    difficulty: int,
-    count: int,
-) -> list[Question]:
-    """Generate new questions via AI when DB doesn't have enough."""
-    from app.ai.generator import generate_questions
-
-    # Need a specific topic_id for generation
-    gen_topic_id = topic_id
-    if not gen_topic_id:
-        gen_topic_id = await _resolve_topic_id(db, exam_id, subject_id)
-    if not gen_topic_id:
-        return []
-
-    # Generate in batches of 5 to avoid token limit truncation
-    all_questions: list[Question] = []
-    remaining = count
-    while remaining > 0:
-        batch_size = min(5, remaining)
-        try:
-            logger.info("Generating batch of %d questions (difficulty=%d) via AI", batch_size, difficulty)
-            questions = await generate_questions(
-                db,
-                exam_id=exam_id,
-                topic_id=gen_topic_id,
-                count=batch_size,
-                difficulty=difficulty,
-            )
-            all_questions.extend(questions)
-            remaining -= len(questions)
-            logger.info("Batch generated %d questions, %d remaining", len(questions), remaining)
-            if not questions:
-                break  # AI returned nothing, stop retrying
-        except Exception as e:
-            logger.error("AI question generation failed: %s", e)
-            break  # Don't retry on error, use whatever we have
-
-    return all_questions
+    except Exception as e:
+        logger.error("Background refill failed: %s", e)
 
 
 async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -> PracticeSession:
-    difficulty = body.difficulty or 3  # Default to medium
+    """Create a practice session — pulls from pool instantly."""
+    difficulty = body.difficulty or 3
 
+    # FAST PATH: Pull from pre-generated pool (pure DB query)
     if not body.difficulty:
-        # No difficulty selected — use adaptive engine based on user mastery
+        # Adaptive mode — uses mastery data to pick appropriate questions
         questions = await adaptive_service.get_adaptive_questions(
             db,
             user_id=user_id,
@@ -134,25 +82,22 @@ async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -
             count=body.question_count,
         )
     else:
-        # Specific difficulty — get unseen questions from DB
-        questions = await _get_unseen_questions(
+        # Specific difficulty — pull from pool
+        questions = await get_pool_questions_for_user(
             db, user_id, body.exam_id, body.subject_id,
             body.topic_id, body.difficulty, body.question_count,
         )
 
-    # If not enough questions in DB, generate fresh ones via AI
-    shortfall = body.question_count - len(questions)
-    if shortfall > 0 and body.exam_id:
-        fresh = await _generate_fresh_questions(
-            db, body.exam_id, body.topic_id, body.subject_id,
-            difficulty, shortfall,
-        )
-        questions.extend(fresh)
-
     if not questions:
         raise AppException(
             404, "NO_QUESTIONS",
-            "No questions available and AI generation failed. Check AI configuration or add questions manually.",
+            "No questions available for this selection. The question pool is being generated — please try again in a minute.",
+        )
+
+    # Trigger background refill if pool is running low (non-blocking)
+    if body.exam_id:
+        asyncio.create_task(
+            _trigger_background_refill(body.exam_id, body.subject_id, body.topic_id, difficulty)
         )
 
     session = PracticeSession(
@@ -179,7 +124,6 @@ async def submit_answer(
     session_id: UUID,
     body: AnswerSubmit,
 ) -> AnswerResult:
-    # Verify session
     result = await db.execute(
         select(PracticeSession).where(
             PracticeSession.id == session_id,
@@ -191,14 +135,11 @@ async def submit_answer(
     if not session:
         raise NotFoundError("Active practice session")
 
-    # Get question
     question = await question_service.get_question_by_id(db, body.question_id)
 
-    # Check answer
     is_correct = set(body.selected_answer) == set(question.correct_answer)
     xp = XP_CORRECT_ANSWER if is_correct else XP_WRONG_ANSWER
 
-    # Save answer
     answer = UserAnswer(
         user_id=user_id,
         question_id=body.question_id,
@@ -210,12 +151,10 @@ async def submit_answer(
     )
     db.add(answer)
 
-    # Update session counters
     if is_correct:
         session.correct_count += 1
     else:
         session.wrong_count += 1
-        # Log mistake
         mistake = MistakeLog(
             user_id=user_id,
             question_id=body.question_id,
@@ -227,15 +166,12 @@ async def submit_answer(
 
     session.total_time_seconds += body.time_taken_seconds
 
-    # Update question stats
     question.times_attempted += 1
     if is_correct:
         question.times_correct += 1
 
-    # Award XP
     await _award_xp(db, user_id, xp, "correct_answer" if is_correct else "participation", answer.id)
 
-    # Count total correct for badge check
     correct_count_result = await db.execute(
         select(func.count()).select_from(UserAnswer).where(
             UserAnswer.user_id == user_id, UserAnswer.is_correct == True
@@ -244,7 +180,6 @@ async def submit_answer(
     total_correct = correct_count_result.scalar() or 0
     await check_and_award_badges(db, user_id, {"total_correct": total_correct})
 
-    # Update adaptive mastery tracking
     if question.topic_id:
         await adaptive_service.update_mastery(
             db, user_id, question.topic_id, is_correct, body.time_taken_seconds
@@ -274,7 +209,6 @@ async def complete_session(db: AsyncSession, user_id: UUID, session_id: UUID) ->
     session.status = SessionStatus.COMPLETED
     session.skipped_count = session.total_questions - session.correct_count - session.wrong_count
 
-    # Calculate total XP
     xp_result = await db.execute(
         select(func.sum(UserAnswer.xp_earned)).where(UserAnswer.session_id == session_id)
     )
@@ -305,18 +239,15 @@ async def _award_xp(
     reason: str,
     reference_id: UUID | None = None,
 ):
-    # Log transaction
     tx = XPTransaction(user_id=user_id, amount=amount, reason=reason, reference_id=reference_id)
     db.add(tx)
 
-    # Update total
     result = await db.execute(
         select(UserGamification).where(UserGamification.user_id == user_id)
     )
     gam = result.scalar_one_or_none()
     if gam:
         gam.total_xp += amount
-        # Level up every 500 XP
         gam.level = (gam.total_xp // 500) + 1
 
     await update_streak(db, user_id)

@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.coding import CodingQuestion, CodingSubmission
+from app.models.coding import CodingQuestion, CodingSubmission, CodingDifficulty
 
 logger = logging.getLogger("examprep.coding")
 
@@ -84,7 +84,7 @@ async def create_problem(db: AsyncSession, data: dict) -> CodingQuestion:
         title=data["title"],
         slug=slug,
         description=data["description"],
-        difficulty=data.get("difficulty", "medium"),
+        difficulty=CodingDifficulty(data.get("difficulty", "medium")),
         exam_id=data.get("exam_id"),
         topic_id=data.get("topic_id"),
         constraints=data.get("constraints"),

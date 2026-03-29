@@ -17,6 +17,9 @@ export default function PracticePage() {
   const [difficulty, setDifficulty] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [language, setLanguage] = useState('python');
+
+  const isCodingExam = selectedExam?.slug === 'coding' || selectedExam?.slug === 'gate-cs';
 
   // Load exams
   useEffect(() => {
@@ -155,7 +158,7 @@ export default function PracticePage() {
         {selectedExam && (
           <div className="card space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Settings</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${isCodingExam ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Questions</label>
                 <select
@@ -183,6 +186,19 @@ export default function PracticePage() {
                   <option value="5">Hard</option>
                 </select>
               </div>
+              {isCodingExam && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
+                  <select value={language} onChange={(e) => setLanguage(e.target.value)} className="input">
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="c">C</option>
+                    <option value="go">Go</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -74,6 +74,8 @@ async def generate_questions(
             skipped += 1
             continue
 
+        from app.services.question_pool_service import question_hash
+
         question = Question(
             topic_id=topic_id,
             exam_id=exam_id,
@@ -85,7 +87,8 @@ async def generate_questions(
             explanation=q_data.get("explanation"),
             source=QuestionSource.AI_GENERATED,
             tags=q_data.get("tags", []),
-            is_verified=False,  # Needs admin review
+            is_verified=False,
+            extra_data={"_hash": question_hash(q_data["question_text"])},
         )
         db.add(question)
         questions.append(question)

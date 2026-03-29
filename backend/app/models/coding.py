@@ -19,7 +19,8 @@ class CodingQuestion(BaseModel):
     slug: Mapped[str] = mapped_column(String(350), unique=True, nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     difficulty: Mapped[CodingDifficulty] = mapped_column(
-        Enum(CodingDifficulty, name="coding_difficulty"), default=CodingDifficulty.MEDIUM
+        Enum(CodingDifficulty, name="coding_difficulty", values_callable=lambda e: [x.value for x in e]),
+        default=CodingDifficulty.MEDIUM,
     )
     exam_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("exams.id", ondelete="SET NULL"), nullable=True

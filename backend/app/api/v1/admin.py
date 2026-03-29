@@ -197,3 +197,42 @@ async def delete_topic(
 ):
     await admin_service.delete_topic(db, topic_id)
     return {"status": "success", "data": {"deleted": True}}
+
+
+# ── Question Pool ───────────────────────────────────────────────
+
+
+@router.get("/pool/status")
+async def pool_status(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    from app.services.question_pool_service import get_pool_status, get_low_pool_topics
+    status = await get_pool_status(db)
+    low = await get_low_pool_topics(db)
+    return {
+        "status": "success",
+        "data": {
+            "pool": status,
+            "low_pools": len(low),
+            "low_pool_details": low[:20],
+        },
+    }
+
+
+@router.post("/pool/refill")
+async def pool_refill(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    import asyncio
+    from app.services.question_pool_service import refill_all_low_pools
+
+    # Run refill in background so request returns immediately
+    async def _bg_refill():
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as bg_db:
+            await refill_all_low_pools(bg_db, max_batches=10)
+
+    asyncio.create_task(_bg_refill())
+    return {"status": "success", "data": {"message": "Pool refill triggered in background"}}

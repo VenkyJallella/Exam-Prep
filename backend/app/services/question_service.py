@@ -21,11 +21,26 @@ def _question_hash(text: str) -> str:
 
 
 async def check_duplicate(db: AsyncSession, question_text: str) -> bool:
-    """Check if a similar question already exists."""
+    """Check if a similar question already exists using hash + fuzzy match."""
+    from app.services.question_pool_service import question_hash
+
+    q_hash = question_hash(question_text)
+
+    # Check exact hash match first (fast, indexed)
     result = await db.execute(
-        select(Question).where(
+        select(Question.id).where(
             Question.is_active == True,
-            Question.question_text.ilike(f"%{question_text[:100]}%"),
+            Question.extra_data["_hash"].astext == q_hash,
+        ).limit(1)
+    )
+    if result.scalar_one_or_none():
+        return True
+
+    # Fallback: fuzzy match on first 80 chars
+    result = await db.execute(
+        select(Question.id).where(
+            Question.is_active == True,
+            Question.question_text.ilike(f"%{question_text[:80]}%"),
         ).limit(1)
     )
     return result.scalar_one_or_none() is not None
