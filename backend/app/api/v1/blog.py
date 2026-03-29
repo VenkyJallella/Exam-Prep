@@ -132,36 +132,44 @@ async def admin_generate_blog(
     user: User = Depends(require_role("admin")),
 ):
     """Generate a blog post using AI."""
-    from app.ai.generator import generate_blog_post
+    import logging
+    logger = logging.getLogger("examprep.blog")
 
-    blog_data = await generate_blog_post(
-        topic=body.topic,
-        explanation=body.explanation,
-        exam_name=body.exam_name or "",
-    )
+    try:
+        from app.ai.generator import generate_blog_post
 
-    post = await blog_service.create_post(
-        db,
-        author_id=user.id,
-        title=blog_data["title"],
-        content=blog_data["content"],
-        excerpt=blog_data["excerpt"],
-        meta_description=blog_data["meta_description"],
-        tags=blog_data.get("tags"),
-        meta_keywords=blog_data.get("meta_keywords"),
-        status="published" if body.auto_publish else "draft",
-        is_ai_generated=True,
-    )
+        blog_data = await generate_blog_post(
+            topic=body.topic,
+            explanation=body.explanation,
+            exam_name=body.exam_name or "",
+        )
 
-    return {
-        "status": "success",
-        "data": {
-            "id": str(post.id),
-            "slug": post.slug,
-            "title": post.title,
-            "status": post.status,
-        },
-    }
+        post = await blog_service.create_post(
+            db,
+            author_id=user.id,
+            title=blog_data["title"],
+            content=blog_data["content"],
+            excerpt=blog_data.get("excerpt", blog_data["title"]),
+            meta_description=blog_data.get("meta_description", blog_data["title"]),
+            tags=blog_data.get("tags"),
+            meta_keywords=blog_data.get("meta_keywords"),
+            status="published" if body.auto_publish else "draft",
+            is_ai_generated=True,
+        )
+
+        return {
+            "status": "success",
+            "data": {
+                "id": str(post.id),
+                "slug": post.slug,
+                "title": post.title,
+                "status": post.status,
+            },
+        }
+    except Exception as e:
+        logger.exception("Blog generation failed: %s", e)
+        await db.rollback()
+        raise AppException(500, "BLOG_GENERATION_FAILED", f"Blog generation failed: {str(e)}")
 
 
 @router.patch("/admin/{post_id}")
@@ -201,7 +209,7 @@ async def admin_delete_blog(
 # ── Public endpoints (slug route MUST be last to avoid catching admin paths) ─
 
 
-@router.get("/")
+@router.get("")
 async def list_blogs(
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=50),

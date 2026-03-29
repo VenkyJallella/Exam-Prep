@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import apiClient from '../../lib/api/client';
 
@@ -17,6 +18,7 @@ interface BlogPost {
 }
 
 export default function AdminBlogs() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -228,7 +230,10 @@ export default function AdminBlogs() {
                 posts.map((post) => (
                   <tr key={post.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                     <td className="px-4 py-3">
-                      <div className="max-w-xs truncate font-medium text-gray-900 dark:text-white">
+                      <div
+                        className="max-w-xs truncate font-medium text-gray-900 hover:text-primary-600 cursor-pointer dark:text-white dark:hover:text-primary-400"
+                        onClick={() => navigate(`/admin/blogs/${post.id}`)}
+                      >
                         {post.title}
                       </div>
                       <div className="mt-0.5 flex gap-1">
@@ -271,6 +276,12 @@ export default function AdminBlogs() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate(`/admin/blogs/${post.id}`)}
+                          className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                        >
+                          View
+                        </button>
                         <button
                           onClick={() => handleTogglePublish(post.id)}
                           className="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"

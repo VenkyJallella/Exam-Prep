@@ -8,10 +8,10 @@ logger = logging.getLogger("examprep")
 
 # Rate limit configs: (max_requests, window_seconds)
 RATE_LIMITS = {
-    "default": (60, 60),          # 60 req/min for authenticated
-    "auth": (10, 60),             # 10 req/min for auth endpoints
+    "default": (200, 60),         # 200 req/min for authenticated
+    "auth": (20, 60),             # 20 req/min for auth endpoints
     "ai_generate": (5, 60),       # 5 req/min for AI generation
-    "anonymous": (30, 60),        # 30 req/min for unauthenticated
+    "anonymous": (100, 60),       # 100 req/min for unauthenticated
 }
 
 
@@ -50,7 +50,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not auth_header.startswith("Bearer "):
             max_requests, window = RATE_LIMITS["anonymous"]
 
-        key = f"ratelimit:{client_id}:{path.split('/')[1] if '/' in path else 'root'}"
+        # Group by resource (e.g., /api/v1/exams -> exams, /api/v1/auth/login -> auth)
+        parts = [p for p in path.split('/') if p and p not in ('api', 'v1')]
+        resource = parts[0] if parts else 'root'
+        key = f"ratelimit:{client_id}:{resource}"
 
         try:
             current = await redis.get(key)

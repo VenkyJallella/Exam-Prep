@@ -26,7 +26,7 @@ from app.services import question_service
 router = APIRouter()
 
 
-@router.get("/", response_model=APIResponse[list[QuestionRead]])
+@router.get("", response_model=APIResponse[list[QuestionRead]])
 async def list_questions(
     exam_id: UUID | None = None,
     topic_id: UUID | None = None,
@@ -138,7 +138,7 @@ async def get_question(
     return APIResponse(data=QuestionWithAnswer.model_validate(question))
 
 
-@router.post("/", response_model=APIResponse[QuestionRead], status_code=201)
+@router.post("", response_model=APIResponse[QuestionRead], status_code=201)
 async def create_question(
     body: QuestionCreate,
     db: AsyncSession = Depends(get_db),

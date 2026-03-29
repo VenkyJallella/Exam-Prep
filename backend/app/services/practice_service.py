@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy import select, func
@@ -5,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.practice import PracticeSession, UserAnswer, SessionStatus
 from app.models.question import Question
+from app.models.exam import Exam, Subject, Topic
 from app.models.mistake import MistakeLog
 from app.models.gamification import UserGamification, XPTransaction
 from app.schemas.practice import SessionCreate, AnswerSubmit, AnswerResult, SessionResult
@@ -12,28 +14,145 @@ from app.services import question_service, adaptive_service
 from app.services.gamification_service import update_streak, check_and_award_badges
 from app.exceptions import NotFoundError, AppException
 
+logger = logging.getLogger("examprep.practice")
+
 # XP rewards
 XP_CORRECT_ANSWER = 10
 XP_WRONG_ANSWER = 2  # Participation XP
 XP_STREAK_BONUS = 5  # Per streak milestone
 
 
+async def _resolve_topic_id(db: AsyncSession, exam_id: UUID | None, subject_id: UUID | None) -> UUID | None:
+    """Pick a random topic under the subject for AI generation (needs a specific topic)."""
+    if not exam_id:
+        return None
+    query = select(Topic.id).join(Subject).where(Subject.exam_id == exam_id)
+    if subject_id:
+        query = query.where(Topic.subject_id == subject_id)
+    query = query.order_by(func.random()).limit(1)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def _get_unseen_questions(
+    db: AsyncSession,
+    user_id: UUID,
+    exam_id: UUID | None,
+    subject_id: UUID | None,
+    topic_id: UUID | None,
+    difficulty: int | None,
+    count: int,
+) -> list[Question]:
+    """Get questions from DB that the user hasn't seen recently."""
+    seen_ids = await question_service._get_recently_seen_ids(db, user_id, limit=500)
+
+    query = select(Question).where(Question.is_active == True)
+
+    # Exclude seen
+    if seen_ids:
+        query = query.where(Question.id.notin_(seen_ids))
+
+    # Scope
+    if topic_id:
+        query = query.where(Question.topic_id == topic_id)
+    elif subject_id:
+        topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
+        query = query.where(Question.topic_id.in_(topic_ids_q))
+    if exam_id:
+        query = query.where(Question.exam_id == exam_id)
+
+    # Difficulty: exact match first, then closest
+    if difficulty:
+        query = query.order_by(
+            func.abs(Question.difficulty - difficulty),
+            Question.difficulty.desc(),
+            func.random(),
+        )
+    else:
+        query = query.order_by(func.random())
+
+    query = query.limit(count)
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def _generate_fresh_questions(
+    db: AsyncSession,
+    exam_id: UUID,
+    topic_id: UUID | None,
+    subject_id: UUID | None,
+    difficulty: int,
+    count: int,
+) -> list[Question]:
+    """Generate new questions via AI when DB doesn't have enough."""
+    from app.ai.generator import generate_questions
+
+    # Need a specific topic_id for generation
+    gen_topic_id = topic_id
+    if not gen_topic_id:
+        gen_topic_id = await _resolve_topic_id(db, exam_id, subject_id)
+    if not gen_topic_id:
+        return []
+
+    # Generate in batches of 5 to avoid token limit truncation
+    all_questions: list[Question] = []
+    remaining = count
+    while remaining > 0:
+        batch_size = min(5, remaining)
+        try:
+            logger.info("Generating batch of %d questions (difficulty=%d) via AI", batch_size, difficulty)
+            questions = await generate_questions(
+                db,
+                exam_id=exam_id,
+                topic_id=gen_topic_id,
+                count=batch_size,
+                difficulty=difficulty,
+            )
+            all_questions.extend(questions)
+            remaining -= len(questions)
+            logger.info("Batch generated %d questions, %d remaining", len(questions), remaining)
+            if not questions:
+                break  # AI returned nothing, stop retrying
+        except Exception as e:
+            logger.error("AI question generation failed: %s", e)
+            break  # Don't retry on error, use whatever we have
+
+    return all_questions
+
+
 async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -> PracticeSession:
-    # Fetch questions: use adaptive engine when requested, otherwise standard selection
-    if body.is_adaptive:
+    difficulty = body.difficulty or 3  # Default to medium
+
+    if not body.difficulty:
+        # No difficulty selected — use adaptive engine based on user mastery
         questions = await adaptive_service.get_adaptive_questions(
             db,
             user_id=user_id,
             exam_id=body.exam_id,
+            subject_id=body.subject_id,
+            topic_id=body.topic_id,
             count=body.question_count,
         )
     else:
-        questions = await question_service.get_questions_for_practice(
-            db,
-            topic_id=body.topic_id,
-            exam_id=body.exam_id,
-            difficulty=body.difficulty,
-            count=body.question_count,
+        # Specific difficulty — get unseen questions from DB
+        questions = await _get_unseen_questions(
+            db, user_id, body.exam_id, body.subject_id,
+            body.topic_id, body.difficulty, body.question_count,
+        )
+
+    # If not enough questions in DB, generate fresh ones via AI
+    shortfall = body.question_count - len(questions)
+    if shortfall > 0 and body.exam_id:
+        fresh = await _generate_fresh_questions(
+            db, body.exam_id, body.topic_id, body.subject_id,
+            difficulty, shortfall,
+        )
+        questions.extend(fresh)
+
+    if not questions:
+        raise AppException(
+            404, "NO_QUESTIONS",
+            "No questions available and AI generation failed. Check AI configuration or add questions manually.",
         )
 
     session = PracticeSession(
@@ -42,10 +161,10 @@ async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -
         topic_id=body.topic_id,
         status=SessionStatus.IN_PROGRESS,
         total_questions=len(questions),
-        is_adaptive=body.is_adaptive,
+        is_adaptive=not body.difficulty,
         config={
             "question_ids": [str(q.id) for q in questions],
-            "difficulty": body.difficulty,
+            "difficulty": difficulty,
         },
     )
     db.add(session)

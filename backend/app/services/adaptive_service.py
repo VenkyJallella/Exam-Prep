@@ -1,13 +1,13 @@
 """Adaptive Learning Engine
 
-Implements intelligent question selection based on user mastery levels.
-Uses a weighted approach favoring weak topics while maintaining engagement.
+Selects questions based on user mastery levels and performance history.
 
 Algorithm:
 - Classify topics as weak (<40), medium (40-70), strong (>=70)
 - Weight question selection: 50% weak, 30% medium, 20% strong
-- Adjust difficulty based on recent performance streaks
-- Apply spaced repetition for review scheduling
+- Adjust difficulty per topic based on recent streaks
+- Exclude recently answered questions to prevent repeats
+- Scope questions to selected exam/subject/topic syllabus
 """
 
 from uuid import UUID
@@ -18,122 +18,141 @@ import random
 
 from app.models.adaptive import UserTopicMastery
 from app.models.question import Question
+from app.models.exam import Topic
+from app.services.question_service import _get_recently_seen_ids
 
 
 async def get_adaptive_questions(
     db: AsyncSession,
     user_id: UUID,
     exam_id: UUID | None = None,
+    subject_id: UUID | None = None,
+    topic_id: UUID | None = None,
     count: int = 10,
 ) -> list[Question]:
     """Select questions adaptively based on user mastery."""
 
-    # Get user's mastery data
-    mastery_result = await db.execute(
-        select(UserTopicMastery).where(UserTopicMastery.user_id == user_id)
-    )
+    seen_ids = await _get_recently_seen_ids(db, user_id, limit=200)
+
+    # Determine which topic IDs are in scope
+    scope_topic_ids: list[UUID] | None = None
+    if topic_id:
+        scope_topic_ids = [topic_id]
+    elif subject_id:
+        result = await db.execute(select(Topic.id).where(Topic.subject_id == subject_id))
+        scope_topic_ids = list(result.scalars().all())
+
+    # Get user's mastery for in-scope topics
+    mastery_q = select(UserTopicMastery).where(UserTopicMastery.user_id == user_id)
+    if scope_topic_ids:
+        mastery_q = mastery_q.where(UserTopicMastery.topic_id.in_(scope_topic_ids))
+    mastery_result = await db.execute(mastery_q)
     masteries = {m.topic_id: m for m in mastery_result.scalars().all()}
 
-    # If no mastery data, fall back to random
+    # If no mastery data yet, fall back to random selection at medium difficulty
     if not masteries:
-        return await _get_random_questions(db, exam_id, count)
+        return await _get_scoped_questions(db, exam_id, scope_topic_ids, seen_ids, count)
 
-    # Classify topics
-    weak_topics: list[UUID] = []
-    medium_topics: list[UUID] = []
-    strong_topics: list[UUID] = []
+    # Classify topics by mastery level
+    weak_topics: list[tuple[UUID, int]] = []   # (topic_id, recommended_difficulty)
+    medium_topics: list[tuple[UUID, int]] = []
+    strong_topics: list[tuple[UUID, int]] = []
 
-    for topic_id, m in masteries.items():
+    for tid, m in masteries.items():
+        diff = m.current_difficulty
         if m.mastery_level < 40:
-            weak_topics.append(topic_id)
+            weak_topics.append((tid, diff))
         elif m.mastery_level < 70:
-            medium_topics.append(topic_id)
+            medium_topics.append((tid, diff))
         else:
-            strong_topics.append(topic_id)
+            strong_topics.append((tid, diff))
 
-    # Calculate question allocation
+    # Allocate question counts: 50% weak, 30% medium, 20% strong
     weak_count = max(1, int(count * 0.5)) if weak_topics else 0
     medium_count = max(1, int(count * 0.3)) if medium_topics else 0
     strong_count = count - weak_count - medium_count
+    if not strong_topics:
+        if medium_topics:
+            medium_count += strong_count
+        else:
+            weak_count += strong_count
+        strong_count = 0
 
     questions: list[Question] = []
+    used_ids = set(seen_ids)
 
-    # Fetch from each category with appropriate difficulty ranges
-    if weak_topics and weak_count > 0:
-        q = await _get_topic_questions(
-            db, weak_topics, exam_id, weak_count, difficulty_range=(1, 3)
-        )
+    # Fetch from each mastery tier with appropriate difficulty
+    for topics_with_diff, alloc in [
+        (weak_topics, weak_count),
+        (medium_topics, medium_count),
+        (strong_topics, strong_count),
+    ]:
+        if not topics_with_diff or alloc <= 0:
+            continue
+        tids = [t[0] for t in topics_with_diff]
+        avg_diff = round(sum(t[1] for t in topics_with_diff) / len(topics_with_diff))
+        diff_lo = max(1, avg_diff - 1)
+        diff_hi = min(5, avg_diff + 1)
+
+        q = await _fetch_questions(db, tids, exam_id, used_ids, alloc, diff_lo, diff_hi)
+        for question in q:
+            used_ids.add(question.id)
         questions.extend(q)
 
-    if medium_topics and medium_count > 0:
-        q = await _get_topic_questions(
-            db, medium_topics, exam_id, medium_count, difficulty_range=(2, 4)
-        )
-        questions.extend(q)
-
-    if strong_topics and strong_count > 0:
-        q = await _get_topic_questions(
-            db, strong_topics, exam_id, strong_count, difficulty_range=(3, 5)
-        )
-        questions.extend(q)
-
-    # Fill remaining slots if needed
+    # Fill remaining slots if we didn't get enough
     remaining = count - len(questions)
     if remaining > 0:
-        existing_ids = [q.id for q in questions]
-        fill = await _get_random_questions(db, exam_id, remaining, exclude_ids=existing_ids)
+        fill = await _get_scoped_questions(db, exam_id, scope_topic_ids, used_ids, remaining)
         questions.extend(fill)
 
     random.shuffle(questions)
     return questions[:count]
 
 
-async def _get_topic_questions(
+async def _fetch_questions(
     db: AsyncSession,
     topic_ids: list[UUID],
     exam_id: UUID | None,
+    exclude_ids: set[UUID],
     count: int,
-    difficulty_range: tuple[int, int] = (1, 5),
+    diff_lo: int,
+    diff_hi: int,
 ) -> list[Question]:
-    """Fetch verified, active questions for given topics within a difficulty range."""
+    """Fetch questions for specific topics within a difficulty range."""
     stmt = (
         select(Question)
         .where(
             Question.topic_id.in_(topic_ids),
-            Question.is_verified == True,  # noqa: E712
-            Question.is_active == True,  # noqa: E712
-            Question.difficulty >= difficulty_range[0],
-            Question.difficulty <= difficulty_range[1],
+            Question.is_active == True,
+            Question.difficulty >= diff_lo,
+            Question.difficulty <= diff_hi,
         )
-        .order_by(func.random())
-        .limit(count)
-    )
-    if exam_id:
-        stmt = stmt.where(Question.exam_id == exam_id)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def _get_random_questions(
-    db: AsyncSession,
-    exam_id: UUID | None,
-    count: int,
-    exclude_ids: list[UUID] | None = None,
-) -> list[Question]:
-    """Fetch random verified, active questions as a fallback."""
-    stmt = (
-        select(Question)
-        .where(
-            Question.is_verified == True,  # noqa: E712
-            Question.is_active == True,  # noqa: E712
-        )
-        .order_by(func.random())
-        .limit(count)
     )
     if exam_id:
         stmt = stmt.where(Question.exam_id == exam_id)
     if exclude_ids:
         stmt = stmt.where(Question.id.notin_(exclude_ids))
+    stmt = stmt.order_by(func.random()).limit(count)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _get_scoped_questions(
+    db: AsyncSession,
+    exam_id: UUID | None,
+    scope_topic_ids: list[UUID] | None,
+    exclude_ids: set[UUID],
+    count: int,
+) -> list[Question]:
+    """Fetch random questions within exam/subject scope."""
+    stmt = select(Question).where(Question.is_active == True)
+    if exam_id:
+        stmt = stmt.where(Question.exam_id == exam_id)
+    if scope_topic_ids:
+        stmt = stmt.where(Question.topic_id.in_(scope_topic_ids))
+    if exclude_ids:
+        stmt = stmt.where(Question.id.notin_(exclude_ids))
+    stmt = stmt.order_by(func.random()).limit(count)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -191,7 +210,7 @@ async def update_mastery(
     )
 
     # Weighted mastery: accuracy 50%, consistency 30% (streak), recency 20%
-    consistency_bonus = min(mastery.streak_count * 5, 20)  # Max 20 from streaks
+    consistency_bonus = min(mastery.streak_count * 5, 20)
     recency_bonus = (
         10
         if mastery.last_practiced_at
@@ -204,7 +223,9 @@ async def update_mastery(
         max(0, accuracy * 0.5 + consistency_bonus + recency_bonus + mastery.mastery_level * 0.2),
     )
 
-    # Adjust difficulty based on streaks
+    # Adjust difficulty based on streaks — core adaptive mechanism
+    # 3 correct in a row → increase difficulty
+    # Wrong answer with 0 streak → decrease difficulty
     if mastery.streak_count >= 3 and mastery.current_difficulty < 5:
         mastery.current_difficulty += 1
     elif not is_correct and mastery.streak_count == 0 and mastery.current_difficulty > 1:

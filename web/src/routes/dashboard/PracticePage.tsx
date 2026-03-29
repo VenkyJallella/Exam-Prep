@@ -46,6 +46,7 @@ export default function PracticePage() {
     try {
       const res = await practiceAPI.createSession({
         exam_id: selectedExam.id,
+        subject_id: selectedSubject?.id,
         topic_id: selectedTopic?.id,
         question_count: questionCount,
         difficulty,

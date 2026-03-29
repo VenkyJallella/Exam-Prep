@@ -12,7 +12,7 @@ from app.exceptions import NotFoundError
 router = APIRouter()
 
 
-@router.get("/", response_model=APIResponse[list[ExamRead]])
+@router.get("", response_model=APIResponse[list[ExamRead]])
 async def list_exams(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Exam).where(Exam.is_active == True).order_by(Exam.order)
@@ -56,10 +56,25 @@ async def list_topics(slug: str, subject_id: UUID, db: AsyncSession = Depends(ge
         select(Topic)
         .where(
             Topic.subject_id == subject_id,
-            Topic.parent_id == None,
             Topic.is_active == True,
         )
         .order_by(Topic.order)
     )
-    topics = list(result.scalars().all())
-    return APIResponse(data=[TopicRead.model_validate(t) for t in topics])
+    all_topics = list(result.scalars().all())
+
+    # Build parent-children tree manually to avoid lazy-load issues
+    topic_map: dict[UUID, dict] = {}
+    for t in all_topics:
+        topic_map[t.id] = {
+            "id": t.id, "subject_id": t.subject_id, "parent_id": t.parent_id,
+            "name": t.name, "slug": t.slug, "order": t.order, "children": [],
+        }
+    roots = []
+    for t in all_topics:
+        node = topic_map[t.id]
+        if t.parent_id and t.parent_id in topic_map:
+            topic_map[t.parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+
+    return APIResponse(data=roots)

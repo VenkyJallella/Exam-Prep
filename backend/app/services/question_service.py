@@ -5,6 +5,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.question import Question
+from app.models.practice import UserAnswer
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionFilter
 from app.exceptions import NotFoundError
 from app.core.pagination import PaginationParams
@@ -113,26 +114,83 @@ async def update_question(db: AsyncSession, question_id: UUID, body: QuestionUpd
     return question
 
 
+async def _get_recently_seen_ids(db: AsyncSession, user_id: UUID, limit: int = 200) -> set[UUID]:
+    """Get question IDs the user has recently answered to avoid repeats."""
+    result = await db.execute(
+        select(UserAnswer.question_id)
+        .where(UserAnswer.user_id == user_id)
+        .order_by(UserAnswer.created_at.desc())
+        .limit(limit)
+    )
+    return set(result.scalars().all())
+
+
 async def get_questions_for_practice(
     db: AsyncSession,
+    user_id: UUID,
     topic_id: UUID | None,
     exam_id: UUID | None,
     difficulty: int | None,
     count: int = 10,
+    subject_id: UUID | None = None,
 ) -> list[Question]:
-    """Get random questions for a practice session."""
-    query = select(Question).where(
-        Question.is_active == True,
-        Question.is_verified == True,
-    )
+    """Get questions for a practice session, avoiding recently seen questions."""
+    from app.models.exam import Topic
 
+    # Get recently answered question IDs to exclude
+    seen_ids = await _get_recently_seen_ids(db, user_id, limit=200)
+
+    query = select(Question).where(Question.is_active == True)
+
+    # Exclude recently seen questions
+    if seen_ids:
+        query = query.where(Question.id.notin_(seen_ids))
+
+    # Scope to topic > subject > exam (most specific wins)
     if topic_id:
         query = query.where(Question.topic_id == topic_id)
+    elif subject_id:
+        topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
+        query = query.where(Question.topic_id.in_(topic_ids_q))
+
     if exam_id:
         query = query.where(Question.exam_id == exam_id)
+    # Prefer hardest available questions, closest to requested difficulty
     if difficulty:
-        query = query.where(Question.difficulty == difficulty)
+        query = query.order_by(
+            func.abs(Question.difficulty - difficulty),  # closest to requested
+            Question.difficulty.desc(),                   # prefer harder
+            func.random(),
+        ).limit(count)
+    else:
+        query = query.order_by(func.random()).limit(count)
 
-    query = query.order_by(func.random()).limit(count)
     result = await db.execute(query)
-    return list(result.scalars().all())
+    questions = list(result.scalars().all())
+
+    # If not enough unseen questions, allow repeats from older ones
+    if len(questions) < count:
+        remaining = count - len(questions)
+        existing_ids = [q.id for q in questions]
+        fallback = select(Question).where(Question.is_active == True)
+        if topic_id:
+            fallback = fallback.where(Question.topic_id == topic_id)
+        elif subject_id:
+            topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
+            fallback = fallback.where(Question.topic_id.in_(topic_ids_q))
+        if exam_id:
+            fallback = fallback.where(Question.exam_id == exam_id)
+        if existing_ids:
+            fallback = fallback.where(Question.id.notin_(existing_ids))
+        if difficulty:
+            fallback = fallback.order_by(
+                func.abs(Question.difficulty - difficulty),
+                Question.difficulty.desc(),
+                func.random(),
+            ).limit(remaining)
+        else:
+            fallback = fallback.order_by(func.random()).limit(remaining)
+        extra = await db.execute(fallback)
+        questions.extend(extra.scalars().all())
+
+    return questions

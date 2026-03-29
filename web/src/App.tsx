@@ -46,6 +46,12 @@ const BlogListPage = lazy(() => import('./routes/marketing/BlogListPage'));
 const BlogDetailPage = lazy(() => import('./routes/marketing/BlogDetailPage'));
 
 const AdminBlogs = lazy(() => import('./routes/admin/AdminBlogs'));
+const AdminBlogDetail = lazy(() => import('./routes/admin/AdminBlogDetail'));
+
+const CodingPage = lazy(() => import('./routes/dashboard/CodingPage'));
+const CodingProblemPage = lazy(() => import('./routes/dashboard/CodingProblemPage'));
+const DailyQuizPage = lazy(() => import('./routes/dashboard/DailyQuizPage'));
+const CustomTestPage = lazy(() => import('./routes/dashboard/CustomTestPage'));
 
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage'));
 
@@ -84,6 +90,10 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/study-planner" element={<StudyPlannerPage />} />
             <Route path="/subscription" element={<SubscriptionPage />} />
+            <Route path="/coding" element={<CodingPage />} />
+            <Route path="/coding/:slug" element={<CodingProblemPage />} />
+            <Route path="/daily-quiz" element={<DailyQuizPage />} />
+            <Route path="/custom-test" element={<CustomTestPage />} />
           </Route>
         </Route>
 
@@ -97,6 +107,7 @@ export default function App() {
               <Route path="/admin/exams" element={<AdminExams />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/blogs" element={<AdminBlogs />} />
+              <Route path="/admin/blogs/:postId" element={<AdminBlogDetail />} />
             </Route>
           </Route>
         </Route>

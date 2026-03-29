@@ -3,14 +3,22 @@ QUESTION_GENERATION = """You are an expert question paper setter for {exam_name}
 Generate {count} multiple-choice questions.
 - Subject: {subject_name}
 - Topic: {topic_name}
-- Difficulty: {difficulty}/5 (1=basic recall, 3=application, 5=analysis)
+- Required Difficulty: Level {difficulty} out of 5
+
+DIFFICULTY LEVEL {difficulty} MEANS:
+{difficulty_description}
+
+CRITICAL: Every single question MUST be at difficulty level {difficulty}. If level is 4 or 5, questions should require multi-step solving, involve tricky distractors, combine multiple concepts, or need careful analysis. Do NOT produce basic recall questions for high difficulty levels.
 
 Rules:
-- Match actual {exam_name} exam pattern and difficulty
+- STRICTLY generate questions ONLY from {subject_name} > {topic_name} as per {exam_name} syllabus
+- Do NOT generate questions from any other subject or topic
 - Each question: exactly 4 options (A, B, C, D), one correct answer
 - Include a clear 2-3 sentence explanation for the correct answer
-- Test conceptual understanding, not rote memorization
-- No ambiguous or controversial questions
+- All {count} questions must be UNIQUE — different concepts, different approaches, no repetition
+- Options should be plausible (common mistakes as wrong options, not obviously wrong)
+- For numerical subjects: include calculation-heavy problems at higher levels
+- For theory subjects: include application-based and statement analysis at higher levels
 - Use Indian English conventions
 
 Return valid JSON array:

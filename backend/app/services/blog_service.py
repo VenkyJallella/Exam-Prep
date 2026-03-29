@@ -162,11 +162,11 @@ async def create_post(
     reading_time = max(1, round(word_count / 200))
 
     post = BlogPost(
-        title=title,
+        title=title[:300],
         slug=slug,
-        excerpt=excerpt,
+        excerpt=excerpt[:500],
         content=content,
-        meta_description=meta_description,
+        meta_description=meta_description[:160],
         meta_keywords=meta_keywords,
         tags=tags,
         featured_image_url=featured_image_url,
@@ -189,7 +189,7 @@ async def update_post(db: AsyncSession, post_id: UUID, data: dict) -> BlogPost:
     post = await get_by_id(db, post_id)
 
     if "title" in data and data["title"] != post.title:
-        post.title = data["title"]
+        post.title = data["title"][:300]
         post.slug = await _unique_slug(db, _slugify(data["title"]), exclude_id=post_id)
 
     if "content" in data:
@@ -197,9 +197,14 @@ async def update_post(db: AsyncSession, post_id: UUID, data: dict) -> BlogPost:
         word_count = len(data["content"].split())
         post.reading_time_minutes = max(1, round(word_count / 200))
 
+    # Truncate fields to match DB limits
+    _limits = {"excerpt": 500, "meta_description": 160}
     for field in ("excerpt", "meta_description", "meta_keywords", "tags", "featured_image_url", "exam_id", "topic_id"):
         if field in data:
-            setattr(post, field, data[field])
+            val = data[field]
+            if isinstance(val, str) and field in _limits:
+                val = val[:_limits[field]]
+            setattr(post, field, val)
 
     if "status" in data:
         if data["status"] == "published" and post.status != "published":

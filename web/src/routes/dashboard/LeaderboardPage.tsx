@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { leaderboardAPI, type LeaderboardEntry } from '@/lib/api/analytics';
-import toast from 'react-hot-toast';
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -13,16 +12,22 @@ export default function LeaderboardPage() {
   const [totalEntries, setTotalEntries] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      leaderboardAPI.global(page).then((r) => {
-        setEntries(r.data.data);
-        setTotalEntries(r.data.meta?.total || 0);
-      }),
-      leaderboardAPI.weekly().then((r) => setWeeklyEntries(r.data.data)),
-      leaderboardAPI.myStats().then((r) => setMyStats(r.data.data)),
-    ])
-      .catch(() => toast.error('Failed to load leaderboard'))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      setLoading(true);
+      const [globalRes, weeklyRes, statsRes] = await Promise.allSettled([
+        leaderboardAPI.global(page),
+        leaderboardAPI.weekly(),
+        leaderboardAPI.myStats(),
+      ]);
+      if (globalRes.status === 'fulfilled') {
+        setEntries(globalRes.value.data.data);
+        setTotalEntries(globalRes.value.data.meta?.total || 0);
+      }
+      if (weeklyRes.status === 'fulfilled') setWeeklyEntries(weeklyRes.value.data.data);
+      if (statsRes.status === 'fulfilled') setMyStats(statsRes.value.data.data);
+      setLoading(false);
+    };
+    load();
   }, [page]);
 
   const currentEntries = tab === 'global' ? entries : weeklyEntries;

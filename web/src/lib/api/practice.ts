@@ -52,6 +52,7 @@ export interface SessionResult {
 export const practiceAPI = {
   createSession: (data: {
     exam_id?: string;
+    subject_id?: string;
     topic_id?: string;
     question_count?: number;
     difficulty?: number;

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class SessionCreate(BaseModel):
     exam_id: UUID | None = None
     topic_id: UUID | None = None
+    subject_id: UUID | None = None
     question_count: int = Field(ge=1, le=50, default=10)
     difficulty: int | None = Field(None, ge=1, le=5)
     is_adaptive: bool = False

@@ -1,9 +1,10 @@
 from app.models.base import Base, BaseModel
 from app.models.user import User, UserProfile
 from app.models.exam import Exam, Subject, Topic
+from app.models.passage import Passage
 from app.models.question import Question
 from app.models.practice import PracticeSession, UserAnswer
-from app.models.test import Test, TestQuestion, TestAttempt, TestAttemptAnswer
+from app.models.test import Test, TestSection, TestQuestion, TestAttempt, TestAttemptAnswer
 from app.models.adaptive import UserTopicMastery
 from app.models.analytics import PerformanceSnapshot
 from app.models.gamification import UserGamification, XPTransaction
@@ -11,6 +12,8 @@ from app.models.study_planner import StudyPlan
 from app.models.mistake import MistakeLog
 from app.models.payment import Subscription, Payment, PlanType, PaymentStatus
 from app.models.blog import BlogPost
+from app.models.coding import CodingQuestion, CodingSubmission
+from app.models.quiz import DailyQuiz, DailyQuizAttempt
 
 __all__ = [
     "Base",
@@ -20,10 +23,12 @@ __all__ = [
     "Exam",
     "Subject",
     "Topic",
+    "Passage",
     "Question",
     "PracticeSession",
     "UserAnswer",
     "Test",
+    "TestSection",
     "TestQuestion",
     "TestAttempt",
     "TestAttemptAnswer",
@@ -38,4 +43,8 @@ __all__ = [
     "PlanType",
     "PaymentStatus",
     "BlogPost",
+    "CodingQuestion",
+    "CodingSubmission",
+    "DailyQuiz",
+    "DailyQuizAttempt",
 ]

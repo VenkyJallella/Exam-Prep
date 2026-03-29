@@ -12,6 +12,14 @@ from app.services.question_service import check_duplicate, validate_question_dat
 
 logger = logging.getLogger("examprep.ai.generator")
 
+DIFFICULTY_DESCRIPTIONS = {
+    1: "Basic recall and definitions. Direct factual questions. Student just needs to remember facts.",
+    2: "Conceptual understanding. Student must comprehend the 'why' behind concepts, not just memorize.",
+    3: "Application level. Student must apply formulas, solve moderate problems, connect two concepts.",
+    4: "Analysis and multi-step reasoning. Tricky distractors, combine 2-3 concepts, previous year exam standard. Requires careful reading and elimination.",
+    5: "Advanced competitive level. Complex multi-concept problems that top 5% of students can solve. Deep analysis, unusual applications, trap options that test thorough understanding.",
+}
+
 
 async def generate_questions(
     db: AsyncSession,
@@ -27,10 +35,11 @@ async def generate_questions(
     subject = (await db.execute(select(Subject).where(Subject.id == topic.subject_id))).scalar_one()
     exam = (await db.execute(select(Exam).where(Exam.id == exam_id))).scalar_one()
 
-    # Choose model based on difficulty
-    model = settings.GEMINI_MODEL_PRO if difficulty >= 4 else settings.GEMINI_MODEL
+    # Use flash model for speed (Pro takes 30s+, flash takes 5-8s)
+    # The detailed prompt ensures quality even with flash
+    model = settings.GEMINI_MODEL
 
-    # Build prompt
+    # Build prompt with explicit difficulty description
     prompt = QUESTION_GENERATION.format(
         exam_name=exam.name,
         exam_full_name=exam.full_name or exam.name,
@@ -38,6 +47,7 @@ async def generate_questions(
         topic_name=topic.name,
         count=count,
         difficulty=difficulty,
+        difficulty_description=DIFFICULTY_DESCRIPTIONS.get(difficulty, DIFFICULTY_DESCRIPTIONS[3]),
     )
 
     # Generate

@@ -24,8 +24,8 @@ class Settings(BaseSettings):
 
     # AI (Gemini)
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
-    GEMINI_MODEL_PRO: str = "gemini-2.5-pro-preview-06-05"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL_PRO: str = "gemini-2.5-pro"
 
     # OTP
     OTP_EXPIRE_MINUTES: int = 5
