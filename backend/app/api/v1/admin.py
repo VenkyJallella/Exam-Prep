@@ -274,7 +274,8 @@ async def detailed_stats(
     mau = (await db.execute(select(func.count(func.distinct(PracticeSession.user_id))).where(PracticeSession.created_at >= month_ago))).scalar() or 0
 
     total_questions = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True))).scalar() or 0
-    ai_questions = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True, Question.source == "ai"))).scalar() or 0
+    from app.models.question import QuestionSource
+    ai_questions = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True, Question.source == QuestionSource.AI_GENERATED))).scalar() or 0
     pending_review = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True, Question.is_verified == False))).scalar() or 0
     total_blogs = (await db.execute(select(func.count()).select_from(BlogPost).where(BlogPost.is_active == True))).scalar() or 0
     total_coding = (await db.execute(select(func.count()).select_from(CodingQuestion).where(CodingQuestion.is_active == True))).scalar() or 0
