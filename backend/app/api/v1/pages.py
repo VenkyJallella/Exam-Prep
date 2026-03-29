@@ -16,7 +16,7 @@ DEFAULTS = {
         "title": "About ExamPrep",
         "content": """## About ExamPrep
 
-ExamPrep is an AI-powered competitive exam preparation platform built by **SOLON India Pvt Ltd**.
+ExamPrep is an AI-powered competitive exam preparation platform built by **ExamPrep Team**.
 
 ### Our Mission
 
@@ -66,7 +66,7 @@ By accessing and using ExamPrep (the "Platform"), you agree to be bound by these
 
 ### 4. Content and Intellectual Property
 
-- All questions, explanations, and content on ExamPrep are owned by SOLON India Pvt Ltd.
+- All questions, explanations, and content on ExamPrep are owned by ExamPrep Team.
 - You may not reproduce, distribute, or commercially exploit any content from the Platform.
 - User-generated content (notes, discussions) remains your property but you grant us a license to display it.
 
@@ -172,7 +172,7 @@ We'd love to hear from you! Whether you have a question, feedback, or just want 
 
 ### Office
 
-SOLON India Pvt Ltd
+ExamPrep Team
 Hyderabad, Telangana, India
 
 ### Support Hours

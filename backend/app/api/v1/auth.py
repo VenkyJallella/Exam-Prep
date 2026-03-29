@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends
+import random
+import logging
+from fastapi import APIRouter, Depends, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.security import get_current_user, oauth2_scheme, blacklist_token
+from app.core.cache import cache_get, cache_set
 from app.models.user import User
 from app.schemas.auth import (
     RegisterRequest,
@@ -16,11 +19,67 @@ from app.schemas.user import UserRead
 from app.schemas.common import APIResponse
 from app.services import auth_service
 
+logger = logging.getLogger("examprep.auth")
 router = APIRouter()
+
+
+@router.post("/send-otp")
+async def send_otp(body: dict = Body(...)):
+    """Send OTP to email for verification (signup or password reset)."""
+    email = body.get("email", "").strip().lower()
+    if not email or "@" not in email:
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_EMAIL", "Please provide a valid email address")
+
+    otp = str(random.randint(100000, 999999))
+    cache_key = f"otp:{email}"
+    await cache_set(cache_key, otp, ttl_seconds=300)  # 5 min expiry
+
+    # In production: send email via SMTP/SendGrid/SES
+    # For now: log the OTP and return it in dev mode
+    logger.info("OTP for %s: %s", email, otp)
+
+    from app.config import settings
+    response = {"message": f"OTP sent to {email}. Valid for 5 minutes."}
+    if settings.DEBUG:
+        response["otp"] = otp  # Only in dev mode
+
+    return {"status": "success", "data": response}
+
+
+@router.post("/verify-otp")
+async def verify_otp(body: dict = Body(...)):
+    """Verify OTP for an email."""
+    email = body.get("email", "").strip().lower()
+    otp = body.get("otp", "").strip()
+
+    if not email or not otp:
+        from app.exceptions import AppException
+        raise AppException(400, "MISSING_FIELDS", "Email and OTP are required")
+
+    cache_key = f"otp:{email}"
+    stored_otp = await cache_get(cache_key)
+
+    if not stored_otp or stored_otp != otp:
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_OTP", "Invalid or expired OTP. Please request a new one.")
+
+    # Mark email as verified in cache
+    await cache_set(f"otp_verified:{email}", "true", ttl_seconds=600)  # 10 min to complete registration
+
+    return {"status": "success", "data": {"verified": True, "email": email}}
 
 
 @router.post("/register", response_model=APIResponse[UserRead], status_code=201)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    # Check if email was verified via OTP
+    email = body.email.strip().lower()
+    verified = await cache_get(f"otp_verified:{email}")
+
+    if not verified:
+        from app.exceptions import AppException
+        raise AppException(400, "EMAIL_NOT_VERIFIED", "Please verify your email with OTP before registering")
+
     user = await auth_service.register(db, body)
     return APIResponse(data=UserRead.model_validate(user))
 

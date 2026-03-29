@@ -67,10 +67,10 @@ export default function AboutPage() {
               S
             </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Built by SOLON India Pvt Ltd
+              Built by ExamPrep Team
             </h2>
             <p className="mt-4 text-gray-600 dark:text-gray-400">
-              SOLON India is a technology company focused on building AI-powered education tools.
+              ExamPrep is a technology platform focused on building AI-powered education tools.
               Our team of engineers, educators, and exam toppers understand the challenges aspirants
               face because we have been through the same journey. We are building ExamPrep to be the
               preparation platform we wish we had.

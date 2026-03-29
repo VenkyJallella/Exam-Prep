@@ -37,4 +37,10 @@ export const authAPI = {
     apiClient.post<{ data: { message: string } }>('/auth/password/reset/confirm', { token, new_password }),
 
   logout: () => apiClient.post('/auth/logout'),
+
+  sendOtp: (email: string) =>
+    apiClient.post<{ data: { message: string; otp?: string } }>('/auth/send-otp', { email }),
+
+  verifyOtp: (email: string, otp: string) =>
+    apiClient.post<{ data: { verified: boolean } }>('/auth/verify-otp', { email, otp }),
 };

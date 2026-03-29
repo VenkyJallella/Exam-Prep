@@ -37,6 +37,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const navigate = useNavigate();
 
   const validators: Record<string, (value: string) => string | undefined> = {
@@ -96,22 +100,46 @@ export default function RegisterPage() {
     }
   };
 
+  const handleSendOtp = async () => {
+    const emailError = validateField('email', email);
+    if (emailError) { setErrors(prev => ({ ...prev, email: emailError })); return; }
+    setSendingOtp(true);
+    try {
+      const res = await authAPI.sendOtp(email);
+      setOtpSent(true);
+      toast.success('OTP sent to your email!');
+      // In dev mode, auto-fill OTP
+      if (res.data?.data?.otp) setOtp(res.data.data.otp);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to send OTP');
+    } finally { setSendingOtp(false); }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) { toast.error('Enter 6-digit OTP'); return; }
+    try {
+      await authAPI.verifyOtp(email, otp);
+      setOtpVerified(true);
+      toast.success('Email verified!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Invalid OTP');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ fullName: true, email: true, phone: true, password: true, confirmPassword: true });
     if (!validateAll()) return;
+    if (!otpVerified) { toast.error('Please verify your email first'); return; }
 
     setLoading(true);
-
     try {
       await authAPI.register({ email, password, full_name: fullName });
       toast.success('Account created! Please log in.');
       navigate('/login');
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const strength = getPasswordStrength(password);
@@ -148,15 +176,46 @@ export default function RegisterPage() {
               placeholder="Rahul Kumar"
             />
 
-            <FormInput
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => handleChange('email', e.target.value, setEmail)}
-              onBlur={() => handleBlur('email', email)}
-              error={touched.email ? errors.email : undefined}
-              placeholder="you@example.com"
-            />
+            <div>
+              <FormInput
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => { handleChange('email', e.target.value, setEmail); setOtpVerified(false); setOtpSent(false); }}
+                onBlur={() => handleBlur('email', email)}
+                error={touched.email ? errors.email : undefined}
+                placeholder="you@example.com"
+                disabled={otpVerified}
+              />
+              {!otpVerified && (
+                <div className="mt-2 flex gap-2">
+                  {!otpSent ? (
+                    <button type="button" onClick={handleSendOtp} disabled={sendingOtp || !email || !!errors.email}
+                      className="rounded-lg bg-primary-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50">
+                      {sendingOtp ? 'Sending...' : 'Send OTP'}
+                    </button>
+                  ) : (
+                    <>
+                      <input type="text" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Enter 6-digit OTP" maxLength={6}
+                        className="w-32 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                      <button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6}
+                        className="rounded-lg bg-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">
+                        Verify
+                      </button>
+                      <button type="button" onClick={handleSendOtp} disabled={sendingOtp}
+                        className="text-xs text-primary-600 hover:underline">Resend</button>
+                    </>
+                  )}
+                </div>
+              )}
+              {otpVerified && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  Email verified
+                </p>
+              )}
+            </div>
 
             <FormInput
               label="Phone (optional)"
