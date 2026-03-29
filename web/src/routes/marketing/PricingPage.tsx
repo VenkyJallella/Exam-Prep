@@ -1,61 +1,65 @@
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 
 const tiers = [
   {
     name: 'Free',
-    priceUSD: '$0',
     priceINR: 'Free',
     period: '',
-    description: 'Get started with the essentials.',
+    description: 'Get started with full access to core features.',
     cta: 'Start Free',
     ctaLink: '/register',
     highlighted: false,
     features: [
-      '50 questions per day',
-      'Basic performance analytics',
-      'Leaderboard access',
-      'Community support',
-      'Mistake book (last 50)',
+      '10 practice sessions/day',
+      '50 questions per session',
+      'All coding problems',
+      'Daily Quiz with leaderboard',
+      '30-day analytics',
+      'Mistake book (50 questions)',
+      '3 mock tests',
+      'AI chatbot (5 msg/day)',
     ],
   },
   {
     name: 'Pro',
-    priceUSD: '$9.99',
-    priceINR: '\u20B9499',
+    priceINR: '₹149',
     period: '/mo',
-    description: 'Unlock your full potential.',
+    description: 'Unlock AI features and unlimited practice.',
     cta: 'Upgrade to Pro',
     ctaLink: '/register',
     highlighted: true,
     features: [
-      'Unlimited questions',
-      'Advanced analytics & insights',
-      'Adaptive learning engine',
-      'All mock tests included',
-      'Priority AI explanations',
-      'Full mistake book',
-      'Topic-wise practice',
+      'Unlimited practice sessions',
+      '50 questions per session',
+      'AI question generation',
+      'AI explanations',
+      'All mock tests',
+      '90-day analytics',
+      'Unlimited mistake tracking',
+      'Sectional analysis',
+      'AI chatbot (50 msg/day)',
+      'Ad-free experience',
     ],
   },
   {
     name: 'Premium',
-    priceUSD: '$19.99',
-    priceINR: '\u20B9999',
+    priceINR: '₹199',
     period: '/mo',
-    description: 'The ultimate preparation package.',
+    description: 'Everything in Pro + exclusive features.',
     cta: 'Go Premium',
     ctaLink: '/register',
     highlighted: false,
     features: [
       'Everything in Pro',
-      'Personal AI study planner',
-      '1-on-1 mentoring sessions',
-      'Offline access',
+      'Topper comparison',
+      'PDF question export',
+      '1-year analytics history',
+      'AI detailed explanations',
+      'Detailed sectional analysis',
+      'Unlimited AI chatbot',
       'Priority support',
-      'Early access to new exams',
-      'Custom mock test builder',
     ],
   },
 ];
@@ -97,7 +101,7 @@ const faqs = [
 ];
 
 export default function PricingPage() {
-  const [showINR, setShowINR] = useState(true);
+  // INR only pricing
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -138,21 +142,7 @@ export default function PricingPage() {
             <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">
               Start free and upgrade when you are ready. No hidden fees, cancel anytime.
             </p>
-            {/* Currency toggle */}
-            <div className="mt-8 inline-flex items-center gap-3 rounded-full bg-gray-100 p-1 dark:bg-gray-800">
-              <button
-                onClick={() => setShowINR(true)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${showINR ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}
-              >
-                INR (\u20B9)
-              </button>
-              <button
-                onClick={() => setShowINR(false)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${!showINR ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}
-              >
-                USD ($)
-              </button>
-            </div>
+            {/* All prices in INR */}
           </div>
         </div>
       </section>
@@ -179,7 +169,7 @@ export default function PricingPage() {
                 </div>
                 <div className="mb-6">
                   <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
-                    {showINR ? tier.priceINR : tier.priceUSD}
+                    {tier.priceINR}
                   </span>
                   {tier.period && (
                     <span className="text-sm text-gray-500">{tier.period}</span>
