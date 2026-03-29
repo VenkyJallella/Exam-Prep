@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import MobileNav from '@/components/layout/MobileNav';
+import ChatBot from '@/components/ui/ChatBot';
 
 export default function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <ChatBot />
     </div>
   );
 }
