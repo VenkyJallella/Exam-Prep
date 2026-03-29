@@ -23,6 +23,7 @@ async def get_today_quiz(
     attempt = await daily_quiz_service.get_user_attempt(db, user.id, quiz.id)
     if attempt:
         leaderboard = await daily_quiz_service.get_quiz_leaderboard(db, quiz.id)
+        questions = await daily_quiz_service.get_quiz_questions(db, quiz)
         return {
             "status": "success",
             "data": {
@@ -41,6 +42,16 @@ async def get_today_quiz(
                     "answers": attempt.answers,
                 },
                 "leaderboard": leaderboard,
+                "questions": [
+                    {
+                        "id": str(q.id),
+                        "question_text": q.question_text,
+                        "question_type": q.question_type.value if hasattr(q.question_type, "value") else q.question_type,
+                        "options": q.options,
+                        "difficulty": q.difficulty,
+                    }
+                    for q in questions
+                ],
             },
         }
 

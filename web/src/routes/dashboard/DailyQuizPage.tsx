@@ -41,6 +41,7 @@ export default function DailyQuizPage() {
         setResult(data.attempt);
         setReviewAnswers(data.attempt.answers || {});
         setLeaderboard(data.leaderboard || []);
+        if (data.questions) setQuestions(data.questions);
       } else {
         setQuestions(data.questions || []);
         setTimeLeft(data.duration_minutes * 60);
