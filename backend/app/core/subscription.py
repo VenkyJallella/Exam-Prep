@@ -23,7 +23,7 @@ logger = logging.getLogger("examprep.subscription")
 PLAN_LIMITS = {
     PlanType.FREE: {
         "sessions_per_day": 10,        # Generous for new app growth
-        "questions_per_session": 20,
+        "questions_per_session": 50,   # Match dropdown max — no silent capping
         "coding_problems": 999,        # All coding problems free
         "analytics_days": 30,
         "mistakes_limit": 50,
@@ -37,7 +37,7 @@ PLAN_LIMITS = {
     },
     PlanType.PRO: {
         "sessions_per_day": 999,       # Unlimited
-        "questions_per_session": 30,
+        "questions_per_session": 50,
         "coding_problems": 999,        # All
         "analytics_days": 90,
         "mistakes_limit": 999,         # Unlimited

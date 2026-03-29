@@ -173,7 +173,7 @@ export default function PracticePage() {
                   onChange={(e) => setQuestionCount(Number(e.target.value))}
                   className="input"
                 >
-                  {[5, 10, 15, 20, 25, 30].map((n) => (
+                  {[5, 10, 15, 20, 25, 30, 40, 50].map((n) => (
                     <option key={n} value={n}>{n} questions</option>
                   ))}
                 </select>

@@ -17,7 +17,7 @@ const plans = [
     badge: 'Current Plan',
     features: [
       { text: '10 practice sessions/day', included: true },
-      { text: '20 questions per session', included: true },
+      { text: '50 questions per session', included: true },
       { text: 'Daily Quiz', included: true },
       { text: 'All coding problems', included: true },
       { text: '30-day analytics', included: true },

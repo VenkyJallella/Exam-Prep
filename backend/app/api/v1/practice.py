@@ -30,8 +30,13 @@ async def create_session(
     # Check daily session limit
     await check_daily_limit(user.id, "practice_sessions", limits["sessions_per_day"])
 
-    # Cap question count by plan
+    # Cap question count by plan (and warn if capped)
     if body.question_count > limits["questions_per_session"]:
+        import logging
+        logging.getLogger("examprep").warning(
+            "Question count capped: requested %d, plan limit %d, plan=%s",
+            body.question_count, limits["questions_per_session"], plan.value
+        )
         body.question_count = limits["questions_per_session"]
 
     session = await practice_service.create_session(db, user.id, body)
