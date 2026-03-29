@@ -124,7 +124,15 @@ async def chat(
             role = "Student" if msg["role"] == "user" else "Assistant"
             history_text += f"{role}: {msg['content']}\n"
 
+    from datetime import date
+    today = date.today()
+
     system_prompt = f"""You are ExamPrep AI Assistant — a friendly, knowledgeable tutor for Indian competitive exam aspirants.
+
+TODAY'S DATE: {today.strftime('%d %B %Y')}
+CURRENT YEAR: {today.year}
+
+IMPORTANT: All your answers must reflect current {today.year} information. Use the latest exam patterns, cut-offs, syllabus, and current affairs. Do not provide outdated information.
 
 You have access to the student's real performance data:
 

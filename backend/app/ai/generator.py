@@ -39,7 +39,9 @@ async def generate_questions(
     # The detailed prompt ensures quality even with flash
     model = settings.GEMINI_MODEL
 
-    # Build prompt with explicit difficulty description
+    # Build prompt with explicit difficulty description and current date
+    from datetime import date
+    today = date.today()
     prompt = QUESTION_GENERATION.format(
         exam_name=exam.name,
         exam_full_name=exam.full_name or exam.name,
@@ -48,6 +50,8 @@ async def generate_questions(
         count=count,
         difficulty=difficulty,
         difficulty_description=DIFFICULTY_DESCRIPTIONS.get(difficulty, DIFFICULTY_DESCRIPTIONS[3]),
+        current_date=today.strftime("%d %B %Y"),
+        current_year=today.year,
     )
 
     # Generate
@@ -107,10 +111,14 @@ async def generate_blog_post(
     """Generate an AI blog post and return parsed JSON."""
     import json
 
+    from datetime import date
+    today = date.today()
     prompt = BLOG_GENERATION.format(
         topic=topic,
         explanation=explanation,
         exam_name=exam_name or "General competitive exams",
+        current_date=today.strftime("%d %B %Y"),
+        current_year=today.year,
     )
 
     logger.info("Generating blog post for topic: %s", topic)
