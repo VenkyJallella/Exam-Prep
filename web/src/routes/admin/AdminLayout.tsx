@@ -10,6 +10,7 @@ const adminNav = [
   { to: '/admin/blogs', label: 'Blogs' },
   { to: '/admin/coding', label: 'Coding' },
   { to: '/admin/analytics', label: 'Analytics' },
+  { to: '/admin/pages', label: 'Pages' },
 ];
 
 export default function AdminLayout() {

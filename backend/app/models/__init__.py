@@ -16,6 +16,7 @@ from app.models.coding import CodingQuestion, CodingSubmission
 from app.models.quiz import DailyQuiz, DailyQuizAttempt
 from app.models.notification import Notification
 from app.models.discussion import Discussion
+from app.models.page_content import PageContent
 
 __all__ = [
     "Base",
@@ -51,4 +52,5 @@ __all__ = [
     "DailyQuizAttempt",
     "Notification",
     "Discussion",
+    "PageContent",
 ]

@@ -53,9 +53,10 @@ export default function MarketingLayout() {
               &copy; {new Date().getFullYear()} ExamPrep. All rights reserved.
             </p>
             <div className="flex gap-6 text-sm text-gray-500">
-              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Privacy</a>
-              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Terms</a>
-              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Contact</a>
+              <Link to="/privacy" className="hover:text-gray-900 dark:hover:text-white">Privacy</Link>
+              <Link to="/terms" className="hover:text-gray-900 dark:hover:text-white">Terms</Link>
+              <Link to="/contact" className="hover:text-gray-900 dark:hover:text-white">Contact</Link>
+              <Link to="/about" className="hover:text-gray-900 dark:hover:text-white">About</Link>
             </div>
           </div>
         </div>
