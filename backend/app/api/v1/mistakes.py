@@ -23,13 +23,23 @@ async def list_mistakes(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.core.subscription import get_user_plan, get_plan_limits
+    plan = await get_user_plan(db, user.id)
+    limit = get_plan_limits(plan)["mistakes_limit"]
+
     items, total = await mistake_service.get_mistakes(
         db, user.id, topic_id=topic_id, resolved=resolved, page=page
     )
+
+    # Free users: cap the list
+    if limit < 999:
+        items = items[:limit]
+        total = min(total, limit)
+
     return {
         "status": "success",
         "data": items,
-        "meta": {"total": total, "page": page, "per_page": 20},
+        "meta": {"total": total, "page": page, "per_page": 20, "plan_limit": limit},
     }
 
 

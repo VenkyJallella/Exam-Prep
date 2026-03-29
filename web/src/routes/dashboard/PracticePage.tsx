@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { examsAPI, type Exam, type Subject, type Topic } from '@/lib/api/exams';
 import { practiceAPI } from '@/lib/api/practice';
+import UpgradeModal from '@/components/ui/UpgradeModal';
 import toast from 'react-hot-toast';
 
 export default function PracticePage() {
@@ -18,6 +19,7 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [language, setLanguage] = useState('python');
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const isCodingExam = selectedExam?.slug === 'coding' || selectedExam?.slug === 'gate-cs';
 
@@ -55,8 +57,13 @@ export default function PracticePage() {
         difficulty,
       });
       navigate(`/practice/${res.data.data.id}`);
-    } catch {
-      toast.error('Failed to start session. Make sure questions are available.');
+    } catch (err: any) {
+      const code = err?.response?.data?.error?.code;
+      if (code === 'DAILY_LIMIT_REACHED' || code === 'UPGRADE_REQUIRED') {
+        setShowUpgrade(true);
+      } else {
+        toast.error('Failed to start session. Make sure questions are available.');
+      }
     } finally {
       setStarting(false);
     }
@@ -210,6 +217,13 @@ export default function PracticePage() {
           </button>
         )}
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        feature="Unlimited practice sessions"
+        message="You've reached your daily practice limit. Upgrade to Pro for unlimited sessions."
+      />
     </>
   );
 }

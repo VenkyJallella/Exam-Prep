@@ -22,7 +22,23 @@ async def create_session(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.core.subscription import get_user_plan, get_plan_limits, check_daily_limit, increment_daily_usage
+
+    plan = await get_user_plan(db, user.id)
+    limits = get_plan_limits(plan)
+
+    # Check daily session limit
+    await check_daily_limit(user.id, "practice_sessions", limits["sessions_per_day"])
+
+    # Cap question count by plan
+    if body.question_count > limits["questions_per_session"]:
+        body.question_count = limits["questions_per_session"]
+
     session = await practice_service.create_session(db, user.id, body)
+
+    # Increment usage after successful creation
+    await increment_daily_usage(user.id, "practice_sessions")
+
     return APIResponse(data=SessionRead.model_validate(session))
 
 

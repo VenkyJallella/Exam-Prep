@@ -44,3 +44,11 @@ async def verify_payment(body: VerifyPaymentRequest, user: User = Depends(get_cu
 async def payment_history(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     data = await payment_service.get_payment_history(db, user.id)
     return APIResponse(data=data)
+
+
+@router.get("/usage")
+async def get_usage(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Get current plan, limits, features, and today's usage."""
+    from app.core.subscription import get_usage_summary
+    data = await get_usage_summary(db, user.id)
+    return {"status": "success", "data": data}

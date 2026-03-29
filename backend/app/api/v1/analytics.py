@@ -24,6 +24,11 @@ async def get_activity_heatmap(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.core.subscription import get_user_plan, get_plan_limits
+    plan = await get_user_plan(db, user.id)
+    max_days = get_plan_limits(plan)["analytics_days"]
+    days = min(days, max_days)
+
     data = await analytics_service.get_activity_heatmap(db, user.id, days)
     return {"status": "success", "data": data}
 
@@ -34,6 +39,11 @@ async def progress(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.core.subscription import get_user_plan, get_plan_limits
+    plan = await get_user_plan(db, user.id)
+    max_days = get_plan_limits(plan)["analytics_days"]
+    days = min(days, max_days)
+
     data = await analytics_service.get_progress(db, user.id, days)
     return {"status": "success", "data": data}
 

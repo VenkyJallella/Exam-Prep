@@ -47,7 +47,29 @@ async def get_problem(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from app.core.subscription import get_user_plan, get_plan_limits
+    plan = await get_user_plan(db, user.id)
+    coding_limit = get_plan_limits(plan)["coding_problems"]
+
     p = await coding_service.get_problem(db, slug)
+
+    # Check if free user has exceeded their coding problem limit
+    if coding_limit < 999:
+        from sqlalchemy import select, func
+        from app.models.coding import CodingSubmission
+        solved_count = (await db.execute(
+            select(func.count(func.distinct(CodingSubmission.question_id)))
+            .where(CodingSubmission.user_id == user.id)
+        )).scalar() or 0
+        if solved_count >= coding_limit:
+            # Check if they've already submitted for THIS problem — allow re-access
+            existing = (await db.execute(
+                select(func.count()).select_from(CodingSubmission)
+                .where(CodingSubmission.user_id == user.id, CodingSubmission.question_id == p.id)
+            )).scalar() or 0
+            if existing == 0:
+                from app.exceptions import AppException
+                raise AppException(403, "UPGRADE_REQUIRED", f"Free plan allows {coding_limit} coding problems. Upgrade to Pro for unlimited access.")
     sample_cases = [tc for tc in (p.test_cases or []) if tc.get("is_sample", False)]
     return {
         "status": "success",
