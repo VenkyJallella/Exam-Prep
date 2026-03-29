@@ -28,8 +28,9 @@ export default function TestListPage() {
       navigate(`/tests/${res.data.data.attempt.id}`, {
         state: { attemptData: res.data.data },
       });
-    } catch {
-      toast.error('Failed to start test');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || 'Failed to start test';
+      toast.error(msg);
     } finally {
       setStarting(null);
     }
@@ -122,13 +123,22 @@ export default function TestListPage() {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleStart(test.id)}
-                      disabled={starting === test.id}
-                      className="btn-primary ml-4 whitespace-nowrap"
-                    >
-                      {starting === test.id ? 'Starting...' : 'Start Test'}
-                    </button>
+                    {(() => {
+                      const attempt = history.find(a => a.test_id === test.id);
+                      if (attempt && attempt.status !== 'in_progress') {
+                        return (
+                          <div className="ml-4 flex flex-col items-end gap-1">
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Attempted</span>
+                            <button onClick={() => navigate(`/tests/${attempt.id}/results`)} className="btn-secondary text-xs whitespace-nowrap">View Results</button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <button onClick={() => handleStart(test.id)} disabled={starting === test.id} className="btn-primary ml-4 whitespace-nowrap">
+                          {starting === test.id ? 'Starting...' : attempt?.status === 'in_progress' ? 'Resume' : 'Start Test'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               ))
