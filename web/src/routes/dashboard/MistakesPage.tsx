@@ -39,6 +39,11 @@ export default function MistakesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'difficulty' | 'revisions'>('recent');
+  const [page, setPage] = useState(1);
+  const [showRevisionMode, setShowRevisionMode] = useState(false);
+  const [revisionIndex, setRevisionIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const PER_PAGE = 10;
 
   const loadData = () => {
     setLoading(true);
@@ -93,6 +98,17 @@ export default function MistakesPage() {
   const avgDifficulty = mistakes.length > 0 ? (mistakes.reduce((s, m) => s + m.difficulty, 0) / mistakes.length).toFixed(1) : '0';
   const needsRevision = mistakes.filter((m) => !m.is_resolved && m.revision_count < 3).length;
 
+  // Pagination
+  const totalPages = Math.ceil(filteredMistakes.length / PER_PAGE);
+  const paginatedMistakes = filteredMistakes.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  // Revision mode data
+  const revisionQueue = mistakes.filter((m) => !m.is_resolved && m.revision_count < 3);
+  const currentRevisionCard = revisionQueue[revisionIndex];
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [filter, searchQuery, selectedTopic, sortBy]);
+
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" /></div>;
   }
@@ -109,11 +125,18 @@ export default function MistakesPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mistake Book</h1>
             <p className="mt-1 text-sm text-gray-500">Review and revise questions you got wrong</p>
           </div>
-          {needsRevision > 0 && (
-            <Link to="/practice" className="btn-primary text-sm">
-              Practice Weak Topics
-            </Link>
-          )}
+          <div className="flex gap-2">
+            {revisionQueue.length > 0 && (
+              <button onClick={() => { setShowRevisionMode(true); setRevisionIndex(0); setShowAnswer(false); }}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Flashcard Review ({revisionQueue.length})
+              </button>
+            )}
+            {needsRevision > 0 && (
+              <Link to="/practice" className="btn-primary text-sm">Practice Weak Topics</Link>
+            )}
+          </div>
         </div>
 
         {/* Stats row */}
@@ -208,12 +231,12 @@ export default function MistakesPage() {
 
         {/* Showing count */}
         <p className="text-xs text-gray-400">
-          Showing {filteredMistakes.length} of {mistakes.length} mistakes
+          Showing {(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, filteredMistakes.length)} of {filteredMistakes.length} mistakes
           {selectedTopic && <span> · Topic: <strong>{selectedTopic}</strong></span>}
         </p>
 
         {/* Mistakes list */}
-        {filteredMistakes.length === 0 ? (
+        {paginatedMistakes.length === 0 && filteredMistakes.length === 0 ? (
           <div className="card py-12 text-center">
             <p className="text-lg font-medium text-gray-400">
               {filter === 'unresolved' ? 'No unresolved mistakes! Great work!' : 'No mistakes found'}
@@ -222,7 +245,7 @@ export default function MistakesPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredMistakes.map((m) => {
+            {paginatedMistakes.map((m) => {
               const isExpanded = expandedId === m.id;
               const revisionProgress = Math.min(100, (m.revision_count / 3) * 100);
 
@@ -333,7 +356,120 @@ export default function MistakesPage() {
             })}
           </div>
         )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">Page {page} of {totalPages}</p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(1)} disabled={page === 1}
+                className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800">First</button>
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:text-gray-300 dark:hover:bg-gray-800">
+                &larr; Prev
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const start = Math.max(1, Math.min(page - 2, totalPages - 4));
+                const p = start + i;
+                if (p > totalPages) return null;
+                return (
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium ${p === page ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}
+                  >{p}</button>
+                );
+              })}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-30 dark:text-gray-300 dark:hover:bg-gray-800">
+                Next &rarr;
+              </button>
+              <button onClick={() => setPage(totalPages)} disabled={page === totalPages}
+                className="rounded-lg px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800">Last</button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Flashcard Revision Mode */}
+      {showRevisionMode && currentRevisionCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-500">Card {revisionIndex + 1} of {revisionQueue.length}</span>
+                {currentRevisionCard.topic_name && (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{currentRevisionCard.topic_name}</span>
+                )}
+              </div>
+              <button onClick={() => setShowRevisionMode(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-1 bg-gray-200 dark:bg-gray-700">
+              <div className="h-full bg-purple-500 transition-all" style={{ width: `${((revisionIndex + 1) / revisionQueue.length) * 100}%` }} />
+            </div>
+
+            {/* Question */}
+            <div className="p-6">
+              <p className="text-lg font-medium leading-relaxed text-gray-900 dark:text-white">{currentRevisionCard.question_text}</p>
+
+              {!showAnswer ? (
+                <div className="mt-6 space-y-2">
+                  {Object.entries(currentRevisionCard.options).map(([key, value]) => (
+                    <div key={key} className="rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                      <span className="mr-2 font-bold text-gray-500">{key}.</span> {value}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  {Object.entries(currentRevisionCard.options).map(([key, value]) => {
+                    const isCorrect = currentRevisionCard.correct_answer.includes(key);
+                    return (
+                      <div key={key} className={`rounded-lg border px-4 py-3 text-sm ${isCorrect ? 'border-green-400 bg-green-50 font-medium text-green-800 dark:border-green-600 dark:bg-green-900/20 dark:text-green-300' : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-500'}`}>
+                        <span className="mr-2 font-bold">{key}.</span> {value} {isCorrect && '  ✓'}
+                      </div>
+                    );
+                  })}
+                  {currentRevisionCard.explanation && (
+                    <div className="mt-4 rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
+                      <p className="mb-1 text-xs font-semibold uppercase text-blue-500">Explanation</p>
+                      {currentRevisionCard.explanation}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+              <button onClick={() => { setRevisionIndex((i) => Math.max(0, i - 1)); setShowAnswer(false); }}
+                disabled={revisionIndex === 0}
+                className="btn-secondary text-sm disabled:opacity-30">Previous</button>
+              <div className="flex gap-2">
+                {!showAnswer ? (
+                  <button onClick={() => setShowAnswer(true)}
+                    className="rounded-lg bg-purple-600 px-6 py-2 text-sm font-medium text-white hover:bg-purple-700">Show Answer</button>
+                ) : (
+                  <>
+                    <button onClick={() => { handleRevise(currentRevisionCard.id); if (revisionIndex < revisionQueue.length - 1) { setRevisionIndex((i) => i + 1); setShowAnswer(false); } else { setShowRevisionMode(false); toast.success('Revision complete!'); } }}
+                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+                      {revisionIndex === revisionQueue.length - 1 ? 'Finish' : 'Got it → Next'}
+                    </button>
+                    <button onClick={() => { if (revisionIndex < revisionQueue.length - 1) { setRevisionIndex((i) => i + 1); setShowAnswer(false); } else { setShowRevisionMode(false); } }}
+                      className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400">
+                      Still Confused → Next
+                    </button>
+                  </>
+                )}
+              </div>
+              <span className="text-xs text-gray-400">{revisionIndex + 1}/{revisionQueue.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
