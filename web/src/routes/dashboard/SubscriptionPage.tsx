@@ -31,7 +31,7 @@ const plans = [
     ],
   },
   {
-    id: 'pro', name: 'Pro', price: 499, period: '/month',
+    id: 'pro', name: 'Pro', price: 149, period: '/month',
     badge: 'Most Popular',
     features: [
       { text: 'Unlimited practice sessions', included: true },
@@ -49,7 +49,7 @@ const plans = [
     ],
   },
   {
-    id: 'premium', name: 'Premium', price: 999, period: '/month',
+    id: 'premium', name: 'Premium', price: 199, period: '/month',
     badge: 'Best Value',
     features: [
       { text: 'Unlimited practice sessions', included: true },

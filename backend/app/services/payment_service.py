@@ -15,8 +15,8 @@ from app.exceptions import AppException, NotFoundError
 # Plan pricing (INR)
 PLAN_PRICES = {
     PlanType.FREE: 0,
-    PlanType.PRO: 499,
-    PlanType.PREMIUM: 999,
+    PlanType.PRO: 149,
+    PlanType.PREMIUM: 199,
 }
 
 

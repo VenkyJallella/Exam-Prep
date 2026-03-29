@@ -104,10 +104,10 @@ export default function PricingPage() {
     <>
       <Helmet>
         <title>Pricing - ExamPrep | Free, Pro & Premium Plans for Exam Preparation</title>
-        <meta name="description" content="ExamPrep pricing: Free plan with 10 sessions/day, Pro at ₹499/mo with AI features, Premium at ₹999/mo with everything. Start free today." />
+        <meta name="description" content="ExamPrep pricing: Free plan with 10 sessions/day, Pro at ₹149/mo with AI features, Premium at ₹199/mo with everything. Start free today." />
         <meta name="keywords" content="ExamPrep pricing, exam preparation cost, free mock test, UPSC preparation cost, JEE online test series price" />
         <meta property="og:title" content="Pricing - ExamPrep | Free, Pro & Premium Plans" />
-        <meta property="og:description" content="Start free with 10 sessions/day. Upgrade to Pro (₹499/mo) or Premium (₹999/mo) for unlimited practice and AI features." />
+        <meta property="og:description" content="Start free with 10 sessions/day. Upgrade to Pro (₹149/mo) or Premium (₹199/mo) for unlimited practice and AI features." />
         <meta property="og:type" content="website" />
         <link rel="canonical" href="https://examprep.in/pricing" />
         <script type="application/ld+json">{JSON.stringify({
@@ -118,8 +118,8 @@ export default function PricingPage() {
           "brand": {"@type": "Brand", "name": "ExamPrep"},
           "offers": [
             {"@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "INR", "description": "10 sessions/day, daily quiz, all coding problems"},
-            {"@type": "Offer", "name": "Pro", "price": "499", "priceCurrency": "INR", "description": "Unlimited sessions, AI features, 90-day analytics"},
-            {"@type": "Offer", "name": "Premium", "price": "999", "priceCurrency": "INR", "description": "Everything in Pro + topper comparison, PDF export, 1-year analytics"}
+            {"@type": "Offer", "name": "Pro", "price": "149", "priceCurrency": "INR", "description": "Unlimited sessions, AI features, 90-day analytics"},
+            {"@type": "Offer", "name": "Premium", "price": "199", "priceCurrency": "INR", "description": "Everything in Pro + topper comparison, PDF export, 1-year analytics"}
           ]
         })}</script>
       </Helmet>
