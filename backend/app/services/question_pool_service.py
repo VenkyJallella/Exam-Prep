@@ -206,37 +206,38 @@ async def get_pool_questions_for_user(
     result = await db.execute(query)
     questions = list(result.scalars().all())
 
-    # If not enough from subject scope, widen to full exam
-    if len(questions) < count and exam_id and (topic_id or subject_id):
+    got_ids = {q.id for q in questions}
+
+    # Tier 2: Widen to full exam (ignore seen — allow repeats from other topics)
+    if len(questions) < count and exam_id:
         remaining = count - len(questions)
-        got_ids = {q.id for q in questions}
         wider = select(Question).where(
             Question.is_active == True,
             Question.exam_id == exam_id,
+            Question.id.notin_(got_ids) if got_ids else True,
         )
-        if got_ids:
-            wider = wider.where(Question.id.notin_(got_ids))
-        if seen_ids:
-            wider = wider.where(Question.id.notin_(seen_ids))
         if difficulty:
             wider = wider.order_by(func.abs(Question.difficulty - difficulty), func.random())
         else:
             wider = wider.order_by(func.random())
         wider = wider.limit(remaining)
-        extra = await db.execute(wider)
-        questions.extend(extra.scalars().all())
+        extra = (await db.execute(wider)).scalars().all()
+        for q in extra:
+            if q.id not in got_ids:
+                questions.append(q)
+                got_ids.add(q.id)
 
-    # Last resort: allow previously seen questions (user exhausted entire pool)
-    if len(questions) < count and seen_ids:
+    # Tier 3: Pull from ANY exam if still short
+    if len(questions) < count:
         remaining = count - len(questions)
-        got_ids = {q.id for q in questions}
-        fallback = select(Question).where(Question.is_active == True)
-        if got_ids:
-            fallback = fallback.where(Question.id.notin_(got_ids))
-        if exam_id:
-            fallback = fallback.where(Question.exam_id == exam_id)
-        fallback = fallback.order_by(func.random()).limit(remaining)
-        extra = await db.execute(fallback)
-        questions.extend(extra.scalars().all())
+        any_q = select(Question).where(
+            Question.is_active == True,
+            Question.id.notin_(got_ids) if got_ids else True,
+        ).order_by(func.random()).limit(remaining)
+        extra = (await db.execute(any_q)).scalars().all()
+        for q in extra:
+            if q.id not in got_ids:
+                questions.append(q)
+                got_ids.add(q.id)
 
     return questions

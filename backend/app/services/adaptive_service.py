@@ -99,11 +99,37 @@ async def get_adaptive_questions(
             used_ids.add(question.id)
         questions.extend(q)
 
-    # Fill remaining slots if we didn't get enough
+    # Fill remaining slots — widen scope progressively
     remaining = count - len(questions)
     if remaining > 0:
         fill = await _get_scoped_questions(db, exam_id, scope_topic_ids, used_ids, remaining)
+        for q in fill:
+            used_ids.add(q.id)
         questions.extend(fill)
+
+    # Still short? Pull from entire exam ignoring scope
+    remaining = count - len(questions)
+    if remaining > 0 and exam_id:
+        stmt = select(Question).where(
+            Question.is_active == True,
+            Question.exam_id == exam_id,
+        )
+        if used_ids:
+            stmt = stmt.where(Question.id.notin_(used_ids))
+        stmt = stmt.order_by(func.random()).limit(remaining)
+        extra = (await db.execute(stmt)).scalars().all()
+        questions.extend(extra)
+
+    # Last resort: any exam
+    remaining = count - len(questions)
+    if remaining > 0:
+        all_ids = {q.id for q in questions}
+        stmt = select(Question).where(Question.is_active == True)
+        if all_ids:
+            stmt = stmt.where(Question.id.notin_(all_ids))
+        stmt = stmt.order_by(func.random()).limit(remaining)
+        extra = (await db.execute(stmt)).scalars().all()
+        questions.extend(extra)
 
     random.shuffle(questions)
     return questions[:count]
