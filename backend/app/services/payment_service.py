@@ -67,7 +67,7 @@ async def create_order(db: AsyncSession, user_id: UUID, plan: str) -> dict:
         amount=amount,
         currency="INR",
         status=PaymentStatus.PENDING,
-        metadata={"plan": plan},
+        extra_data={"plan": plan},
     )
     db.add(payment)
     await db.commit()
@@ -106,7 +106,7 @@ async def verify_payment(db: AsyncSession, user_id: UUID, payment_id: UUID, paym
     payment.razorpay_signature = payment_data.get("razorpay_signature")
 
     # Create/update subscription
-    plan = payment.metadata.get("plan", "pro") if payment.metadata else "pro"
+    plan = payment.extra_data.get("plan", "pro") if payment.extra_data else "pro"
 
     # Deactivate old subscriptions
     old_subs = await db.execute(

@@ -26,6 +26,9 @@ export default function MarketingLayout() {
             <Link to="/about" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
               About
             </Link>
+            <Link to="/blog" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+              Blog
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">

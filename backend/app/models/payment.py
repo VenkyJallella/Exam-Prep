@@ -31,7 +31,7 @@ class Subscription(BaseModel):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     razorpay_subscription_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
 
 class Payment(BaseModel):
@@ -49,4 +49,4 @@ class Payment(BaseModel):
     razorpay_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     razorpay_payment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     razorpay_signature: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

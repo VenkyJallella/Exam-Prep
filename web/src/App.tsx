@@ -42,6 +42,11 @@ const AdminTests = lazy(() => import('./routes/admin/AdminTests'));
 const AdminExams = lazy(() => import('./routes/admin/AdminExams'));
 const AdminUsers = lazy(() => import('./routes/admin/AdminUsers'));
 
+const BlogListPage = lazy(() => import('./routes/marketing/BlogListPage'));
+const BlogDetailPage = lazy(() => import('./routes/marketing/BlogDetailPage'));
+
+const AdminBlogs = lazy(() => import('./routes/admin/AdminBlogs'));
+
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage'));
 
 export default function App() {
@@ -54,6 +59,8 @@ export default function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/exams/:slug" element={<ExamDetailPage />} />
+          <Route path="/blog" element={<BlogListPage />} />
+          <Route path="/blog/:slug" element={<BlogDetailPage />} />
         </Route>
 
         {/* Auth */}
@@ -89,6 +96,7 @@ export default function App() {
               <Route path="/admin/tests" element={<AdminTests />} />
               <Route path="/admin/exams" element={<AdminExams />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/blogs" element={<AdminBlogs />} />
             </Route>
           </Route>
         </Route>

@@ -81,4 +81,26 @@ export const adminAPI = {
 
   deleteTopic: (topicId: string) =>
     apiClient.delete(`/admin/topics/${topicId}`),
+
+  // Blog
+  listBlogs: (params?: Record<string, any>) =>
+    apiClient.get('/blog/admin/list', { params }),
+
+  getBlog: (postId: string) =>
+    apiClient.get(`/blog/admin/${postId}`),
+
+  createBlog: (data: { title: string; content: string; excerpt: string; meta_description: string; tags?: string[]; status?: string }) =>
+    apiClient.post('/blog/admin/create', data),
+
+  generateBlog: (data: { topic: string; explanation: string; exam_name?: string; auto_publish?: boolean }) =>
+    apiClient.post('/blog/admin/generate', data),
+
+  updateBlog: (postId: string, data: Record<string, any>) =>
+    apiClient.patch(`/blog/admin/${postId}`, data),
+
+  toggleBlogPublish: (postId: string) =>
+    apiClient.post(`/blog/admin/${postId}/toggle-publish`),
+
+  deleteBlog: (postId: string) =>
+    apiClient.delete(`/blog/admin/${postId}`),
 };

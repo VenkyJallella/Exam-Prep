@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.exam import Exam, Subject, Topic
 from app.models.question import Question, QuestionType, QuestionSource
-from app.ai.client import generate_questions_json
-from app.ai.prompts import QUESTION_GENERATION
+from app.ai.client import generate_completion, generate_questions_json
+from app.ai.prompts import QUESTION_GENERATION, BLOG_GENERATION
 from app.config import settings
 from app.services.question_service import check_duplicate, validate_question_data
 
@@ -84,3 +84,44 @@ async def generate_questions(
     logger.info("Generated and saved %d questions (%d skipped)", len(questions), skipped)
 
     return questions
+
+
+async def generate_blog_post(
+    topic: str,
+    explanation: str,
+    exam_name: str = "",
+) -> dict:
+    """Generate an AI blog post and return parsed JSON."""
+    import json
+
+    prompt = BLOG_GENERATION.format(
+        topic=topic,
+        explanation=explanation,
+        exam_name=exam_name or "General competitive exams",
+    )
+
+    logger.info("Generating blog post for topic: %s", topic)
+
+    result = await generate_completion(
+        prompt,
+        model=settings.GEMINI_MODEL_PRO,
+        temperature=0.9,
+        max_tokens=8000,
+        use_cache=False,  # Each blog should be unique
+    )
+
+    # Clean markdown code blocks if present
+    if result.startswith("```"):
+        result = result.split("\n", 1)[1]
+        result = result.rsplit("```", 1)[0]
+
+    blog_data = json.loads(result)
+
+    # Validate required fields
+    required = ("title", "content", "excerpt", "meta_description")
+    for field in required:
+        if not blog_data.get(field):
+            raise ValueError(f"AI response missing required field: {field}")
+
+    logger.info("Blog post generated: %s", blog_data["title"])
+    return blog_data

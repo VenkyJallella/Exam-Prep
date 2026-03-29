@@ -6,6 +6,7 @@ const adminNav = [
   { to: '/admin/tests', label: 'Tests' },
   { to: '/admin/exams', label: 'Exams' },
   { to: '/admin/users', label: 'Users' },
+  { to: '/admin/blogs', label: 'Blogs' },
 ];
 
 export default function AdminLayout() {
