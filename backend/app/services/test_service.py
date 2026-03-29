@@ -143,7 +143,7 @@ async def start_attempt(db: AsyncSession, user_id: UUID, test_id: UUID) -> Attem
         select(TestAttempt).where(
             TestAttempt.user_id == user_id,
             TestAttempt.test_id == test_id,
-        )
+        ).order_by(TestAttempt.created_at.desc()).limit(1)
     )
     existing_attempt = existing.scalar_one_or_none()
 
