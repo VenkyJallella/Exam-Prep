@@ -22,10 +22,23 @@ export default function HomePage() {
     <>
       <Helmet>
         <title>ExamPrep - AI-Powered Competitive Exam Preparation</title>
-        <meta name="description" content="Prepare for UPSC, JEE, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests, and performance analytics." />
+        <meta name="description" content="Prepare for UPSC, JEE, SSC, Banking, NEET, GATE, CAT exams with AI-generated questions, adaptive learning, mock tests, daily quizzes, and performance analytics. Free to start." />
+        <meta name="keywords" content="exam preparation, UPSC preparation, JEE practice, SSC CGL mock test, Banking exam, NEET questions, GATE CS, CAT preparation, AI questions, online test series, India" />
         <meta property="og:title" content="ExamPrep - AI-Powered Competitive Exam Preparation" />
-        <meta property="og:description" content="Prepare for UPSC, JEE, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests, and performance analytics." />
+        <meta property="og:description" content="Crack UPSC, JEE, SSC, Banking exams with AI-powered practice. 1500+ questions, daily quizzes, coding challenges. Free to start." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://examprep.in" />
+        <link rel="canonical" href="https://examprep.in" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {"@type": "Question", "name": "What exams does ExamPrep cover?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep covers UPSC, JEE Main & Advanced, SSC CGL, Banking (IBPS/SBI), NEET, GATE CS, CAT, and Coding/IT exams."}},
+            {"@type": "Question", "name": "Is ExamPrep free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! ExamPrep offers a generous free plan with 10 practice sessions/day, daily quizzes, all coding problems, and 30-day analytics. Pro and Premium plans offer additional features."}},
+            {"@type": "Question", "name": "How does AI-powered practice work?", "acceptedAnswer": {"@type": "Answer", "text": "Our AI generates exam-level questions adapted to your difficulty level. The system tracks your mastery per topic and adjusts difficulty automatically — harder when you're doing well, easier when you need more practice."}},
+            {"@type": "Question", "name": "Can I practice coding questions?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! ExamPrep includes a LeetCode-style coding practice module with an in-browser code editor, test cases, and submission tracking."}}
+          ]
+        })}</script>
       </Helmet>
 
       {/* Hero */}

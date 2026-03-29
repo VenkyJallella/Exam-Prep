@@ -64,6 +64,47 @@ def create_app() -> FastAPI:
     async def health_check():
         return {"status": "ok", "version": settings.APP_VERSION}
 
+    @app.get("/sitemap.xml")
+    async def dynamic_sitemap():
+        """Dynamic sitemap including blog posts."""
+        from fastapi.responses import Response
+        from sqlalchemy import select
+        from app.database import AsyncSessionLocal
+        from app.models.blog import BlogPost
+        from app.models.exam import Exam
+
+        base_url = "https://examprep.in"
+
+        urls = [
+            (f"{base_url}/", "daily", "1.0"),
+            (f"{base_url}/about", "monthly", "0.8"),
+            (f"{base_url}/pricing", "monthly", "0.8"),
+            (f"{base_url}/blog", "daily", "0.9"),
+            (f"{base_url}/login", "monthly", "0.6"),
+            (f"{base_url}/register", "monthly", "0.7"),
+        ]
+
+        async with AsyncSessionLocal() as db:
+            # Add exam pages
+            exams = (await db.execute(select(Exam).where(Exam.is_active == True))).scalars().all()
+            for exam in exams:
+                urls.append((f"{base_url}/exams/{exam.slug}", "weekly", "0.9"))
+
+            # Add blog posts
+            blogs = (await db.execute(
+                select(BlogPost).where(BlogPost.is_active == True, BlogPost.status == "published")
+            )).scalars().all()
+            for blog in blogs:
+                urls.append((f"{base_url}/blog/{blog.slug}", "weekly", "0.7"))
+
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        for loc, freq, priority in urls:
+            xml += f'  <url><loc>{loc}</loc><changefreq>{freq}</changefreq><priority>{priority}</priority></url>\n'
+        xml += '</urlset>'
+
+        return Response(content=xml, media_type="application/xml")
+
     return app
 
 

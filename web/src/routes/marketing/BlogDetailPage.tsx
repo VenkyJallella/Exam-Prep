@@ -113,7 +113,21 @@ export default function BlogDetailPage() {
         {post.tags.map((tag) => (
           <meta key={tag} property="article:tag" content={tag} />
         ))}
-        <link rel="canonical" href={`/blog/${post.slug}`} />
+        <link rel="canonical" href={`https://examprep.in/blog/${post.slug}`} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": post.title,
+          "description": post.meta_description,
+          "datePublished": post.published_at,
+          "dateModified": post.created_at,
+          "author": {"@type": "Organization", "name": "ExamPrep"},
+          "publisher": {"@type": "Organization", "name": "ExamPrep", "logo": {"@type": "ImageObject", "url": "https://examprep.in/favicon.svg"}},
+          "mainEntityOfPage": {"@type": "WebPage", "@id": `https://examprep.in/blog/${post.slug}`},
+          "keywords": post.meta_keywords.join(', '),
+          "wordCount": post.content.split(' ').length,
+          "articleSection": post.tags[0] || "Education",
+        })}</script>
       </Helmet>
 
       <article className="bg-white dark:bg-gray-950">

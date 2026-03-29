@@ -1,0 +1,20 @@
+# ExamPrep Robots.txt
+User-agent: *
+Allow: /
+Allow: /blog
+Allow: /blog/*
+Allow: /about
+Allow: /pricing
+Allow: /exams/*
+
+# Disallow private/dashboard routes
+Disallow: /dashboard
+Disallow: /practice
+Disallow: /tests
+Disallow: /analytics
+Disallow: /profile
+Disallow: /admin
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://examprep.in/sitemap.xml
