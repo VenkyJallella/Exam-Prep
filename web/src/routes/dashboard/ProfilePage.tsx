@@ -65,7 +65,9 @@ export default function ProfilePage() {
     return days;
   }, [heatmapData]);
 
-  const earnedBadges = gamification?.badges || [];
+  // Badges can be string[] or {id: string}[] — normalize to string[]
+  const rawBadges = gamification?.badges || [];
+  const earnedBadges: string[] = rawBadges.map((b: any) => typeof b === 'string' ? b : b?.id).filter(Boolean);
   const totalDaysActive = heatmapGrid.filter(d => d.count > 0).length;
   const totalQuestionsLast90 = heatmapGrid.reduce((s, d) => s + d.count, 0);
   const streak = gamification?.current_streak ?? stats?.current_streak ?? 0;
