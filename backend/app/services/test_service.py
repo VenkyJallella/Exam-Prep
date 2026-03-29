@@ -138,19 +138,22 @@ async def start_attempt(db: AsyncSession, user_id: UUID, test_id: UUID) -> Attem
     if not test.is_published:
         raise AppException(400, "TEST_NOT_PUBLISHED", "This test is not yet published")
 
-    # Check for existing in-progress attempt
+    # Check for ANY existing attempt (one attempt per user per test)
     existing = await db.execute(
         select(TestAttempt).where(
             TestAttempt.user_id == user_id,
             TestAttempt.test_id == test_id,
-            TestAttempt.status == AttemptStatus.IN_PROGRESS,
         )
     )
     existing_attempt = existing.scalar_one_or_none()
 
     if existing_attempt:
-        # Resume existing attempt
-        attempt = existing_attempt
+        if existing_attempt.status == AttemptStatus.IN_PROGRESS:
+            # Resume existing in-progress attempt
+            attempt = existing_attempt
+        else:
+            # Already submitted/expired — no re-attempt allowed
+            raise AppException(400, "ALREADY_ATTEMPTED", "You have already attempted this test. Each test can only be taken once.")
     else:
         # Create new attempt
         attempt = TestAttempt(
