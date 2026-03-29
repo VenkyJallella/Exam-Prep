@@ -24,6 +24,19 @@ async def get_today_quiz(
     if attempt:
         leaderboard = await daily_quiz_service.get_quiz_leaderboard(db, quiz.id)
         questions = await daily_quiz_service.get_quiz_questions(db, quiz)
+
+        # Enrich answers with correct_answer + explanation from actual questions
+        questions_map = {str(q.id): q for q in questions}
+        enriched_answers = {}
+        for qid_str, ans_data in (attempt.answers or {}).items():
+            q = questions_map.get(qid_str)
+            enriched_answers[qid_str] = {
+                "selected": ans_data.get("selected", []),
+                "is_correct": ans_data.get("is_correct", False),
+                "correct_answer": q.correct_answer if q else [],
+                "explanation": q.explanation if q else None,
+            }
+
         return {
             "status": "success",
             "data": {
@@ -39,7 +52,7 @@ async def get_today_quiz(
                     "correct_count": attempt.correct_count,
                     "wrong_count": attempt.wrong_count,
                     "time_taken_seconds": attempt.time_taken_seconds,
-                    "answers": attempt.answers,
+                    "answers": enriched_answers,
                 },
                 "leaderboard": leaderboard,
                 "questions": [
