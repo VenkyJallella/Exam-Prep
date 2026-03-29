@@ -20,6 +20,7 @@ Rules:
 - For numerical subjects: include calculation-heavy problems at higher levels
 - For theory subjects: include application-based and statement analysis at higher levels
 - Use Indian English conventions
+- IMPORTANT: Do NOT use LaTeX notation like $, \frac, \alpha etc. Use plain text for math: x^2, sqrt(x), alpha, beta, pi. This is critical for JSON parsing.
 
 Return valid JSON array:
 [{{

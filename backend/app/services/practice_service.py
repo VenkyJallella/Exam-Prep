@@ -66,13 +66,54 @@ async def _trigger_background_refill(exam_id: UUID, subject_id: UUID | None, top
         logger.error("Background refill failed: %s", e)
 
 
+async def _generate_on_demand(
+    db: AsyncSession,
+    exam_id: UUID,
+    subject_id: UUID | None,
+    topic_id: UUID | None,
+    difficulty: int,
+    count: int,
+) -> list[Question]:
+    """Generate questions on-demand when pool is empty. Blocks but guarantees questions."""
+    from app.ai.generator import generate_questions
+
+    # Need a topic_id for generation
+    gen_topic_id = topic_id
+    if not gen_topic_id:
+        query = select(Topic.id).join(Subject).where(Subject.exam_id == exam_id)
+        if subject_id:
+            query = query.where(Topic.subject_id == subject_id)
+        query = query.order_by(func.random()).limit(1)
+        result = await db.execute(query)
+        gen_topic_id = result.scalar_one_or_none()
+
+    if not gen_topic_id:
+        return []
+
+    all_questions: list[Question] = []
+    remaining = count
+    # Generate in batches until we have enough
+    while remaining > 0:
+        batch = min(5, remaining)
+        try:
+            logger.info("On-demand generation: %d questions (difficulty=%d)", batch, difficulty)
+            questions = await generate_questions(db, exam_id, gen_topic_id, count=batch, difficulty=difficulty)
+            all_questions.extend(questions)
+            remaining -= len(questions)
+            if not questions:
+                break
+        except Exception as e:
+            logger.error("On-demand generation failed: %s", e)
+            break
+    return all_questions
+
+
 async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -> PracticeSession:
-    """Create a practice session — pulls from pool instantly."""
+    """Create a practice session — pool-first, on-demand fallback."""
     difficulty = body.difficulty or 3
 
-    # FAST PATH: Pull from pre-generated pool (pure DB query)
+    # STEP 1: Try to pull from pool (instant, <200ms)
     if not body.difficulty:
-        # Adaptive mode — uses mastery data to pick appropriate questions
         questions = await adaptive_service.get_adaptive_questions(
             db,
             user_id=user_id,
@@ -82,19 +123,31 @@ async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -
             count=body.question_count,
         )
     else:
-        # Specific difficulty — pull from pool
         questions = await get_pool_questions_for_user(
             db, user_id, body.exam_id, body.subject_id,
             body.topic_id, body.difficulty, body.question_count,
         )
 
+    # STEP 2: If pool is completely empty, generate ONE batch on-demand (can't start with 0)
+    if not questions and body.exam_id:
+        logger.info("Pool empty, generating on-demand")
+        questions = await _generate_on_demand(
+            db, body.exam_id, body.subject_id, body.topic_id, difficulty,
+            min(5, body.question_count),
+        )
+
     if not questions:
         raise AppException(
             404, "NO_QUESTIONS",
-            "No questions available for this selection. The question pool is being generated — please try again in a minute.",
+            "No questions available. Please try a different exam/subject or try again shortly.",
         )
 
-    # Trigger background refill if pool is running low (non-blocking)
+    # STEP 3: If we got fewer than requested, that's OK — start with what we have
+    # Background refill ensures next session will have more
+    if len(questions) < body.question_count:
+        logger.info("Starting session with %d/%d questions (pool will refill)", len(questions), body.question_count)
+
+    # STEP 4: Trigger background refill (non-blocking) so next session has more
     if body.exam_id:
         asyncio.create_task(
             _trigger_background_refill(body.exam_id, body.subject_id, body.topic_id, difficulty)

@@ -206,19 +206,33 @@ async def get_pool_questions_for_user(
     result = await db.execute(query)
     questions = list(result.scalars().all())
 
-    # If still not enough (user exhausted pool), allow oldest seen questions
+    # If not enough from subject scope, widen to full exam
+    if len(questions) < count and exam_id and (topic_id or subject_id):
+        remaining = count - len(questions)
+        got_ids = {q.id for q in questions}
+        wider = select(Question).where(
+            Question.is_active == True,
+            Question.exam_id == exam_id,
+        )
+        if got_ids:
+            wider = wider.where(Question.id.notin_(got_ids))
+        if seen_ids:
+            wider = wider.where(Question.id.notin_(seen_ids))
+        if difficulty:
+            wider = wider.order_by(func.abs(Question.difficulty - difficulty), func.random())
+        else:
+            wider = wider.order_by(func.random())
+        wider = wider.limit(remaining)
+        extra = await db.execute(wider)
+        questions.extend(extra.scalars().all())
+
+    # Last resort: allow previously seen questions (user exhausted entire pool)
     if len(questions) < count and seen_ids:
         remaining = count - len(questions)
         got_ids = {q.id for q in questions}
-        fallback = select(Question).where(
-            Question.is_active == True,
-            Question.id.notin_(got_ids),
-        )
-        if topic_id:
-            fallback = fallback.where(Question.topic_id == topic_id)
-        elif subject_id:
-            topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
-            fallback = fallback.where(Question.topic_id.in_(topic_ids_q))
+        fallback = select(Question).where(Question.is_active == True)
+        if got_ids:
+            fallback = fallback.where(Question.id.notin_(got_ids))
         if exam_id:
             fallback = fallback.where(Question.exam_id == exam_id)
         fallback = fallback.order_by(func.random()).limit(remaining)

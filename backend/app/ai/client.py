@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 import hashlib
 import asyncio
@@ -70,48 +71,78 @@ async def generate_completion(
     return result
 
 
+def _fix_json(raw: str) -> str:
+    """Fix common JSON issues from AI responses (LaTeX, truncation, etc.)."""
+    import re
+
+    s = raw.strip()
+
+    # Remove markdown code blocks
+    if s.startswith("```"):
+        s = s.split("\n", 1)[1]
+        s = s.rsplit("```", 1)[0].strip()
+
+    # Fix unescaped backslashes from LaTeX (e.g., \alpha, \frac, \n inside strings)
+    # This replaces \ followed by a non-escape char inside JSON string values
+    def escape_backslashes(m):
+        content = m.group(0)
+        # Don't touch already-valid JSON escapes: \n \t \r \\ \" \/ \b \f \uXXXX
+        content = re.sub(r'\\(?![ntrb\\"/fu])', r'\\\\', content)
+        return content
+
+    # Apply backslash fix to string values between quotes
+    s = re.sub(r'"(?:[^"\\]|\\.)*"', escape_backslashes, s)
+
+    return s
+
+
+def _parse_json_robust(raw: str) -> list[dict]:
+    """Parse JSON with multiple fallback strategies."""
+    s = _fix_json(raw)
+
+    # Try direct parse
+    try:
+        data = json.loads(s)
+        return data if isinstance(data, list) else [data]
+    except json.JSONDecodeError:
+        pass
+
+    # Try truncation repair: find last complete object
+    for marker in ["},\n", "},", "}\n]"]:
+        pos = s.rfind(marker)
+        if pos > 0:
+            end = pos + len(marker.rstrip(",\n"))
+            repaired = s[:end] + "]"
+            if not repaired.lstrip().startswith("["):
+                repaired = "[" + repaired
+            try:
+                data = json.loads(repaired)
+                logger.warning("Repaired truncated JSON: salvaged %d items", len(data))
+                return data if isinstance(data, list) else [data]
+            except json.JSONDecodeError:
+                continue
+
+    # Last resort: extract individual JSON objects with regex
+    objects = []
+    for m in re.finditer(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', s):
+        try:
+            obj = json.loads(m.group())
+            if "question_text" in obj:
+                objects.append(obj)
+        except json.JSONDecodeError:
+            continue
+
+    if objects:
+        logger.warning("Extracted %d questions via regex fallback", len(objects))
+        return objects
+
+    raise ValueError(f"Failed to parse AI response. First 200 chars: {raw[:200]}")
+
+
 async def generate_questions_json(prompt: str, model: str | None = None) -> list[dict]:
-    """Generate questions and parse as JSON with retry on truncated output."""
+    """Generate questions and parse as JSON with robust error handling."""
     result = await generate_completion(
         prompt, model=model, temperature=0.8, max_tokens=16000, use_cache=False,
     )
 
-    # Clean markdown code blocks if present
-    if result.startswith("```"):
-        result = result.split("\n", 1)[1]
-        result = result.rsplit("```", 1)[0]
-
-    result = result.strip()
-
-    # Try to parse as-is
-    try:
-        return json.loads(result)
-    except json.JSONDecodeError:
-        pass
-
-    # Truncated JSON — try to salvage complete question objects
-    # Find the last complete object by looking for the last "},"  or "}\n]"
-    last_complete = result.rfind("},")
-    if last_complete > 0:
-        repaired = result[:last_complete + 1] + "]"
-        try:
-            data = json.loads(repaired)
-            logger.warning("Repaired truncated JSON: salvaged %d questions", len(data))
-            return data
-        except json.JSONDecodeError:
-            pass
-
-    # Try finding last complete object ending with "}"
-    last_brace = result.rfind("}")
-    if last_brace > 0:
-        repaired = result[:last_brace + 1] + "]"
-        if not repaired.startswith("["):
-            repaired = "[" + repaired
-        try:
-            data = json.loads(repaired)
-            logger.warning("Repaired truncated JSON (method 2): salvaged %d questions", len(data))
-            return data
-        except json.JSONDecodeError:
-            pass
-
-    raise ValueError(f"Failed to parse AI response as JSON. First 200 chars: {result[:200]}")
+    return _parse_json_robust(result)
