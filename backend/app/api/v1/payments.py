@@ -46,6 +46,26 @@ async def payment_history(user: User = Depends(get_current_user), db: AsyncSessi
     return APIResponse(data=data)
 
 
+@router.post("/cancel")
+async def cancel_subscription(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Cancel active subscription and switch to free plan."""
+    from sqlalchemy import select
+    from app.models.payment import Subscription
+
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.user_id == user.id,
+            Subscription.is_active == True,
+        )
+    )
+    subs = result.scalars().all()
+    for sub in subs:
+        sub.is_active = False
+    await db.commit()
+
+    return {"status": "success", "data": {"plan": "free", "message": "Switched to Free plan"}}
+
+
 @router.get("/usage")
 async def get_usage(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Get current plan, limits, features, and today's usage."""

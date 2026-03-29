@@ -101,11 +101,9 @@ export default function SubscriptionPage() {
   };
 
   const handleDowngrade = async () => {
-    if (!confirm('Switch to Free plan? You will lose access to premium features at the end of your current billing period.')) return;
+    if (!confirm('Switch to Free plan? You will lose access to premium features immediately.')) return;
     try {
-      // Deactivate current subscription
-      await apiClient.post('/payments/orders', { plan: 'free' }).catch(() => {});
-      // Refresh
+      await apiClient.post('/payments/cancel');
       const usageRes = await apiClient.get('/payments/usage');
       setUsage(usageRes.data.data);
       setCurrentPlan(usageRes.data.data.plan);
