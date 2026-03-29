@@ -14,6 +14,7 @@ interface QuestionCardProps {
   isFirst: boolean;
   isLast: boolean;
   isSubmitting: boolean;
+  imageUrl?: string | null;
 }
 
 export default function QuestionCard({
@@ -29,6 +30,7 @@ export default function QuestionCard({
   isFirst,
   isLast,
   isSubmitting,
+  imageUrl,
 }: QuestionCardProps) {
   const [selected, setSelected] = useState<string[]>(selectedAnswer || []);
   const isAnswered = result !== null;
@@ -98,6 +100,9 @@ export default function QuestionCard({
         <p className="text-lg font-medium leading-relaxed text-gray-900 dark:text-white">
           {questionText}
         </p>
+        {imageUrl && (
+          <img src={imageUrl} alt="Question illustration" className="mt-3 max-h-64 rounded-lg border border-gray-200 dark:border-gray-700" />
+        )}
       </div>
 
       {/* Options */}

@@ -57,6 +57,7 @@ const CodingProblemPage = lazy(() => import('./routes/dashboard/CodingProblemPag
 const DailyQuizPage = lazy(() => import('./routes/dashboard/DailyQuizPage'));
 const CustomTestPage = lazy(() => import('./routes/dashboard/CustomTestPage'));
 const PYQPage = lazy(() => import('./routes/dashboard/PYQPage'));
+const WeeklyChallengesPage = lazy(() => import('./routes/dashboard/WeeklyChallengesPage'));
 const ScheduledTestsPage = lazy(() => import('./routes/dashboard/ScheduledTestsPage'));
 const PdfExportPage = lazy(() => import('./routes/dashboard/PdfExportPage'));
 
@@ -101,6 +102,7 @@ export default function App() {
             <Route path="/coding/:slug" element={<CodingProblemPage />} />
             <Route path="/daily-quiz" element={<DailyQuizPage />} />
             <Route path="/pyq" element={<PYQPage />} />
+            <Route path="/challenges" element={<WeeklyChallengesPage />} />
             <Route path="/scheduled-tests" element={<ScheduledTestsPage />} />
             <Route path="/export-pdf" element={<PdfExportPage />} />
             <Route path="/custom-test" element={<CustomTestPage />} />

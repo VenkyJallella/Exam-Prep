@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/lib/store/authStore';
 import { analyticsAPI, leaderboardAPI, OverviewStats, ProgressPoint, TopicPerformance } from '@/lib/api/analytics';
+import OnboardingWizard from '@/components/ui/OnboardingWizard';
 
 const quickActions = [
   { label: 'Practice Questions', to: '/practice', color: 'bg-blue-500', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
@@ -15,6 +16,7 @@ const DAILY_GOAL = 20;
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('examprep_onboarded'));
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [gamification, setGamification] = useState<{ total_xp: number; level: number; current_streak: number; longest_streak: number; badges: string[] } | null>(null);
   const [progress, setProgress] = useState<ProgressPoint[]>([]);
@@ -64,6 +66,8 @@ export default function DashboardPage() {
         <title>Dashboard - ExamPrep</title>
         <meta name="description" content="Your personalized exam preparation dashboard. Track progress, practice questions, and improve your scores." />
       </Helmet>
+
+      {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
 
       <div className="space-y-6">
         {/* Greeting */}
