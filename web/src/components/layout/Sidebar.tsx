@@ -1,5 +1,7 @@
-import { NavLink } from 'react-router-dom';
-import { useAuthStore } from '@/lib/store/authStore';
+
+ { NavLink } from 'react-router-dom';
+
+ { useAuthStore } from '@/lib/store/authStore';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -10,6 +12,9 @@ const navItems = [
   { to: '/mistakes', label: 'Mistake Book', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z' },
   { to: '/coding', label: 'Coding', icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4' },
   { to: '/daily-quiz', label: 'Daily Quiz', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { to: '/pyq', label: 'PYQ Papers', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { to: '/scheduled-tests', label: 'Scheduled Tests', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { to: '/export-pdf', label: 'Export PDF', icon: 'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { to: '/leaderboard', label: 'Leaderboard', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
   { to: '/subscription', label: 'Subscription', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
   { to: '/profile', label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },

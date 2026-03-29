@@ -14,6 +14,8 @@ from app.models.payment import Subscription, Payment, PlanType, PaymentStatus
 from app.models.blog import BlogPost
 from app.models.coding import CodingQuestion, CodingSubmission
 from app.models.quiz import DailyQuiz, DailyQuizAttempt
+from app.models.notification import Notification
+from app.models.discussion import Discussion
 
 __all__ = [
     "Base",
@@ -47,4 +49,6 @@ __all__ = [
     "CodingSubmission",
     "DailyQuiz",
     "DailyQuizAttempt",
+    "Notification",
+    "Discussion",
 ]
