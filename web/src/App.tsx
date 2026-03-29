@@ -47,6 +47,10 @@ const BlogDetailPage = lazy(() => import('./routes/marketing/BlogDetailPage'));
 
 const AdminBlogs = lazy(() => import('./routes/admin/AdminBlogs'));
 const AdminBlogDetail = lazy(() => import('./routes/admin/AdminBlogDetail'));
+const AdminPoolManager = lazy(() => import('./routes/admin/AdminPoolManager'));
+const AdminUserDetail = lazy(() => import('./routes/admin/AdminUserDetail'));
+const AdminAnalytics = lazy(() => import('./routes/admin/AdminAnalytics'));
+const AdminCoding = lazy(() => import('./routes/admin/AdminCoding'));
 
 const CodingPage = lazy(() => import('./routes/dashboard/CodingPage'));
 const CodingProblemPage = lazy(() => import('./routes/dashboard/CodingProblemPage'));
@@ -108,6 +112,10 @@ export default function App() {
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/blogs" element={<AdminBlogs />} />
               <Route path="/admin/blogs/:postId" element={<AdminBlogDetail />} />
+              <Route path="/admin/pool" element={<AdminPoolManager />} />
+              <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/coding" element={<AdminCoding />} />
             </Route>
           </Route>
         </Route>

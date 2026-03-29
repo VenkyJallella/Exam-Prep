@@ -3,10 +3,13 @@ import { Outlet, NavLink } from 'react-router-dom';
 const adminNav = [
   { to: '/admin', label: 'Dashboard' },
   { to: '/admin/questions', label: 'Questions' },
+  { to: '/admin/pool', label: 'Question Pool' },
   { to: '/admin/tests', label: 'Tests' },
   { to: '/admin/exams', label: 'Exams' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/blogs', label: 'Blogs' },
+  { to: '/admin/coding', label: 'Coding' },
+  { to: '/admin/analytics', label: 'Analytics' },
 ];
 
 export default function AdminLayout() {

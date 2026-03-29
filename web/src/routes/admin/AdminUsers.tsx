@@ -95,7 +95,9 @@ export default function AdminUsers() {
                   {users.map((u) => (
                     <tr key={u.id} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                        {u.display_name || '-'}
+                        <a href={`/admin/users/${u.id}`} className="hover:text-primary-600 hover:underline">
+                          {u.display_name || '-'}
+                        </a>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{u.email}</td>
                       <td className="px-4 py-3">

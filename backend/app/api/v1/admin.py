@@ -236,3 +236,195 @@ async def pool_refill(
 
     asyncio.create_task(_bg_refill())
     return {"status": "success", "data": {"message": "Pool refill triggered in background"}}
+
+
+# ── Rich Dashboard Stats ───────────────────────────────────────
+
+
+@router.get("/stats/detailed")
+async def detailed_stats(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import func, select
+    from datetime import datetime, timezone, timedelta
+    from app.models.payment import Subscription, Payment, PlanType, PaymentStatus
+    from app.models.practice import PracticeSession
+    from app.models.question import Question
+    from app.models.blog import BlogPost
+    from app.models.coding import CodingQuestion
+    from app.models.gamification import UserGamification
+    from app.models.exam import Exam
+
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+
+    total_revenue = (await db.execute(select(func.sum(Payment.amount)).where(Payment.status == PaymentStatus.COMPLETED))).scalar() or 0
+    monthly_revenue = (await db.execute(select(func.sum(Payment.amount)).where(Payment.status == PaymentStatus.COMPLETED, Payment.created_at >= month_ago))).scalar() or 0
+    active_pro = (await db.execute(select(func.count()).select_from(Subscription).where(Subscription.plan == PlanType.PRO, Subscription.is_active == True))).scalar() or 0
+    active_premium = (await db.execute(select(func.count()).select_from(Subscription).where(Subscription.plan == PlanType.PREMIUM, Subscription.is_active == True))).scalar() or 0
+
+    total_users = (await db.execute(select(func.count()).select_from(User).where(User.is_active == True))).scalar() or 0
+    new_users_week = (await db.execute(select(func.count()).select_from(User).where(User.created_at >= week_ago))).scalar() or 0
+    new_users_month = (await db.execute(select(func.count()).select_from(User).where(User.created_at >= month_ago))).scalar() or 0
+
+    dau = (await db.execute(select(func.count(func.distinct(PracticeSession.user_id))).where(PracticeSession.created_at >= today))).scalar() or 0
+    wau = (await db.execute(select(func.count(func.distinct(PracticeSession.user_id))).where(PracticeSession.created_at >= week_ago))).scalar() or 0
+    mau = (await db.execute(select(func.count(func.distinct(PracticeSession.user_id))).where(PracticeSession.created_at >= month_ago))).scalar() or 0
+
+    total_questions = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True))).scalar() or 0
+    ai_questions = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True, Question.source == "ai"))).scalar() or 0
+    pending_review = (await db.execute(select(func.count()).select_from(Question).where(Question.is_active == True, Question.is_verified == False))).scalar() or 0
+    total_blogs = (await db.execute(select(func.count()).select_from(BlogPost).where(BlogPost.is_active == True))).scalar() or 0
+    total_coding = (await db.execute(select(func.count()).select_from(CodingQuestion).where(CodingQuestion.is_active == True))).scalar() or 0
+    sessions_today = (await db.execute(select(func.count()).select_from(PracticeSession).where(PracticeSession.created_at >= today))).scalar() or 0
+
+    growth_result = await db.execute(
+        select(func.date_trunc("day", User.created_at).label("day"), func.count().label("count"))
+        .where(User.created_at >= month_ago).group_by("day").order_by("day")
+    )
+    user_growth = [{"date": str(r.day.date()), "count": r.count} for r in growth_result.all()]
+
+    top_exams_result = await db.execute(
+        select(Exam.name, func.count(PracticeSession.id).label("sessions"))
+        .join(PracticeSession, PracticeSession.exam_id == Exam.id)
+        .where(PracticeSession.created_at >= month_ago)
+        .group_by(Exam.name).order_by(func.count(PracticeSession.id).desc()).limit(5)
+    )
+    top_exams = [{"name": r.name, "sessions": r.sessions} for r in top_exams_result.all()]
+
+    return {
+        "status": "success",
+        "data": {
+            "revenue": {"total": float(total_revenue), "monthly": float(monthly_revenue), "active_pro": active_pro, "active_premium": active_premium},
+            "users": {"total": total_users, "new_week": new_users_week, "new_month": new_users_month, "dau": dau, "wau": wau, "mau": mau},
+            "content": {"questions": total_questions, "ai_generated": ai_questions, "pending_review": pending_review, "blogs": total_blogs, "coding_problems": total_coding},
+            "activity": {"sessions_today": sessions_today},
+            "user_growth": user_growth,
+            "top_exams": top_exams,
+        },
+    }
+
+
+# ── User Detail & Management ──────────────────────────────────
+
+
+@router.get("/users/{user_id}/detail")
+async def user_detail(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import func, select
+    from app.models.gamification import UserGamification
+    from app.models.payment import Subscription
+    from app.models.practice import PracticeSession, UserAnswer
+
+    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not u:
+        from app.exceptions import NotFoundError
+        raise NotFoundError("User")
+
+    gam = (await db.execute(select(UserGamification).where(UserGamification.user_id == user_id))).scalar_one_or_none()
+    sub = (await db.execute(select(Subscription).where(Subscription.user_id == user_id, Subscription.is_active == True).order_by(Subscription.created_at.desc()).limit(1))).scalar_one_or_none()
+
+    total_sessions = (await db.execute(select(func.count()).select_from(PracticeSession).where(PracticeSession.user_id == user_id))).scalar() or 0
+    total_answers = (await db.execute(select(func.count()).select_from(UserAnswer).where(UserAnswer.user_id == user_id))).scalar() or 0
+    correct_answers = (await db.execute(select(func.count()).select_from(UserAnswer).where(UserAnswer.user_id == user_id, UserAnswer.is_correct == True))).scalar() or 0
+
+    recent = await db.execute(select(PracticeSession).where(PracticeSession.user_id == user_id).order_by(PracticeSession.created_at.desc()).limit(10))
+    recent_sessions = [
+        {"id": str(s.id), "status": s.status.value, "total_questions": s.total_questions, "correct_count": s.correct_count, "wrong_count": s.wrong_count, "created_at": s.created_at.isoformat()}
+        for s in recent.scalars().all()
+    ]
+
+    return {
+        "status": "success",
+        "data": {
+            "user": {"id": str(u.id), "email": u.email, "full_name": u.full_name, "role": u.role.value if hasattr(u.role, "value") else u.role, "is_active": u.is_active, "created_at": u.created_at.isoformat()},
+            "gamification": {"xp": gam.total_xp if gam else 0, "level": gam.level if gam else 1, "streak": gam.current_streak if gam else 0, "badges": len(gam.badges or []) if gam else 0},
+            "subscription": {"plan": sub.plan.value if sub else "free", "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None},
+            "stats": {"total_sessions": total_sessions, "total_answers": total_answers, "correct_answers": correct_answers, "accuracy": round(correct_answers / total_answers * 100, 1) if total_answers > 0 else 0},
+            "recent_sessions": recent_sessions,
+        },
+    }
+
+
+@router.patch("/users/{user_id}/role")
+async def change_user_role(
+    user_id: UUID,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import select
+    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not u:
+        from app.exceptions import NotFoundError
+        raise NotFoundError("User")
+    u.role = body.get("role", "user")
+    await db.commit()
+    return {"status": "success", "data": {"id": str(u.id), "role": u.role}}
+
+
+@router.patch("/users/{user_id}/subscription")
+async def admin_set_subscription(
+    user_id: UUID,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import select
+    from app.models.payment import Subscription, PlanType
+    from datetime import datetime, timezone, timedelta
+
+    plan_str = body.get("plan", "pro")
+    days = body.get("days", 30)
+    plan = PlanType.PRO if plan_str == "pro" else PlanType.PREMIUM if plan_str == "premium" else PlanType.FREE
+
+    existing = await db.execute(select(Subscription).where(Subscription.user_id == user_id, Subscription.is_active == True))
+    for s in existing.scalars().all():
+        s.is_active = False
+
+    if plan != PlanType.FREE:
+        sub = Subscription(user_id=user_id, plan=plan, is_active=True, starts_at=datetime.now(timezone.utc), expires_at=datetime.now(timezone.utc) + timedelta(days=days))
+        db.add(sub)
+
+    await db.commit()
+    return {"status": "success", "data": {"user_id": str(user_id), "plan": plan_str, "days": days}}
+
+
+# ── Bulk Question Actions ──────────────────────────────────────
+
+
+@router.post("/questions/bulk-verify")
+async def bulk_verify(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import update
+    from app.models.question import Question
+    ids = body.get("question_ids", [])
+    if not ids:
+        return {"status": "success", "data": {"verified": 0}}
+    result = await db.execute(update(Question).where(Question.id.in_(ids)).values(is_verified=True))
+    await db.commit()
+    return {"status": "success", "data": {"verified": result.rowcount}}
+
+
+@router.post("/questions/bulk-delete")
+async def bulk_delete(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    from sqlalchemy import update
+    from app.models.question import Question
+    ids = body.get("question_ids", [])
+    if not ids:
+        return {"status": "success", "data": {"deleted": 0}}
+    result = await db.execute(update(Question).where(Question.id.in_(ids)).values(is_active=False))
+    await db.commit()
+    return {"status": "success", "data": {"deleted": result.rowcount}}
