@@ -1,5 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 
 // Layouts
 import MarketingLayout from './components/layout/MarketingLayout';
@@ -65,7 +65,21 @@ const PdfExportPage = lazy(() => import('./routes/dashboard/PdfExportPage'));
 
 const NotFoundPage = lazy(() => import('./routes/NotFoundPage'));
 
+function usePageTracking() {
+  const location = useLocation();
+  useEffect(() => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'page_view', {
+        page_path: location.pathname + location.search,
+        page_title: document.title,
+      });
+    }
+  }, [location]);
+}
+
 export default function App() {
+  usePageTracking();
+
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
