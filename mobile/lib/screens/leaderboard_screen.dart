@@ -7,58 +7,159 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> {
+class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTickerProviderStateMixin {
   final _api = ApiService();
-  List<dynamic> _entries = [];
+  List<dynamic> _global = [];
+  List<dynamic> _weekly = [];
   Map<String, dynamic>? _myStats;
   bool _loading = true;
+  late TabController _tabController;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _load();
+  }
+
+  @override
+  void dispose() { _tabController.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     try {
-      final res = await _api.get('/gamification/leaderboard');
-      final statsRes = await _api.get('/gamification/me');
-      if (mounted) setState(() { _entries = res['data']; _myStats = statsRes['data']; _loading = false; });
+      final results = await Future.wait([
+        _api.get('/gamification/leaderboard'),
+        _api.get('/gamification/leaderboard/weekly'),
+        _api.get('/gamification/me'),
+      ]);
+      if (mounted) setState(() { _global = results[0]['data']; _weekly = results[1]['data']; _myStats = results[2]['data']; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Leaderboard'), centerTitle: true),
+      backgroundColor: const Color(0xFFF8F9FC),
+      appBar: AppBar(title: const Text('Leaderboard'), centerTitle: true, backgroundColor: Colors.white, elevation: 0),
       body: _loading ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
         onRefresh: _load,
-        child: ListView(children: [
-          // My stats
-          if (_myStats != null) Container(
-            margin: const EdgeInsets.all(16), padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]), borderRadius: BorderRadius.circular(18)),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-              Column(children: [Text('${_myStats!['total_xp']}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)), const Text('XP', style: TextStyle(color: Colors.white70, fontSize: 12))]),
-              Column(children: [Text('Level ${_myStats!['level']}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)), const Text('Level', style: TextStyle(color: Colors.white70, fontSize: 12))]),
-              Column(children: [Text('${_myStats!['current_streak']}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)), const Text('Streak', style: TextStyle(color: Colors.white70, fontSize: 12))]),
+        child: CustomScrollView(slivers: [
+          // My Stats Card
+          if (_myStats != null) SliverToBoxAdapter(child: Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFEC4899)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
+            ),
+            child: Column(children: [
+              const Text('Your Stats', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 12),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                _myStatItem('🏆', '${_myStats!['total_xp']}', 'XP'),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _myStatItem('⭐', 'Lv ${_myStats!['level']}', 'Level'),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _myStatItem('🔥', '${_myStats!['current_streak']}d', 'Streak'),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _myStatItem('🏅', '${(_myStats!['badges'] is List ? (_myStats!['badges'] as List).length : 0)}', 'Badges'),
+              ]),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                child: Text('Best Streak: ${_myStats!['longest_streak']} days', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
             ]),
-          ),
-          // Entries
-          ..._entries.asMap().entries.map((e) {
-            final i = e.key;
-            final entry = e.value;
-            final isTop3 = i < 3;
-            final medalColors = [Colors.amber, Colors.grey[400]!, Colors.orange[300]!];
-            return ListTile(
-              leading: isTop3
-                ? CircleAvatar(backgroundColor: medalColors[i], child: Text('${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))
-                : CircleAvatar(backgroundColor: Colors.grey[200], child: Text('${i + 1}', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold))),
-              title: Text(entry['display_name'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('${entry['total_xp']} XP · Level ${entry['level']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              trailing: entry['current_streak'] > 0 ? Text('🔥 ${entry['current_streak']}d', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)) : null,
-            );
-          }),
-          if (_entries.isEmpty) const Padding(padding: EdgeInsets.all(40), child: Center(child: Text('No leaderboard data yet'))),
+          )),
+
+          // Tab bar
+          SliverToBoxAdapter(child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
+              indicatorPadding: const EdgeInsets.all(4),
+              labelColor: const Color(0xFF4F46E5),
+              unselectedLabelColor: Colors.grey[500],
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              tabs: const [Tab(text: 'All Time'), Tab(text: 'This Week')],
+            ),
+          )),
+
+          // List
+          SliverFillRemaining(child: TabBarView(
+            controller: _tabController,
+            children: [_buildList(_global), _buildList(_weekly)],
+          )),
         ]),
       ),
     );
+  }
+
+  Widget _buildList(List<dynamic> entries) {
+    if (entries.isEmpty) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey), SizedBox(height: 12), Text('No data yet', style: TextStyle(color: Colors.grey, fontSize: 16))]));
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: entries.length,
+      itemBuilder: (context, i) {
+        final e = entries[i];
+        final rank = i + 1;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: rank <= 3 ? [const Color(0xFFFFFBEB), const Color(0xFFF0F0F0), const Color(0xFFFFF7ED)][rank - 1] : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: rank <= 3 ? Border.all(color: [Colors.amber[300]!, Colors.grey[300]!, Colors.orange[200]!][rank - 1], width: 1.5) : null,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+          ),
+          child: Row(children: [
+            SizedBox(width: 36, child: rank <= 3
+              ? Text(['🥇', '🥈', '🥉'][rank - 1], style: const TextStyle(fontSize: 24), textAlign: TextAlign.center)
+              : Text('$rank', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[500]), textAlign: TextAlign.center)),
+            const SizedBox(width: 12),
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: rank <= 3 ? [Colors.amber, Colors.grey[400]!, Colors.orange[300]!][rank - 1] : const Color(0xFF4F46E5).withOpacity(0.1),
+              child: Text((e['display_name'] ?? 'U').substring(0, 1).toUpperCase(), style: TextStyle(color: rank <= 3 ? Colors.white : const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(e['display_name'] ?? 'User', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.grey[900])),
+              const SizedBox(height: 2),
+              Row(children: [
+                Text('${e['total_xp']} XP', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                const SizedBox(width: 8),
+                Container(width: 4, height: 4, decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Text('Level ${e['level']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              ]),
+            ])),
+            if ((e['current_streak'] ?? 0) > 0) Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('🔥', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 2),
+                Text('${e['current_streak']}d', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+              ]),
+            ),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _myStatItem(String emoji, String value, String label) {
+    return Column(children: [
+      Text(emoji, style: const TextStyle(fontSize: 20)),
+      const SizedBox(height: 4),
+      Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+    ]);
   }
 }
