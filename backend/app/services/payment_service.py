@@ -2,6 +2,8 @@
 import logging
 import hmac
 import hashlib
+import asyncio
+from functools import partial
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
@@ -20,11 +22,22 @@ PLAN_PRICES = {
     PlanType.PREMIUM: 199,
 }
 
+_razorpay_client = None
 
 def _get_razorpay_client():
-    """Get Razorpay client instance."""
-    import razorpay
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    """Get Razorpay client instance (singleton)."""
+    global _razorpay_client
+    if _razorpay_client is None:
+        import razorpay
+        _razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    return _razorpay_client
+
+
+async def _razorpay_create_order(order_data: dict) -> dict:
+    """Run synchronous Razorpay API call in thread pool to avoid blocking event loop."""
+    client = _get_razorpay_client()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, partial(client.order.create, order_data))
 
 
 async def get_subscription(db: AsyncSession, user_id: UUID) -> dict:
@@ -69,9 +82,8 @@ async def create_order(db: AsyncSession, user_id: UUID, plan: str) -> dict:
     amount_inr = PLAN_PRICES[plan_type]
     amount_paise = amount_inr * 100  # Razorpay uses paise
 
-    # Create Razorpay order
-    client = _get_razorpay_client()
-    razorpay_order = client.order.create({
+    # Create Razorpay order (async — runs in thread pool)
+    razorpay_order = await _razorpay_create_order({
         "amount": amount_paise,
         "currency": "INR",
         "receipt": f"examprep_{user_id}_{plan}",
