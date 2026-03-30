@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import 'practice_session_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -260,7 +261,9 @@ class _PracticeTabState extends State<PracticeTab> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Starting ${exam['name']} practice...')));
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PracticeSessionScreen(examId: exam['id'], examName: exam['name']),
+                    ));
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
