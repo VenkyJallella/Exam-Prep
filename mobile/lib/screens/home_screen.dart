@@ -59,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: [
         _buildDashboard(user),
         _buildPractice(),
+        _buildMore(),
         _buildProfile(user),
       ][_currentIndex],
       floatingActionButton: FloatingActionButton(
@@ -70,8 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz), label: 'Practice'),
+          NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view), label: 'More'),
           NavigationDestination(icon: Icon(Icons.person_outlined), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -176,6 +178,55 @@ class _HomeScreenState extends State<HomeScreen> {
     return const PracticeTab();
   }
 
+  Widget _buildMore() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Explore', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('All features at your fingertips', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+          const SizedBox(height: 20),
+
+          // Grid of features
+          GridView.count(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 3, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.9,
+            children: [
+              _moreItem(Icons.assignment, 'Mock Tests', Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MockTestsScreen()))),
+              _moreItem(Icons.bolt, 'Daily Quiz', Colors.amber[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
+              _moreItem(Icons.emoji_events, 'Challenges', Colors.deepOrange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChallengesScreen()))),
+              _moreItem(Icons.code, 'Coding', Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CodingScreen()))),
+              _moreItem(Icons.menu_book, 'Mistakes', Colors.red, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MistakesScreen()))),
+              _moreItem(Icons.leaderboard, 'Leaderboard', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
+              _moreItem(Icons.calendar_month, 'Study Plan', Colors.cyan, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyPlannerScreen()))),
+              _moreItem(Icons.history_edu, 'PYQ Papers', Colors.brown, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PYQScreen()))),
+              _moreItem(Icons.schedule, 'Scheduled', Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduledTestsScreen()))),
+              _moreItem(Icons.analytics, 'Analytics', Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))),
+              _moreItem(Icons.chat, 'AI Tutor', const Color(0xFF4F46E5), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()))),
+              _moreItem(Icons.workspace_premium, 'Plans', Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()))),
+            ],
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _moreItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)]),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 48, height: 48, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: color, size: 24)),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[800]), textAlign: TextAlign.center),
+        ]),
+      ),
+    );
+  }
+
   Widget _buildProfile(Map<String, dynamic>? user) {
     final name = user?['full_name'] ?? 'Student';
     final email = user?['email'] ?? '';
@@ -239,33 +290,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ]),
           const SizedBox(height: 20),
 
-          // Menu items
+          // Profile-only menu
           Container(
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)]),
             child: Column(children: [
-              _profileMenuTile(Icons.assignment, 'Mock Tests', 'Full exam simulation', Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MockTestsScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.bolt, 'Daily Quiz', '20 questions daily', Colors.amber, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.emoji_events, 'Challenges', 'Weekly goals', Colors.deepOrange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChallengesScreen()))),
-              _divider(),
               _profileMenuTile(Icons.analytics, 'Analytics', 'Performance insights', Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))),
               _divider(),
-              _profileMenuTile(Icons.menu_book, 'Mistake Book', 'Review mistakes', Colors.red, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MistakesScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.code, 'Coding', 'Solve problems', Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CodingScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.calendar_month, 'Study Planner', 'Weekly schedule', Colors.cyan, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyPlannerScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.history_edu, 'PYQ Papers', 'Previous year Qs', Colors.brown, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PYQScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.schedule, 'Scheduled Tests', 'Join live tests', Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduledTestsScreen()))),
+              _profileMenuTile(Icons.workspace_premium, 'Subscription', 'Manage plan', Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()))),
               _divider(),
               _profileMenuTile(Icons.chat, 'AI Tutor', 'Ask anything', const Color(0xFF4F46E5), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()))),
-              _divider(),
-              _profileMenuTile(Icons.workspace_premium, 'Subscription', 'Manage plan', Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()))),
             ]),
           ),
           const SizedBox(height: 16),
