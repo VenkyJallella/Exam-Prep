@@ -202,6 +202,22 @@ export default function BlogListPage() {
             </div>
           )}
 
+          {/* SEO static content — always visible for Google crawlers */}
+          <div className="mt-12 mx-auto max-w-3xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Exam Preparation Blog by ExamPrep</h2>
+            <p className="mt-2">
+              Welcome to the ExamPrep blog — your go-to resource for competitive exam preparation tips, strategies, and study guides.
+              We cover UPSC Civil Services, JEE Main & Advanced, NEET, SSC CGL, Banking (IBPS PO, SBI PO), GATE Computer Science,
+              CAT, and coding interview preparation. Our articles are written by education experts and AI, covering topics like
+              study plans, time management, subject-wise strategies, previous year paper analysis, and exam notifications.
+            </p>
+            <p className="mt-2">
+              Whether you are a first-time aspirant or a repeat candidate, our blog helps you stay updated with the latest exam
+              patterns, cut-off trends, and preparation methodologies. New articles are published regularly with actionable tips
+              you can apply immediately to improve your scores.
+            </p>
+          </div>
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-10 flex items-center justify-center gap-2">

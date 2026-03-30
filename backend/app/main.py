@@ -102,6 +102,121 @@ def create_app() -> FastAPI:
     async def health_check():
         return {"status": "ok", "version": settings.APP_VERSION}
 
+    @app.get("/api/v1/ssr")
+    async def server_side_render(url: str = ""):
+        """Serve pre-rendered HTML for search engine bots.
+
+        Generates static HTML with real content from DB so Google
+        can index SPA pages without executing JavaScript.
+        """
+        from fastapi.responses import HTMLResponse
+        from urllib.parse import urlparse
+        from app.database import AsyncSessionLocal
+        from sqlalchemy import select
+        from app.models.blog import BlogPost
+        from app.models.exam import Exam, Subject
+
+        parsed = urlparse(url)
+        path = parsed.path.rstrip("/") or "/"
+        base = "https://zencodio.com"
+
+        title = "ExamPrep - AI-Powered Competitive Exam Preparation"
+        description = "India's #1 AI-powered exam preparation platform for UPSC, JEE, NEET, SSC, Banking, GATE, CAT."
+        body_html = ""
+
+        async with AsyncSessionLocal() as db:
+            if path == "/" or path == "":
+                title = "ExamPrep - Free AI-Powered Competitive Exam Preparation | UPSC, JEE, NEET, SSC"
+                description = "Practice UPSC, JEE, NEET, SSC CGL, Banking, GATE, CAT with AI-generated questions, mock tests, daily quizzes, adaptive learning & analytics. Free to start."
+                exams = (await db.execute(select(Exam).where(Exam.is_active == True).order_by(Exam.order))).scalars().all()
+                body_html = "<h1>ExamPrep - AI-Powered Competitive Exam Preparation</h1>"
+                body_html += "<p>Practice with AI-generated exam-level questions. Adaptive difficulty, daily quizzes, coding challenges, AI tutor, and analytics.</p>"
+                body_html += "<h2>Exams Covered</h2><ul>"
+                for e in exams:
+                    body_html += f'<li><a href="{base}/exams/{e.slug}">{e.name} - {e.full_name or e.description or ""}</a></li>'
+                body_html += "</ul>"
+
+            elif path == "/blog":
+                title = "Blog - Exam Preparation Tips & Strategies | ExamPrep"
+                description = "Expert tips, strategies, and study guides for UPSC, JEE, NEET, SSC, Banking exam preparation."
+                blogs = (await db.execute(
+                    select(BlogPost).where(BlogPost.is_active == True, BlogPost.status == "published").order_by(BlogPost.created_at.desc()).limit(20)
+                )).scalars().all()
+                body_html = "<h1>ExamPrep Blog - Exam Preparation Tips & Strategies</h1>"
+                body_html += "<p>Read expert tips, strategies, and insights for competitive exam preparation in India.</p>"
+                if blogs:
+                    body_html += "<ul>"
+                    for b in blogs:
+                        body_html += f'<li><a href="{base}/blog/{b.slug}">{b.title}</a> - {b.excerpt or ""}</li>'
+                    body_html += "</ul>"
+                else:
+                    body_html += "<p>New articles coming soon. Check back for exam preparation tips and strategies.</p>"
+
+            elif path.startswith("/blog/"):
+                slug = path.split("/blog/")[1]
+                blog = (await db.execute(
+                    select(BlogPost).where(BlogPost.slug == slug, BlogPost.is_active == True)
+                )).scalar_one_or_none()
+                if blog:
+                    title = f"{blog.title} | ExamPrep Blog"
+                    description = blog.meta_description or blog.excerpt or ""
+                    body_html = f"<h1>{blog.title}</h1>"
+                    body_html += f"<article>{blog.content}</article>"
+
+            elif path.startswith("/exams/"):
+                slug = path.split("/exams/")[1]
+                exam = (await db.execute(
+                    select(Exam).where(Exam.slug == slug, Exam.is_active == True)
+                )).scalar_one_or_none()
+                if exam:
+                    title = f"{exam.name} Preparation - Practice Questions & Mock Tests | ExamPrep"
+                    description = exam.description or f"Practice for {exam.name} with AI-generated questions."
+                    subjects = (await db.execute(
+                        select(Subject).where(Subject.exam_id == exam.id, Subject.is_active == True).order_by(Subject.order)
+                    )).scalars().all()
+                    body_html = f"<h1>{exam.full_name or exam.name} Preparation</h1>"
+                    body_html += f"<p>{exam.description or ''}</p>"
+                    if subjects:
+                        body_html += "<h2>Subjects</h2><ul>"
+                        for s in subjects:
+                            body_html += f"<li>{s.name}</li>"
+                        body_html += "</ul>"
+                    body_html += f'<p><a href="{base}/register">Start practicing for {exam.name} free on ExamPrep</a></p>'
+
+            elif path in ("/about", "/pricing", "/terms", "/privacy", "/contact", "/disclaimer", "/dmca"):
+                page_slug = path.lstrip("/")
+                from app.models.page_content import PageContent
+                page = (await db.execute(
+                    select(PageContent).where(PageContent.slug == page_slug, PageContent.is_active == True)
+                )).scalar_one_or_none()
+                if page:
+                    title = f"{page.title} | ExamPrep"
+                    body_html = f"<h1>{page.title}</h1><div>{page.content}</div>"
+                else:
+                    # Use default content from pages API
+                    from app.api.v1.pages import DEFAULTS
+                    default = DEFAULTS.get(page_slug)
+                    if default:
+                        title = f"{default['title']} | ExamPrep"
+                        body_html = f"<h1>{default['title']}</h1><div>{default['content']}</div>"
+
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
+<meta name="description" content="{description}">
+<link rel="canonical" href="{base}{path}">
+</head>
+<body>
+{body_html}
+<p>Visit <a href="{base}">ExamPrep</a> - India's AI-powered competitive exam preparation platform.</p>
+</body>
+</html>"""
+
+        return HTMLResponse(content=html)
+
     @app.get("/sitemap.xml")
     async def dynamic_sitemap():
         """Dynamic sitemap including blog posts."""
