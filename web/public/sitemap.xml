@@ -3,17 +3,25 @@
   <!-- Main pages -->
   <url><loc>https://zencodio.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://zencodio.com/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://zencodio.com/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://zencodio.com/pricing</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>https://zencodio.com/blog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://zencodio.com/login</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://zencodio.com/register</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
 
-  <!-- Exam detail pages -->
+  <!-- Legal / Policy pages (important for AdSense) -->
+  <url><loc>https://zencodio.com/terms</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://zencodio.com/privacy</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://zencodio.com/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://zencodio.com/disclaimer</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://zencodio.com/dmca</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+
+  <!-- Exam detail pages (high-value SEO pages) -->
   <url><loc>https://zencodio.com/exams/upsc</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://zencodio.com/exams/jee</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://zencodio.com/exams/neet</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://zencodio.com/exams/ssc-cgl</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://zencodio.com/exams/banking</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://zencodio.com/exams/neet</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://zencodio.com/exams/gate-cs</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://zencodio.com/exams/cat</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://zencodio.com/exams/coding</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>

@@ -52,20 +52,30 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>ExamPrep - AI-Powered Competitive Exam Preparation</title>
-        <meta name="description" content="Prepare for UPSC, JEE, SSC, Banking, NEET, GATE, CAT exams with AI-generated questions, adaptive learning, mock tests, daily quizzes, and performance analytics. Free to start." />
-        <meta name="keywords" content="exam preparation, UPSC preparation, JEE practice, SSC CGL mock test, Banking exam, NEET questions, GATE CS, CAT preparation, AI questions, online test series, India" />
-        <meta property="og:title" content="ExamPrep - AI-Powered Competitive Exam Preparation" />
-        <meta property="og:description" content="Crack UPSC, JEE, SSC, Banking exams with AI-powered practice. 1500+ questions, daily quizzes, coding challenges. Free to start." />
+        <title>ExamPrep - Free AI-Powered Competitive Exam Preparation | UPSC, JEE, NEET, SSC</title>
+        <meta name="description" content="India's #1 free AI-powered exam preparation platform. Practice UPSC, JEE, NEET, SSC CGL, Banking, GATE, CAT with AI-generated questions, mock tests, daily quizzes, adaptive learning & detailed performance analytics. Start free today." />
+        <meta name="keywords" content="exam preparation online, UPSC preparation 2026, JEE Main mock test free, NEET practice questions, SSC CGL preparation online, Banking exam preparation, GATE CS mock test, CAT preparation free, competitive exam India, online test series free, AI exam preparation, free mock test online, daily quiz app, study planner app, previous year question papers, online coaching India, question bank free, best exam preparation app, UPSC mock test, JEE Advanced practice, NEET 2026 preparation, SSC exam preparation, IBPS PO preparation" />
+        <meta property="og:title" content="ExamPrep - Free AI-Powered Exam Preparation for UPSC, JEE, NEET, SSC" />
+        <meta property="og:description" content="Practice UPSC, JEE, NEET, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests & analytics. Free to start. Trusted by aspirants across India." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://zencodio.com" />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
         <link rel="canonical" href="https://zencodio.com" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org", "@type": "FAQPage",
           "mainEntity": [
-            {"@type": "Question", "name": "What exams does ExamPrep cover?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep covers UPSC, JEE, SSC CGL, Banking, NEET, GATE CS, CAT, and Coding exams."}},
-            {"@type": "Question", "name": "Is ExamPrep free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! Free plan includes 10 sessions/day, daily quizzes, all coding problems, and 30-day analytics."}},
-            {"@type": "Question", "name": "How does AI practice work?", "acceptedAnswer": {"@type": "Answer", "text": "AI generates exam-level questions adapted to your difficulty. It tracks mastery per topic and adjusts automatically."}},
+            {"@type": "Question", "name": "What competitive exams does ExamPrep cover?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep covers 8 major competitive exams in India: UPSC Civil Services, JEE Main & Advanced, NEET, SSC CGL, Banking (IBPS PO/Clerk, SBI), GATE Computer Science, CAT for MBA, and Coding/IT Placements."}},
+            {"@type": "Question", "name": "Is ExamPrep free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! ExamPrep offers a generous free plan with 10 practice sessions per day, daily quizzes, all coding problems, and 30-day analytics. Premium plans start at just ₹149/month for unlimited access."}},
+            {"@type": "Question", "name": "How does AI-powered exam preparation work?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep uses Google Gemini AI to generate exam-level questions adapted to your difficulty level. The adaptive learning engine tracks your mastery per topic and automatically adjusts question difficulty. You also get an AI chatbot tutor that knows your performance data."}},
+            {"@type": "Question", "name": "Can I take full-length mock tests on ExamPrep?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! ExamPrep offers full-length timed mock tests that follow the exact pattern of real exams — JEE (75 questions, 3 hours), UPSC Prelims (90 questions, 2 hours), NEET (180 questions, 200 minutes), and more. Negative marking and section-wise scoring are included."}},
+            {"@type": "Question", "name": "Does ExamPrep have previous year question papers?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, ExamPrep includes previous year question (PYQ) papers for all supported exams. You can practice year-wise or topic-wise with detailed solutions and explanations."}},
+            {"@type": "Question", "name": "How is ExamPrep different from other exam apps?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep is powered by AI that generates unlimited exam-level questions — you never run out of practice material. It features adaptive learning, a personal AI tutor, mistake book with flashcard review, coding practice with in-browser editor, and comprehensive analytics. All starting free."}},
+          ]
+        })}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org", "@type": "BreadcrumbList",
+          "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://zencodio.com"},
           ]
         })}</script>
       </Helmet>
@@ -245,6 +255,33 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* SEO Content Section */}
+      <section className="bg-white py-16 dark:bg-gray-950">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Why Choose ExamPrep for Competitive Exam Preparation?</h2>
+          <div className="mt-6 space-y-4 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+            <p>
+              ExamPrep is India's most advanced AI-powered competitive exam preparation platform, designed for aspirants preparing for UPSC Civil Services, JEE Main & Advanced, NEET, SSC CGL, Banking (IBPS PO/Clerk, SBI PO), GATE Computer Science, CAT, and coding interviews. Unlike traditional coaching or static question banks, ExamPrep uses Google Gemini AI to generate unlimited exam-level questions tailored to your current skill level.
+            </p>
+            <p>
+              Our adaptive learning engine continuously analyzes your performance across topics and automatically adjusts question difficulty. If you're strong in Thermodynamics but weak in Electrostatics, ExamPrep will serve more Electrostatics questions at the right difficulty to help you improve. This personalized approach means you spend time where it matters most.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white pt-2">Comprehensive Mock Tests Following Real Exam Patterns</h3>
+            <p>
+              Take full-length mock tests that exactly replicate real exam conditions — JEE Main with 75 questions across Physics, Chemistry, and Mathematics in 180 minutes; UPSC Prelims with 90 questions in 120 minutes; NEET with 180 questions in 200 minutes. Complete with negative marking, section-wise timing, and detailed performance analysis after each test.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white pt-2">Features That Set Us Apart</h3>
+            <p>
+              <strong>Daily Quiz:</strong> 20 fresh questions every day with a 20-minute timer. Compete on the leaderboard and build consistency with streak tracking. <strong>Mistake Book:</strong> Every wrong answer is automatically logged with the correct explanation, available in flashcard review mode. <strong>AI Chatbot Tutor:</strong> Ask questions like "How is my performance in Organic Chemistry?" and get data-driven answers from an AI that has full access to your analytics. <strong>Study Planner:</strong> AI generates a personalized weekly schedule based on your target exam date, daily available hours, and weak areas.
+            </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white pt-2">Start Free, Upgrade When Ready</h3>
+            <p>
+              ExamPrep's free plan gives you 10 practice sessions per day, daily quizzes, all coding problems, and 30-day analytics — enough for serious preparation. Pro (₹149/month) and Premium (₹199/month) plans unlock unlimited practice, AI features, PDF export, and advanced analytics. No credit card required to start.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Final CTA */}
       <section className="bg-gradient-to-r from-primary-600 to-accent-600 py-20">

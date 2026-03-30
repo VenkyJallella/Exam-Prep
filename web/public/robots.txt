@@ -1,4 +1,4 @@
-# ExamPrep Robots.txt
+# ExamPrep Robots.txt - zencodio.com
 User-agent: *
 Allow: /
 Allow: /blog
@@ -6,15 +6,43 @@ Allow: /blog/*
 Allow: /about
 Allow: /pricing
 Allow: /exams/*
+Allow: /terms
+Allow: /privacy
+Allow: /contact
+Allow: /disclaimer
+Allow: /dmca
+Allow: /login
+Allow: /register
 
 # Disallow private/dashboard routes
 Disallow: /dashboard
 Disallow: /practice
-Disallow: /tests
+Disallow: /tests/
 Disallow: /analytics
 Disallow: /profile
 Disallow: /admin
 Disallow: /api/
+Disallow: /coding
+Disallow: /daily-quiz
+Disallow: /challenges
+Disallow: /mistakes
+Disallow: /study-planner
+Disallow: /scheduled-tests
+Disallow: /export-pdf
+Disallow: /leaderboard
+Disallow: /subscription
+Disallow: /pyq
+
+# Allow Google AdSense crawler
+User-agent: Mediapartners-Google
+Allow: /
+
+# Allow Google AdsBot
+User-agent: AdsBot-Google
+Allow: /
 
 # Sitemap
 Sitemap: https://zencodio.com/sitemap.xml
+
+# Host
+Host: https://zencodio.com

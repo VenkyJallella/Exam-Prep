@@ -78,10 +78,15 @@ def create_app() -> FastAPI:
         urls = [
             (f"{base_url}/", "daily", "1.0"),
             (f"{base_url}/about", "monthly", "0.8"),
-            (f"{base_url}/pricing", "monthly", "0.8"),
+            (f"{base_url}/pricing", "monthly", "0.9"),
             (f"{base_url}/blog", "daily", "0.9"),
             (f"{base_url}/login", "monthly", "0.6"),
             (f"{base_url}/register", "monthly", "0.7"),
+            (f"{base_url}/terms", "monthly", "0.5"),
+            (f"{base_url}/privacy", "monthly", "0.5"),
+            (f"{base_url}/contact", "monthly", "0.6"),
+            (f"{base_url}/disclaimer", "monthly", "0.5"),
+            (f"{base_url}/dmca", "monthly", "0.4"),
         ]
 
         async with AsyncSessionLocal() as db:

@@ -184,6 +184,88 @@ Monday - Saturday: 9:00 AM - 6:00 PM IST
 Follow us for updates, tips, and daily quiz reminders.
 """,
     },
+    "disclaimer": {
+        "title": "Disclaimer",
+        "content": """## Disclaimer
+
+**Last Updated: March 2026**
+
+### General Disclaimer
+
+The information provided on ExamPrep (zencodio.com) is for general educational and informational purposes only. While we strive to keep the information up-to-date and correct, we make no representations or warranties of any kind, express or implied, about the completeness, accuracy, reliability, suitability, or availability of the platform or the information, products, services, or related graphics contained on the platform.
+
+### AI-Generated Content
+
+ExamPrep uses artificial intelligence (Google Gemini AI) to generate practice questions, explanations, blog posts, and study materials. While our AI generates high-quality, exam-level content:
+
+- AI-generated content may occasionally contain inaccuracies or errors.
+- The content should not be treated as a substitute for official textbooks, coaching, or exam authority guidelines.
+- We recommend users verify critical information from official sources such as UPSC, NTA, SSC, IBPS, and respective exam conducting bodies.
+
+### No Guarantee of Results
+
+ExamPrep is a practice and preparation tool. We do not guarantee:
+
+- Specific exam scores, ranks, or selection outcomes.
+- That the questions on our platform will appear in actual exams.
+- Accuracy of difficulty level mapping to actual exam standards.
+
+Exam success depends on multiple factors including individual effort, consistency, and overall preparation strategy.
+
+### Third-Party Content
+
+Our platform may contain links to external websites. We do not control and are not responsible for the content, privacy policies, or practices of any third-party websites.
+
+### Changes
+
+We reserve the right to update or modify this disclaimer at any time without prior notice. Users are encouraged to review this page periodically.
+
+### Contact
+
+For questions about this disclaimer, contact us at legal@zencodio.com.
+""",
+    },
+    "dmca": {
+        "title": "DMCA Policy",
+        "content": """## DMCA Policy
+
+**Last Updated: March 2026**
+
+### Copyright Notice
+
+ExamPrep respects the intellectual property rights of others and expects its users to do the same. In accordance with the Digital Millennium Copyright Act (DMCA), we will respond promptly to claims of copyright infringement committed using our platform.
+
+### Reporting Copyright Infringement
+
+If you believe that content available on ExamPrep infringes your copyright, please send a written notification containing:
+
+1. A physical or electronic signature of the copyright owner or authorized representative.
+2. Identification of the copyrighted work claimed to have been infringed.
+3. Identification of the material on our platform that is claimed to be infringing, with enough detail for us to locate it.
+4. Your contact information (name, address, telephone number, and email).
+5. A statement that you have a good faith belief that the use is not authorized by the copyright owner.
+6. A statement, under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on their behalf.
+
+### Send DMCA Notices To
+
+Email: legal@zencodio.com
+
+Subject Line: DMCA Takedown Request
+
+### Counter-Notification
+
+If you believe your content was removed by mistake, you may submit a counter-notification with:
+
+1. Your physical or electronic signature.
+2. Identification of the material that was removed and the location where it appeared.
+3. A statement under penalty of perjury that you have a good faith belief the material was removed by mistake.
+4. Your name, address, and telephone number, and a statement consenting to jurisdiction.
+
+### Repeat Infringers
+
+We may terminate the accounts of users who are repeat infringers.
+""",
+    },
 }
 
 

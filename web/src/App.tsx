@@ -78,6 +78,8 @@ export default function App() {
           <Route path="/terms" element={<StaticPage />} />
           <Route path="/privacy" element={<StaticPage />} />
           <Route path="/contact" element={<StaticPage />} />
+          <Route path="/disclaimer" element={<StaticPage />} />
+          <Route path="/dmca" element={<StaticPage />} />
           <Route path="/page/:slug" element={<StaticPage />} />
           <Route path="/blog" element={<BlogListPage />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
