@@ -8,6 +8,10 @@ import 'leaderboard_screen.dart';
 import 'coding_screen.dart';
 import 'chatbot_screen.dart';
 import 'subscription_screen.dart';
+import 'mock_tests_screen.dart';
+import 'analytics_screen.dart';
+import 'mistakes_screen.dart';
+import 'challenges_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,8 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 _actionCard(Icons.play_circle_filled, 'Start Practice', 'AI-powered questions', const Color(0xFF4F46E5), () => setState(() => _currentIndex = 1)),
+                _actionCard(Icons.assignment, 'Mock Tests', 'Full-length exam simulation', Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MockTestsScreen()))),
                 _actionCard(Icons.bolt, 'Daily Quiz', '20 questions, 20 minutes', Colors.amber[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
                 _actionCard(Icons.code, 'Coding', 'Solve coding problems', Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CodingScreen()))),
+                _actionCard(Icons.emoji_events, 'Challenges', 'Weekly goals for bonus XP', Colors.deepOrange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChallengesScreen()))),
+                _actionCard(Icons.analytics, 'Analytics', 'Track your performance', Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))),
+                _actionCard(Icons.menu_book, 'Mistake Book', 'Review wrong answers', Colors.red[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MistakesScreen()))),
                 _actionCard(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
               ],
             ],
@@ -229,7 +237,15 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)]),
             child: Column(children: [
+              _profileMenuTile(Icons.assignment, 'Mock Tests', 'Full exam simulation', Colors.indigo, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MockTestsScreen()))),
+              _divider(),
               _profileMenuTile(Icons.bolt, 'Daily Quiz', '20 questions daily', Colors.amber, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.emoji_events, 'Challenges', 'Weekly goals', Colors.deepOrange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChallengesScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.analytics, 'Analytics', 'Performance insights', Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.menu_book, 'Mistake Book', 'Review mistakes', Colors.red, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MistakesScreen()))),
               _divider(),
               _profileMenuTile(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
               _divider(),
