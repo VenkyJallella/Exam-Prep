@@ -249,14 +249,17 @@ async def seed():
     await init_db()
 
     async with AsyncSessionLocal() as db:
-        # Check if data already exists
-        from sqlalchemy import select, func
-        count = (await db.execute(select(func.count(Exam.id)))).scalar()
-        if count > 0:
-            print(f"Database already has {count} exams. Skipping seed.")
-            return
-
+        from sqlalchemy import select
+        created = 0
         for exam_data in EXAMS_DATA:
+            # Check if this specific exam already exists
+            existing = (await db.execute(
+                select(Exam).where(Exam.slug == exam_data["slug"])
+            )).scalar_one_or_none()
+            if existing:
+                print(f"  Exam '{exam_data['name']}' already exists, skipping.")
+                continue
+
             exam = Exam(
                 name=exam_data["name"],
                 slug=exam_data["slug"],
@@ -286,9 +289,13 @@ async def seed():
                     )
                     db.add(topic)
 
+            created += 1
+            print(f"  + Created exam '{exam_data['name']}' with {len(exam_data['subjects'])} subjects")
+
         # Create admin user (skip if already exists)
-        from sqlalchemy import select as sel
-        existing_admin = (await db.execute(sel(User).where(User.role == UserRole.ADMIN))).scalar_one_or_none()
+        existing_admin = (await db.execute(
+            select(User).where(User.role == UserRole.ADMIN)
+        )).scalar_one_or_none()
         if not existing_admin:
             admin = User(
                 email="admin@zencodio.com",
@@ -310,8 +317,7 @@ async def seed():
             print(f"  - Admin user already exists: {existing_admin.email}")
 
         await db.commit()
-        print("Seed data created successfully!")
-        print(f"  - {len(EXAMS_DATA)} exams with subjects and topics")
+        print(f"Seed complete! Created {created} new exams (total defined: {len(EXAMS_DATA)})")
 
 
 if __name__ == "__main__":
