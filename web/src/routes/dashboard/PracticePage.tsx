@@ -212,8 +212,25 @@ export default function PracticePage() {
 
         {/* Start button */}
         {selectedExam && (
-          <button onClick={handleStart} disabled={starting} className="btn-primary w-full py-3 text-base">
-            {starting ? 'Starting...' : `Start Practice (${questionCount} questions)`}
+          <button onClick={handleStart} disabled={starting}
+            className={`relative w-full overflow-hidden rounded-xl py-4 text-base font-bold text-white shadow-lg transition-all active:scale-[0.98] ${starting ? 'bg-gray-400' : 'bg-gradient-to-r from-primary-600 to-accent-600 hover:shadow-xl hover:scale-[1.01]'}`}>
+            {starting ? (
+              <span className="flex items-center justify-center gap-3">
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Preparing your questions...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+                </svg>
+                Start Practice ({questionCount} questions)
+              </span>
+            )}
+            {!starting && <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] animate-[shimmer_2s_infinite]" />}
           </button>
         )}
       </div>
