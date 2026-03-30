@@ -28,9 +28,8 @@ PYTHONPATH=. alembic upgrade head
 
 # 3b. Seed exam data (safe — skips if already seeded)
 echo "[4/6] Seeding exam data (if needed)..."
-cd "$APP_DIR"
-PYTHONPATH="$APP_DIR/backend" python scripts/seed_data.py
 cd "$APP_DIR/backend"
+PYTHONPATH=. python ../scripts/seed_data.py
 deactivate
 
 # 5. Rebuild frontend
