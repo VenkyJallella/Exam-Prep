@@ -14,7 +14,7 @@ class PracticeSessionScreen extends StatefulWidget {
   State<PracticeSessionScreen> createState() => _PracticeSessionScreenState();
 }
 
-class _PracticeSessionScreenState extends State<PracticeSessionScreen> with TickerProviderStateMixin {
+class _PracticeSessionScreenState extends State<PracticeSessionScreen> {
   final _api = ApiService();
   List<dynamic> _questions = [];
   int _currentIndex = 0;
@@ -28,19 +28,13 @@ class _PracticeSessionScreenState extends State<PracticeSessionScreen> with Tick
   int _wrong = 0;
   bool _sessionComplete = false;
   Map<String, dynamic>? _sessionResult;
-  late AnimationController _fadeController;
-  late AnimationController _scaleController;
+  bool _visible = false;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _scaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 150), lowerBound: 0.95, upperBound: 1.0, value: 1.0);
     _startSession();
   }
-
-  @override
-  void dispose() { _fadeController.dispose(); _scaleController.dispose(); super.dispose(); }
 
   Future<void> _startSession() async {
     try {
@@ -50,7 +44,7 @@ class _PracticeSessionScreenState extends State<PracticeSessionScreen> with Tick
       final res = await _api.post('/practice/sessions', body);
       _sessionId = res['data']['id'];
       final sessionRes = await _api.get('/practice/sessions/$_sessionId');
-      if (mounted) { setState(() { _questions = sessionRes['data']['questions']; _loading = false; }); _fadeController.forward(); }
+      if (mounted) { setState(() { _questions = sessionRes['data']['questions']; _loading = false; _visible = true; }); }
     } on ApiException catch (e) {
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: Colors.red)); Navigator.pop(context); }
     } catch (_) {
@@ -73,9 +67,9 @@ class _PracticeSessionScreenState extends State<PracticeSessionScreen> with Tick
 
   Future<void> _nextQuestion() async {
     if (_currentIndex < _questions.length - 1) {
-      _fadeController.reset();
-      setState(() { _currentIndex++; _selectedAnswer = null; _answered = false; _answerResult = null; });
-      _fadeController.forward();
+      setState(() { _visible = false; });
+      await Future.delayed(const Duration(milliseconds: 150));
+      setState(() { _currentIndex++; _selectedAnswer = null; _answered = false; _answerResult = null; _visible = true; });
     } else {
       try {
         final res = await _api.post('/practice/sessions/$_sessionId/complete');
@@ -132,8 +126,9 @@ class _PracticeSessionScreenState extends State<PracticeSessionScreen> with Tick
           ),
         ],
       ),
-      body: FadeTransition(
-        opacity: _fadeController,
+      body: AnimatedOpacity(
+        opacity: _visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 250),
         child: Column(children: [
           // Progress
           Container(
