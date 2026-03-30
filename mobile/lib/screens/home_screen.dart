@@ -6,6 +6,7 @@ import 'practice_session_screen.dart';
 import 'daily_quiz_screen.dart';
 import 'leaderboard_screen.dart';
 import 'coding_screen.dart';
+import 'chatbot_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildPractice(),
         _buildProfile(user),
       ][_currentIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen())),
+        backgroundColor: const Color(0xFF4F46E5),
+        child: const Icon(Icons.chat_rounded, color: Colors.white),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
