@@ -195,8 +195,8 @@ export default function HomePage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {[
               { name: 'Free', price: 'Free', desc: '10 sessions/day, daily quiz, all coding', cta: 'Start Free', link: '/register', border: 'border-gray-200 dark:border-gray-800' },
-              { name: 'Pro', price: '₹149/mo', desc: 'Unlimited practice, AI features, 90d analytics', cta: 'Get Pro', link: '/register', border: 'border-primary-500 ring-2 ring-primary-200' },
-              { name: 'Premium', price: '₹199/mo', desc: 'Everything + topper comparison, PDF export', cta: 'Go Premium', link: '/register', border: 'border-purple-500' },
+              { name: 'Pro', price: '₹149/mo', desc: 'Unlimited practice, AI features, 90d analytics', cta: 'Get Pro', link: '/subscription', border: 'border-primary-500 ring-2 ring-primary-200' },
+              { name: 'Premium', price: '₹199/mo', desc: 'Everything + topper comparison, PDF export', cta: 'Go Premium', link: '/subscription', border: 'border-purple-500' },
             ].map(p => (
               <div key={p.name} className={`rounded-2xl border-2 bg-white p-6 text-center dark:bg-gray-950 ${p.border}`}>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">{p.name}</h3>
