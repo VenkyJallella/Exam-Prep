@@ -92,19 +92,23 @@ async def _generate_on_demand(
 
     all_questions: list[Question] = []
     remaining = count
+    max_retries = 3  # Prevent infinite loops if AI keeps failing
+    retries = 0
     # Generate in batches until we have enough
-    while remaining > 0:
-        batch = min(5, remaining)
+    while remaining > 0 and retries < max_retries:
+        batch = min(10, remaining)
         try:
             logger.info("On-demand generation: %d questions (difficulty=%d)", batch, difficulty)
             questions = await generate_questions(db, exam_id, gen_topic_id, count=batch, difficulty=difficulty)
+            if not questions:
+                retries += 1
+                continue
             all_questions.extend(questions)
             remaining -= len(questions)
-            if not questions:
-                break
+            retries = 0  # Reset on success
         except Exception as e:
             logger.error("On-demand generation failed: %s", e)
-            break
+            retries += 1
     return all_questions
 
 
@@ -128,13 +132,16 @@ async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -
             body.topic_id, body.difficulty, body.question_count,
         )
 
-    # STEP 2: If pool is completely empty, generate ONE batch on-demand (can't start with 0)
-    if not questions and body.exam_id:
-        logger.info("Pool empty, generating on-demand")
-        questions = await _generate_on_demand(
-            db, body.exam_id, body.subject_id, body.topic_id, difficulty,
-            min(5, body.question_count),
+    # STEP 2: If pool returned fewer than requested, generate remaining on-demand
+    if len(questions) < body.question_count and body.exam_id:
+        shortfall = body.question_count - len(questions)
+        logger.info("Pool returned %d/%d — generating %d on-demand", len(questions), body.question_count, shortfall)
+        existing_ids = {q.id for q in questions}
+        extra = await _generate_on_demand(
+            db, body.exam_id, body.subject_id, body.topic_id, difficulty, shortfall,
         )
+        # Avoid duplicates
+        questions.extend(q for q in extra if q.id not in existing_ids)
 
     if not questions:
         raise AppException(
@@ -142,10 +149,8 @@ async def create_session(db: AsyncSession, user_id: UUID, body: SessionCreate) -
             "No questions available. Please try a different exam/subject or try again shortly.",
         )
 
-    # STEP 3: If we got fewer than requested, that's OK — start with what we have
-    # Background refill ensures next session will have more
     if len(questions) < body.question_count:
-        logger.info("Starting session with %d/%d questions (pool will refill)", len(questions), body.question_count)
+        logger.warning("Could only provide %d/%d questions after on-demand generation", len(questions), body.question_count)
 
     # STEP 4: Trigger background refill (non-blocking) so next session has more
     if body.exam_id:

@@ -131,6 +131,117 @@ EXAMS_DATA = [
             },
         ],
     },
+    {
+        "name": "NEET",
+        "slug": "neet",
+        "full_name": "National Eligibility cum Entrance Test",
+        "description": "Medical entrance exam for MBBS, BDS, and AYUSH admissions across India.",
+        "order": 5,
+        "subjects": [
+            {
+                "name": "Physics",
+                "slug": "neet-physics",
+                "topics": ["Mechanics", "Thermodynamics", "Electrostatics", "Current Electricity", "Optics", "Modern Physics", "Waves"],
+            },
+            {
+                "name": "Chemistry",
+                "slug": "neet-chemistry",
+                "topics": ["Physical Chemistry", "Organic Chemistry", "Inorganic Chemistry", "Chemical Bonding", "Coordination Compounds", "Biomolecules"],
+            },
+            {
+                "name": "Biology",
+                "slug": "neet-biology",
+                "topics": ["Cell Biology", "Genetics", "Human Physiology", "Plant Physiology", "Ecology", "Evolution", "Biotechnology", "Reproduction"],
+            },
+        ],
+    },
+    {
+        "name": "GATE CS",
+        "slug": "gate-cs",
+        "full_name": "Graduate Aptitude Test in Engineering - Computer Science",
+        "description": "Postgraduate entrance exam for M.Tech admissions and PSU recruitment.",
+        "order": 6,
+        "subjects": [
+            {
+                "name": "Data Structures & Algorithms",
+                "slug": "dsa",
+                "topics": ["Arrays & Strings", "Linked Lists", "Trees", "Graphs", "Sorting & Searching", "Dynamic Programming", "Greedy Algorithms"],
+            },
+            {
+                "name": "Operating Systems",
+                "slug": "operating-systems",
+                "topics": ["Process Management", "Memory Management", "File Systems", "CPU Scheduling", "Deadlocks", "Synchronization"],
+            },
+            {
+                "name": "DBMS",
+                "slug": "dbms",
+                "topics": ["Relational Model", "SQL", "Normalization", "Transactions", "Indexing", "ER Model"],
+            },
+            {
+                "name": "Computer Networks",
+                "slug": "computer-networks",
+                "topics": ["OSI Model", "TCP/IP", "Routing", "Network Security", "Application Layer", "Transport Layer"],
+            },
+            {
+                "name": "Theory of Computation",
+                "slug": "toc",
+                "topics": ["Finite Automata", "Context-Free Grammar", "Turing Machines", "Regular Languages", "Pushdown Automata", "Decidability"],
+            },
+            {
+                "name": "Digital Logic & Computer Organization",
+                "slug": "digital-logic",
+                "topics": ["Boolean Algebra", "Combinational Circuits", "Sequential Circuits", "Pipelining", "Cache Memory", "I/O Systems"],
+            },
+        ],
+    },
+    {
+        "name": "CAT",
+        "slug": "cat",
+        "full_name": "Common Admission Test",
+        "description": "MBA entrance exam for IIMs and top business schools in India.",
+        "order": 7,
+        "subjects": [
+            {
+                "name": "Verbal Ability & Reading Comprehension",
+                "slug": "varc",
+                "topics": ["Reading Comprehension", "Para Jumbles", "Sentence Completion", "Critical Reasoning", "Summary Questions", "Odd Sentence Out"],
+            },
+            {
+                "name": "Data Interpretation & Logical Reasoning",
+                "slug": "dilr",
+                "topics": ["Tables & Charts", "Bar Graphs", "Pie Charts", "Seating Arrangement", "Puzzles", "Logical Connectives", "Binary Logic"],
+            },
+            {
+                "name": "Quantitative Ability",
+                "slug": "cat-quant",
+                "topics": ["Arithmetic", "Algebra", "Number System", "Geometry", "Mensuration", "Combinatorics", "Probability"],
+            },
+        ],
+    },
+    {
+        "name": "Coding",
+        "slug": "coding",
+        "full_name": "Coding & Programming Practice",
+        "description": "Data structures, algorithms, and programming for IT placements and interviews.",
+        "order": 8,
+        "subjects": [
+            {
+                "name": "Data Structures",
+                "slug": "data-structures",
+                "topics": ["Arrays", "Linked Lists", "Stacks & Queues", "Trees", "Graphs", "Hash Tables", "Heaps"],
+            },
+            {
+                "name": "Algorithms",
+                "slug": "algorithms",
+                "topics": ["Sorting", "Searching", "Dynamic Programming", "Greedy", "Divide & Conquer", "Backtracking", "Graph Algorithms"],
+            },
+            {
+                "name": "Programming Concepts",
+                "slug": "programming-concepts",
+                "topics": ["OOP", "Recursion", "Bit Manipulation", "String Algorithms", "Math & Number Theory", "System Design Basics"],
+            },
+        ],
+    },
 ]
 
 
@@ -175,27 +286,32 @@ async def seed():
                     )
                     db.add(topic)
 
-        # Create admin user
-        admin = User(
-            email="admin@examprep.com",
-            hashed_password=hash_password("admin123456"),
-            full_name="Admin",
-            role=UserRole.ADMIN,
-            email_verified=True,
-        )
-        db.add(admin)
-        await db.flush()
+        # Create admin user (skip if already exists)
+        from sqlalchemy import select as sel
+        existing_admin = (await db.execute(sel(User).where(User.role == UserRole.ADMIN))).scalar_one_or_none()
+        if not existing_admin:
+            admin = User(
+                email="admin@zencodio.com",
+                hashed_password=hash_password("Admin@2026"),
+                full_name="Admin",
+                role=UserRole.ADMIN,
+                email_verified=True,
+            )
+            db.add(admin)
+            await db.flush()
 
-        profile = UserProfile(user_id=admin.id, display_name="Admin")
-        db.add(profile)
+            profile = UserProfile(user_id=admin.id, display_name="Admin")
+            db.add(profile)
 
-        gamification = UserGamification(user_id=admin.id)
-        db.add(gamification)
+            gamification = UserGamification(user_id=admin.id)
+            db.add(gamification)
+            print(f"  - Admin user: admin@zencodio.com")
+        else:
+            print(f"  - Admin user already exists: {existing_admin.email}")
 
         await db.commit()
         print("Seed data created successfully!")
         print(f"  - {len(EXAMS_DATA)} exams with subjects and topics")
-        print(f"  - Admin user: admin@examprep.com / admin123456")
 
 
 if __name__ == "__main__":
