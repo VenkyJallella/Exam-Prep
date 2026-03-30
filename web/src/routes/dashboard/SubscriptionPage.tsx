@@ -83,22 +83,35 @@ export default function SubscriptionPage() {
 
   const handleUpgrade = async (planId: string) => {
     if (planId === 'free' || planId === currentPlan) return;
+
+    // Check if Razorpay script is loaded
+    if (!(window as any).Razorpay) {
+      toast.error('Payment system not loaded. Please refresh the page.');
+      return;
+    }
+
     setUpgrading(planId);
     try {
       // 1. Create Razorpay order via backend
+      console.log('[Payment] Creating order for plan:', planId);
       const orderRes = await apiClient.post('/payments/orders', { plan: planId });
       const orderData = orderRes.data.data;
+      console.log('[Payment] Order created:', orderData);
+
+      if (!orderData.razorpay_order_id) {
+        throw new Error('No Razorpay order ID received from server');
+      }
 
       // 2. Open Razorpay Checkout
-      const options = {
+      const options: Record<string, any> = {
         key: orderData.razorpay_key_id,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: orderData.name,
-        description: orderData.description,
+        name: 'ExamPrep',
+        description: orderData.description || `ExamPrep ${planId} Plan`,
         order_id: orderData.razorpay_order_id,
-        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-          // 3. Verify payment via backend
+        handler: async (response: any) => {
+          console.log('[Payment] Razorpay success:', response);
           try {
             await apiClient.post('/payments/verify', {
               payment_id: orderData.payment_id,
@@ -107,8 +120,6 @@ export default function SubscriptionPage() {
               razorpay_signature: response.razorpay_signature,
             });
             toast.success(`Upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)}!`);
-
-            // Refresh usage
             const usageRes = await apiClient.get('/payments/usage');
             setUsage(usageRes.data.data);
             setCurrentPlan(usageRes.data.data.plan);
@@ -119,22 +130,30 @@ export default function SubscriptionPage() {
         },
         modal: {
           ondismiss: () => {
+            console.log('[Payment] Modal dismissed');
             setUpgrading(null);
-            toast.error('Payment cancelled');
           },
+          escape: true,
+          confirm_close: true,
         },
         prefill: {},
         theme: { color: '#4f46e5' },
       };
 
+      console.log('[Payment] Opening Razorpay with key:', orderData.razorpay_key_id, 'order:', orderData.razorpay_order_id);
       const rzp = new (window as any).Razorpay(options);
+
       rzp.on('payment.failed', (response: any) => {
+        console.log('[Payment] Payment failed:', response.error);
         toast.error(response.error?.description || 'Payment failed. Please try again.');
         setUpgrading(null);
       });
+
       rzp.open();
-    } catch {
-      toast.error('Could not initiate payment. Please try again.');
+      console.log('[Payment] rzp.open() called successfully');
+    } catch (err: any) {
+      console.error('[Payment] Error:', err);
+      toast.error(err?.message || 'Could not initiate payment. Please try again.');
       setUpgrading(null);
     }
   };
