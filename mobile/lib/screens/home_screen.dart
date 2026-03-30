@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'practice_session_screen.dart';
+import 'daily_quiz_screen.dart';
+import 'leaderboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -97,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 _actionCard(Icons.play_circle_filled, 'Start Practice', 'AI-powered questions', const Color(0xFF4F46E5), () => setState(() => _currentIndex = 1)),
-                _actionCard(Icons.bolt, 'Daily Quiz', '20 questions, 20 minutes', Colors.amber[700]!, () {}),
-                _actionCard(Icons.code, 'Coding', 'Solve coding problems', Colors.teal, () {}),
-                _actionCard(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () {}),
+                _actionCard(Icons.bolt, 'Daily Quiz', '20 questions, 20 minutes', Colors.amber[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
+                _actionCard(Icons.code, 'Coding', 'Solve coding problems', Colors.teal, () => setState(() => _currentIndex = 1)),
+                _actionCard(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
               ],
             ],
           ),
@@ -178,11 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ]),
             ],
             const SizedBox(height: 24),
-            _profileTile(Icons.analytics, 'Analytics', () {}),
-            _profileTile(Icons.book, 'Mistake Book', () {}),
-            _profileTile(Icons.calendar_today, 'Study Planner', () {}),
-            _profileTile(Icons.workspace_premium, 'Subscription', () {}),
-            _profileTile(Icons.settings, 'Settings', () {}),
+            _profileTile(Icons.analytics, 'Analytics', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Analytics coming in next update')))),
+            _profileTile(Icons.bolt, 'Daily Quiz', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
+            _profileTile(Icons.leaderboard, 'Leaderboard', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
+            _profileTile(Icons.workspace_premium, 'Subscription', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Manage at examprep.in/subscription')))),
+            _profileTile(Icons.settings, 'Settings', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings coming in next update')))),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
