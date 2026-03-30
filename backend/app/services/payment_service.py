@@ -1,9 +1,12 @@
-"""Payment & Subscription service with live Razorpay integration."""
+"""Payment & Subscription service with live Razorpay integration.
+
+Uses httpx (async HTTP client) instead of Razorpay SDK to avoid
+pkg_resources/setuptools dependency issues and event loop blocking.
+"""
 import logging
 import hmac
 import hashlib
-import asyncio
-from functools import partial
+import httpx
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
@@ -15,29 +18,26 @@ from app.config import settings
 
 logger = logging.getLogger("examprep.payments")
 
-# Plan pricing (INR, in paise for Razorpay — 149 INR = 14900 paise)
 PLAN_PRICES = {
     PlanType.FREE: 0,
     PlanType.PRO: 149,
     PlanType.PREMIUM: 199,
 }
 
-_razorpay_client = None
-
-def _get_razorpay_client():
-    """Get Razorpay client instance (singleton)."""
-    global _razorpay_client
-    if _razorpay_client is None:
-        import razorpay
-        _razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-    return _razorpay_client
+RAZORPAY_API = "https://api.razorpay.com/v1"
 
 
-async def _razorpay_create_order(order_data: dict) -> dict:
-    """Run synchronous Razorpay API call in thread pool to avoid blocking event loop."""
-    client = _get_razorpay_client()
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, partial(client.order.create, order_data))
+async def _razorpay_request(method: str, path: str, json_data: dict | None = None) -> dict:
+    """Make async HTTP request to Razorpay API using httpx."""
+    async with httpx.AsyncClient(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
+        timeout=30.0,
+    ) as client:
+        response = await client.request(method, f"{RAZORPAY_API}{path}", json=json_data)
+        if response.status_code >= 400:
+            logger.error("Razorpay API error: %s %s → %s %s", method, path, response.status_code, response.text)
+            raise AppException(400, "PAYMENT_ERROR", f"Payment service error: {response.json().get('error', {}).get('description', 'Unknown error')}")
+        return response.json()
 
 
 async def get_subscription(db: AsyncSession, user_id: UUID) -> dict:
@@ -50,14 +50,8 @@ async def get_subscription(db: AsyncSession, user_id: UUID) -> dict:
     sub = result.scalar_one_or_none()
 
     if not sub:
-        return {
-            "plan": "free",
-            "is_active": True,
-            "starts_at": None,
-            "expires_at": None,
-        }
+        return {"plan": "free", "is_active": True, "starts_at": None, "expires_at": None}
 
-    # Check if expired
     if sub.expires_at and sub.expires_at < datetime.now(timezone.utc):
         sub.is_active = False
         sub.plan = PlanType.FREE
@@ -74,27 +68,24 @@ async def get_subscription(db: AsyncSession, user_id: UUID) -> dict:
 
 
 async def create_order(db: AsyncSession, user_id: UUID, plan: str) -> dict:
-    """Create a Razorpay payment order for subscription upgrade."""
+    """Create a Razorpay payment order."""
     plan_type = PlanType(plan)
     if plan_type == PlanType.FREE:
         raise AppException(400, "INVALID_PLAN", "Cannot purchase free plan")
 
     amount_inr = PLAN_PRICES[plan_type]
-    amount_paise = amount_inr * 100  # Razorpay uses paise
+    amount_paise = amount_inr * 100
 
-    # Create Razorpay order (async — runs in thread pool)
-    razorpay_order = await _razorpay_create_order({
+    # Create Razorpay order via async HTTP (no SDK needed)
+    razorpay_order = await _razorpay_request("POST", "/orders", {
         "amount": amount_paise,
         "currency": "INR",
         "receipt": f"examprep_{user_id}_{plan}",
-        "notes": {
-            "plan": plan,
-            "user_id": str(user_id),
-        },
+        "notes": {"plan": plan, "user_id": str(user_id)},
     })
     logger.info("Razorpay order created: %s for user %s, plan %s", razorpay_order["id"], user_id, plan)
 
-    # Create payment record
+    # Save payment record
     payment = Payment(
         user_id=user_id,
         amount=amount_inr,
@@ -149,7 +140,6 @@ async def verify_payment(db: AsyncSession, user_id: UUID, payment_id: UUID, paym
     if not razorpay_payment_id or not razorpay_signature or not razorpay_order_id:
         raise AppException(400, "MISSING_DATA", "Missing Razorpay payment details")
 
-    # Verify signature
     is_valid = _verify_razorpay_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature)
     if not is_valid:
         payment.status = PaymentStatus.FAILED
@@ -157,12 +147,10 @@ async def verify_payment(db: AsyncSession, user_id: UUID, payment_id: UUID, paym
         logger.warning("Payment signature verification failed for payment %s", payment_id)
         raise AppException(400, "INVALID_SIGNATURE", "Payment verification failed. Please contact support.")
 
-    # Update payment
     payment.status = PaymentStatus.COMPLETED
     payment.razorpay_payment_id = razorpay_payment_id
     payment.razorpay_signature = razorpay_signature
 
-    # Create/update subscription
     plan = payment.extra_data.get("plan", "pro") if payment.extra_data else "pro"
 
     # Deactivate old subscriptions
@@ -202,8 +190,8 @@ async def handle_webhook(db: AsyncSession, event: str, payload: dict) -> dict:
     logger.info("Razorpay webhook: %s", event)
 
     if event == "payment.captured":
-        # Payment was auto-captured — update payment status if not already done
-        razorpay_payment_id = payload.get("payload", {}).get("payment", {}).get("entity", {}).get("id")
+        entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        razorpay_payment_id = entity.get("id")
         if razorpay_payment_id:
             result = await db.execute(
                 select(Payment).where(Payment.razorpay_payment_id == razorpay_payment_id)
@@ -212,10 +200,10 @@ async def handle_webhook(db: AsyncSession, event: str, payload: dict) -> dict:
             if payment and payment.status != PaymentStatus.COMPLETED:
                 payment.status = PaymentStatus.COMPLETED
                 await db.commit()
-                logger.info("Webhook: Payment %s marked as captured", razorpay_payment_id)
 
     elif event == "payment.failed":
-        razorpay_order_id = payload.get("payload", {}).get("payment", {}).get("entity", {}).get("order_id")
+        entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+        razorpay_order_id = entity.get("order_id")
         if razorpay_order_id:
             result = await db.execute(
                 select(Payment).where(Payment.razorpay_order_id == razorpay_order_id)
@@ -224,7 +212,6 @@ async def handle_webhook(db: AsyncSession, event: str, payload: dict) -> dict:
             if payment and payment.status == PaymentStatus.PENDING:
                 payment.status = PaymentStatus.FAILED
                 await db.commit()
-                logger.info("Webhook: Payment for order %s marked as failed", razorpay_order_id)
 
     return {"status": "ok"}
 
