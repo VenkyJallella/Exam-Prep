@@ -162,54 +162,133 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProfile(Map<String, dynamic>? user) {
+    final name = user?['full_name'] ?? 'Student';
+    final email = user?['email'] ?? '';
+    final xp = _gamification?['total_xp'] ?? _stats?['total_xp'] ?? 0;
+    final level = _gamification?['level'] ?? _stats?['level'] ?? 1;
+    final streak = _gamification?['current_streak'] ?? _stats?['current_streak'] ?? 0;
+    final longest = _gamification?['longest_streak'] ?? 0;
+    final questions = _stats?['total_questions_attempted'] ?? 0;
+    final accuracy = _stats?['accuracy_pct'] ?? 0;
+    final tests = _stats?['total_tests_taken'] ?? 0;
+    final xpProgress = ((xp % 500) / 500 * 100).clamp(0, 100);
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: const Color(0xFF4F46E5),
-              child: Text(user?['full_name']?.substring(0, 1).toUpperCase() ?? 'U', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+        child: Column(children: [
+          // Header card
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFEC4899)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8))],
             ),
-            const SizedBox(height: 12),
-            Text(user?['full_name'] ?? 'Student', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text(user?['email'] ?? '', style: TextStyle(color: Colors.grey[500])),
-            const SizedBox(height: 8),
-            if (_gamification != null) ...[
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _badge('🔥 ${_gamification!['current_streak']} streak', Colors.orange),
-                const SizedBox(width: 8),
-                _badge('⭐ Level ${_gamification!['level']}', Colors.blue),
-                const SizedBox(width: 8),
-                _badge('✨ ${_gamification!['total_xp']} XP', Colors.green),
+            child: Column(children: [
+              CircleAvatar(radius: 36, backgroundColor: Colors.white.withOpacity(0.2), child: Text(name.substring(0, 1).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold))),
+              const SizedBox(height: 10),
+              Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(email, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 14),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                _profileStat('🔥', '$streak', 'Streak'),
+                Container(width: 1, height: 30, color: Colors.white24),
+                _profileStat('⭐', 'Lv $level', 'Level'),
+                Container(width: 1, height: 30, color: Colors.white24),
+                _profileStat('✨', '$xp', 'XP'),
+                Container(width: 1, height: 30, color: Colors.white24),
+                _profileStat('🏅', '$longest', 'Best'),
               ]),
-            ],
-            const SizedBox(height: 24),
-            _profileTile(Icons.analytics, 'Analytics', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Analytics coming in next update')))),
-            _profileTile(Icons.bolt, 'Daily Quiz', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
-            _profileTile(Icons.leaderboard, 'Leaderboard', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
-            _profileTile(Icons.workspace_premium, 'Subscription', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Manage at examprep.in/subscription')))),
-            _profileTile(Icons.settings, 'Settings', () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings coming in next update')))),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  await context.read<AuthProvider>().logout();
-                  if (mounted) Navigator.pushReplacementNamed(context, '/login');
-                },
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text('Logout', style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 12),
+              // XP progress bar
+              Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('Level $level', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  Text('${500 - (xp % 500)} XP to Lv ${level + 1}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                ]),
+                const SizedBox(height: 4),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: xpProgress / 100, backgroundColor: Colors.white24, color: Colors.white, minHeight: 6)),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          // Stats grid
+          Row(children: [
+            _miniStat('$questions', 'Questions', Icons.quiz_outlined, Colors.blue),
+            const SizedBox(width: 10),
+            _miniStat('${accuracy is double ? accuracy.toStringAsFixed(1) : accuracy}%', 'Accuracy', Icons.target, Colors.green),
+            const SizedBox(width: 10),
+            _miniStat('$tests', 'Tests', Icons.assignment_outlined, Colors.purple),
+          ]),
+          const SizedBox(height: 20),
+
+          // Menu items
+          Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)]),
+            child: Column(children: [
+              _profileMenuTile(Icons.bolt, 'Daily Quiz', '20 questions daily', Colors.amber, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DailyQuizScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.code, 'Coding', 'Solve problems', Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CodingScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.chat, 'AI Tutor', 'Ask anything', const Color(0xFF4F46E5), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.workspace_premium, 'Subscription', 'Manage plan', Colors.orange, () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit examprep.in/subscription')))),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          // Logout
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: () async { await context.read<AuthProvider>().logout(); if (mounted) Navigator.pushReplacementNamed(context, '/login'); },
+            icon: const Icon(Icons.logout, color: Colors.red, size: 20),
+            label: const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          )),
+          const SizedBox(height: 8),
+          Text('ExamPrep v1.0.0', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+        ]),
       ),
     );
   }
+
+  Widget _profileStat(String emoji, String value, String label) {
+    return Column(children: [
+      Text(emoji, style: const TextStyle(fontSize: 16)),
+      const SizedBox(height: 2),
+      Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+    ]);
+  }
+
+  Widget _miniStat(String value, String label, IconData icon, Color color) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
+      child: Column(children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+      ]),
+    ));
+  }
+
+  Widget _profileMenuTile(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    );
+  }
+
+  Widget _divider() => Divider(height: 1, indent: 70, color: Colors.grey[100]);
 
   Widget _badge(String text, Color color) {
     return Container(
