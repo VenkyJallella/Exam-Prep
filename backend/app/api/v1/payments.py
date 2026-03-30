@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,11 +76,28 @@ async def get_usage(user: User = Depends(get_current_user), db: AsyncSession = D
 
 
 @router.post("/webhook")
-async def razorpay_webhook(request_body: dict, db: AsyncSession = Depends(get_db)):
-    """Razorpay webhook endpoint — no auth required (Razorpay calls this)."""
+async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Razorpay webhook endpoint — validates signature before processing."""
     import hmac, hashlib
     from app.config import settings
 
+    body_bytes = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature", "")
+
+    if not signature or not settings.RAZORPAY_KEY_SECRET:
+        return {"status": "error", "message": "Missing signature"}
+
+    expected = hmac.new(
+        settings.RAZORPAY_KEY_SECRET.encode(),
+        body_bytes,
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, signature):
+        return {"status": "error", "message": "Invalid signature"}
+
+    import json
+    request_body = json.loads(body_bytes)
     event = request_body.get("event", "")
     data = await payment_service.handle_webhook(db, event, request_body)
     return {"status": "success", "data": data}

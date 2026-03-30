@@ -364,9 +364,15 @@ async def change_user_role(
     if not u:
         from app.exceptions import NotFoundError
         raise NotFoundError("User")
-    u.role = body.get("role", "user")
+    from app.models.user import UserRole
+    new_role = body.get("role", "student")
+    try:
+        u.role = UserRole(new_role)
+    except ValueError:
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_ROLE", f"Invalid role. Allowed: {[r.value for r in UserRole]}")
     await db.commit()
-    return {"status": "success", "data": {"id": str(u.id), "role": u.role}}
+    return {"status": "success", "data": {"id": str(u.id), "role": u.role.value if hasattr(u.role, 'value') else str(u.role)}}
 
 
 @router.patch("/users/{user_id}/subscription")

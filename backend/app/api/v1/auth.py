@@ -40,12 +40,7 @@ async def send_otp(body: dict = Body(...)):
     await send_otp_email(email, otp)
     logger.info("OTP sent to %s", email)
 
-    from app.config import settings
-    response = {"message": f"OTP sent to {email}. Valid for 5 minutes."}
-    if settings.DEBUG:
-        response["otp"] = otp  # Only in dev mode for testing
-
-    return {"status": "success", "data": response}
+    return {"status": "success", "data": {"message": f"OTP sent to {email}. Valid for 5 minutes."}}
 
 
 @router.post("/verify-otp")
@@ -61,7 +56,8 @@ async def verify_otp(body: dict = Body(...)):
     cache_key = f"otp:{email}"
     stored_otp = await cache_get(cache_key)
 
-    if not stored_otp or stored_otp != otp:
+    import hmac as _hmac
+    if not stored_otp or not _hmac.compare_digest(str(stored_otp), str(otp)):
         from app.exceptions import AppException
         raise AppException(400, "INVALID_OTP", "Invalid or expired OTP. Please request a new one.")
 
@@ -100,9 +96,14 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/password/reset")
 async def request_reset(body: PasswordResetRequest, db: AsyncSession = Depends(get_db)):
     token = await auth_service.request_password_reset(db, body.email)
-    # Always return success (don't reveal if email exists)
-    # In production: send email with token
-    return APIResponse(data={"message": "If an account with that email exists, a reset link has been sent.", "token": token})
+    # Send reset link via email (never expose token in API response)
+    if token:
+        from app.services.email_service import send_password_reset_email
+        try:
+            await send_password_reset_email(body.email, token)
+        except Exception:
+            pass  # Don't reveal email delivery status
+    return APIResponse(data={"message": "If an account with that email exists, a reset link has been sent."})
 
 
 @router.post("/password/reset/confirm")

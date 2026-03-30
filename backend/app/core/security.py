@@ -87,6 +87,12 @@ async def get_current_user(
     return user
 
 
+def _token_blacklist_key(token: str) -> str:
+    """Generate a safe blacklist key using full token hash."""
+    import hashlib
+    return f"blacklist:{hashlib.sha256(token.encode()).hexdigest()}"
+
+
 async def blacklist_token(token: str):
     """Add token to Redis blacklist until it expires."""
     from app.core.cache import cache_set
@@ -96,9 +102,9 @@ async def blacklist_token(token: str):
         exp = payload.get("exp", 0)
         ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 0)
         if ttl > 0:
-            await cache_set(f"blacklist:{token[:32]}", "1", ttl_seconds=ttl)
+            await cache_set(_token_blacklist_key(token), "1", ttl_seconds=ttl)
     except JWTError:
-        pass  # Token already invalid, no need to blacklist
+        pass
 
 
 async def is_token_blacklisted(token: str) -> bool:
@@ -106,7 +112,7 @@ async def is_token_blacklisted(token: str) -> bool:
     from app.core.cache import cache_get
 
     try:
-        result = await cache_get(f"blacklist:{token[:32]}")
+        result = await cache_get(_token_blacklist_key(token))
         return result is not None
     except Exception:
         return False
