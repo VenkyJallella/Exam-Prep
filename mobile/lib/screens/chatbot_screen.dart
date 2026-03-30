@@ -99,7 +99,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     bottomLeft: Radius.circular(isUser ? 18 : 4), bottomRight: Radius.circular(isUser ? 4 : 18),
                   ),
                 ),
-                child: Text(msg['content'] ?? '', style: TextStyle(color: isUser ? Colors.white : Colors.grey[800], fontSize: 14, height: 1.5)),
+                child: _renderMessage(msg['content'] ?? '', isUser),
               ),
             );
           },
@@ -151,6 +151,39 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           ]),
         ),
       ]),
+    );
+  }
+
+  Widget _renderMessage(String text, bool isUser) {
+    // Strip markdown and render as rich text
+    final color = isUser ? Colors.white : Colors.grey[800]!;
+    final lines = text.split('\n');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map((line) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) return const SizedBox(height: 6);
+
+        // Bold text: **text**
+        final spans = <TextSpan>[];
+        final boldRegex = RegExp(r'\*\*(.+?)\*\*');
+        int lastEnd = 0;
+        for (final match in boldRegex.allMatches(trimmed)) {
+          if (match.start > lastEnd) spans.add(TextSpan(text: trimmed.substring(lastEnd, match.start)));
+          spans.add(TextSpan(text: match.group(1), style: const TextStyle(fontWeight: FontWeight.bold)));
+          lastEnd = match.end;
+        }
+        if (lastEnd < trimmed.length) spans.add(TextSpan(text: trimmed.substring(lastEnd)));
+
+        // Bullet points
+        final isBullet = trimmed.startsWith('•') || trimmed.startsWith('- ') || RegExp(r'^\d+\.').hasMatch(trimmed);
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: 3, left: isBullet ? 4 : 0),
+          child: RichText(text: TextSpan(style: TextStyle(color: color, fontSize: 14, height: 1.5), children: spans.isEmpty ? [TextSpan(text: trimmed)] : spans)),
+        );
+      }).toList(),
     );
   }
 }
