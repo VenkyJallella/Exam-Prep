@@ -7,23 +7,19 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTickerProviderStateMixin {
+class _LeaderboardScreenState extends State<LeaderboardScreen> {
   final _api = ApiService();
   List<dynamic> _global = [];
   List<dynamic> _weekly = [];
   Map<String, dynamic>? _myStats;
   bool _loading = true;
-  late TabController _tabController;
+  int _tabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _load();
   }
-
-  @override
-  void dispose() { _tabController.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     try {
@@ -77,23 +73,32 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
           // Tab bar
           SliverToBoxAdapter(child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]),
-              indicatorPadding: const EdgeInsets.all(4),
-              labelColor: const Color(0xFF4F46E5),
-              unselectedLabelColor: Colors.grey[500],
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              tabs: const [Tab(text: 'All Time'), Tab(text: 'This Week')],
-            ),
+            child: Row(children: [
+              Expanded(child: GestureDetector(
+                onTap: () => setState(() => _tabIndex = 0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(color: _tabIndex == 0 ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12), boxShadow: _tabIndex == 0 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : []),
+                  child: Text('All Time', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _tabIndex == 0 ? const Color(0xFF4F46E5) : Colors.grey[500])),
+                ),
+              )),
+              Expanded(child: GestureDetector(
+                onTap: () => setState(() => _tabIndex = 1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(color: _tabIndex == 1 ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12), boxShadow: _tabIndex == 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : []),
+                  child: Text('This Week', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _tabIndex == 1 ? const Color(0xFF4F46E5) : Colors.grey[500])),
+                ),
+              )),
+            ]),
           )),
 
           // List
-          SliverFillRemaining(child: TabBarView(
-            controller: _tabController,
-            children: [_buildList(_global), _buildList(_weekly)],
-          )),
+          SliverFillRemaining(child: _buildList(_tabIndex == 0 ? _global : _weekly)),
         ]),
       ),
     );
