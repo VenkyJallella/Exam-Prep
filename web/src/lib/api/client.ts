@@ -19,7 +19,16 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: handle 401 + refresh
+// Prevent concurrent refresh attempts
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
+function processQueue(token: string) {
+  refreshQueue.forEach((cb) => cb(token));
+  refreshQueue = [];
+}
+
+// Response interceptor: handle 401 + refresh (with dedup)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -28,8 +37,19 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          refreshQueue.push((newToken: string) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            resolve(apiClient(originalRequest));
+          });
+        });
+      }
+
       const refreshToken = useAuthStore.getState().refreshToken;
       if (refreshToken) {
+        isRefreshing = true;
         try {
           const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refresh_token: refreshToken,
@@ -37,8 +57,15 @@ apiClient.interceptors.response.use(
           const { access_token, refresh_token } = res.data.data;
           useAuthStore.getState().setTokens(access_token, refresh_token);
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+          // Process queued requests with new token
+          processQueue(access_token);
+          isRefreshing = false;
+
           return apiClient(originalRequest);
         } catch {
+          isRefreshing = false;
+          refreshQueue = [];
           useAuthStore.getState().logout();
           window.location.href = '/login';
         }
