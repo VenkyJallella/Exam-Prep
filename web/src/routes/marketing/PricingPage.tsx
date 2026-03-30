@@ -28,7 +28,7 @@ const tiers = [
     period: '/mo',
     description: 'Unlock AI features and unlimited practice.',
     cta: 'Upgrade to Pro',
-    ctaLink: '/subscription',
+    ctaLink: '/register?plan=pro',
     highlighted: true,
     features: [
       'Unlimited practice sessions',
@@ -49,7 +49,7 @@ const tiers = [
     period: '/mo',
     description: 'Everything in Pro + exclusive features.',
     cta: 'Go Premium',
-    ctaLink: '/subscription',
+    ctaLink: '/register?plan=premium',
     highlighted: false,
     features: [
       'Everything in Pro',
