@@ -17,6 +17,7 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
   bool _loading = true;
   bool _submitted = false;
   bool _alreadyAttempted = false;
+  bool _started = false;
   Map<String, dynamic>? _result;
 
   @override
@@ -76,6 +77,63 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
       );
     }
 
+    // Start screen
+    if (!_started && _questions.isNotEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(title: const Text('Daily Quiz'), backgroundColor: Colors.white, elevation: 0),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(children: [
+            const SizedBox(height: 20),
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]), borderRadius: BorderRadius.circular(22)),
+              child: const Center(child: Text('⚡', style: TextStyle(fontSize: 36))),
+            ),
+            const SizedBox(height: 20),
+            Text(_quiz!['title'] ?? 'Daily Quiz', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+              child: Column(children: [
+                _infoRow('Questions', '${_questions.length}'),
+                const Divider(height: 20),
+                _infoRow('Time Limit', '${_quiz!['duration_minutes']} minutes'),
+                const Divider(height: 20),
+                _infoRow('Difficulty', 'Mixed'),
+                const Divider(height: 20),
+                _infoRow('Attempts', '1 per day', valueColor: Colors.red),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(14)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Instructions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber[800], fontSize: 13)),
+                const SizedBox(height: 6),
+                Text('• Timer starts when you tap Start\n• Navigate between questions freely\n• Quiz auto-submits when time runs out\n• One attempt per day only',
+                  style: TextStyle(color: Colors.amber[900], fontSize: 12, height: 1.5)),
+              ]),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(width: double.infinity, height: 58, child: Container(
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]), borderRadius: BorderRadius.circular(18),
+                boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]),
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _started = true),
+                icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                label: const Text('Start Quiz', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+              ),
+            )),
+          ]),
+        ),
+      );
+    }
+
     // Quiz taking
     final q = _questions[_currentQ];
     final options = q['options'] as Map<String, dynamic>;
@@ -119,4 +177,6 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
   }
 
   Widget _statBox(String value, String label, Color color) => Expanded(child: Container(padding: const EdgeInsets.symmetric(vertical: 18), decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)), child: Column(children: [Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)), Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 12))])));
+
+  Widget _infoRow(String label, String value, {Color? valueColor}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 14)), Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: valueColor ?? Colors.grey[900]))]);
 }
