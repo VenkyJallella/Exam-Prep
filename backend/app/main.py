@@ -21,32 +21,42 @@ logger = logging.getLogger("examprep")
 async def _pool_refill_loop():
     """Background loop that keeps question pools healthy.
 
-    Runs every 10 minutes, refills up to 5 topic+difficulty combos per cycle.
-    Each cycle generates ~50 questions (5 batches x 10 questions).
-    Runs inside the FastAPI process — no separate worker needed.
+    Stops generating when total questions exceed MAX_TOTAL_QUESTIONS.
+    This prevents unnecessary Gemini API costs.
     """
     import asyncio
     from app.database import AsyncSessionLocal
+    from sqlalchemy import select, func
+    from app.models.question import Question
 
-    # Wait 30 seconds after startup before first run
-    await asyncio.sleep(30)
-    logger.info("Pool auto-refill loop started")
+    MAX_TOTAL_QUESTIONS = 5000  # Stop auto-refill after this many total questions
+    REFILL_INTERVAL = 1800      # 30 minutes between cycles (saves API costs)
+
+    await asyncio.sleep(60)
+    logger.info("Pool auto-refill loop started (max: %d questions)", MAX_TOTAL_QUESTIONS)
 
     while True:
         try:
             async with AsyncSessionLocal() as db:
-                from app.services.question_pool_service import refill_all_low_pools
-                result = await refill_all_low_pools(db, max_batches=5)
-                if result["total_generated"] > 0:
-                    logger.info(
-                        "Auto-refill: %d batches, %d questions generated",
-                        result["refilled"], result["total_generated"],
-                    )
+                # Check total question count first
+                total = (await db.execute(
+                    select(func.count()).select_from(Question).where(Question.is_active == True)
+                )).scalar() or 0
+
+                if total >= MAX_TOTAL_QUESTIONS:
+                    logger.info("Pool healthy: %d questions (max: %d). Skipping refill.", total, MAX_TOTAL_QUESTIONS)
+                else:
+                    from app.services.question_pool_service import refill_all_low_pools
+                    result = await refill_all_low_pools(db, max_batches=3)
+                    if result["total_generated"] > 0:
+                        logger.info(
+                            "Auto-refill: %d batches, %d questions (total: %d/%d)",
+                            result["refilled"], result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS,
+                        )
         except Exception as e:
             logger.error("Auto-refill error: %s", e)
 
-        # Wait 10 minutes between cycles
-        await asyncio.sleep(600)
+        await asyncio.sleep(REFILL_INTERVAL)
 
 
 @asynccontextmanager
