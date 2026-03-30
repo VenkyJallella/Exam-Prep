@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { authAPI } from '@/lib/api/auth';
 import toast from 'react-hot-toast';
 import FormInput from '@/components/ui/FormInput';
+
+const planOptions = [
+  { id: 'free', name: 'Free', price: 'Free', desc: '10 sessions/day, daily quiz, coding', highlight: false },
+  { id: 'pro', name: 'Pro', price: '₹149/mo', desc: 'Unlimited practice, AI features, 90d analytics', highlight: true },
+  { id: 'premium', name: 'Premium', price: '₹199/mo', desc: 'Everything + PDF export, topper comparison', highlight: false },
+];
 
 interface FormErrors {
   fullName?: string;
@@ -41,7 +47,17 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('free');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Pre-select plan from URL query (e.g., /register?plan=pro)
+  useState(() => {
+    const planFromUrl = searchParams.get('plan');
+    if (planFromUrl && ['free', 'pro', 'premium'].includes(planFromUrl)) {
+      setSelectedPlan(planFromUrl);
+    }
+  });
 
   const validators: Record<string, (value: string) => string | undefined> = {
     fullName: (v) => {
@@ -136,7 +152,7 @@ export default function RegisterPage() {
     try {
       await authAPI.register({ email, password, full_name: fullName });
       toast.success('Account created! Please log in.');
-      navigate('/login');
+      navigate(selectedPlan !== 'free' ? `/login?redirect=/subscription` : '/login');
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Registration failed');
     } finally { setLoading(false); }
@@ -269,8 +285,34 @@ export default function RegisterPage() {
               placeholder="Re-enter your password"
             />
 
+            {/* Plan Selection */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Choose your plan</label>
+              <div className="grid grid-cols-3 gap-2">
+                {planOptions.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.id)}
+                    className={`relative rounded-lg border-2 p-3 text-center transition-all ${
+                      selectedPlan === plan.id
+                        ? plan.id === 'premium' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    {plan.highlight && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-bold text-white">Popular</span>
+                    )}
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{plan.name}</p>
+                    <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">{plan.price}</p>
+                    <p className="mt-1 text-[10px] leading-tight text-gray-500">{plan.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Creating account...' : selectedPlan === 'free' ? 'Create Free Account' : `Create Account & Pay ${selectedPlan === 'pro' ? '₹149' : '₹199'}`}
             </button>
           </form>
         </div>
