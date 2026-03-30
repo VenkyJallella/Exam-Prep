@@ -12,6 +12,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Map<String, dynamic>? _usage;
   bool _loading = true;
   bool _upgrading = false;
+  String get currentPlan => _usage?['plan'] ?? 'free';
 
   @override
   void initState() { super.initState(); _load(); }
@@ -111,6 +112,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text(f, style: TextStyle(color: Colors.grey[700], fontSize: 13)),
           ]),
         )),
+        if (!isCurrent && name == 'Free' && currentPlan != 'free') ...[
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, height: 46, child: OutlinedButton(
+            onPressed: _upgrading ? null : () async {
+              final confirmed = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+                title: const Text('Switch to Free?'), content: const Text('You will lose access to premium features.'),
+                actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Switch', style: TextStyle(color: Colors.red)))],
+              ));
+              if (confirmed != true) return;
+              try { await _api.post('/payments/cancel'); _load(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Switched to Free'), backgroundColor: Colors.green)); } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
+            },
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.grey), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            child: const Text('Switch to Free', style: TextStyle(fontWeight: FontWeight.bold)),
+          )),
+        ],
         if (!isCurrent && name != 'Free') ...[
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, height: 46, child: ElevatedButton(
