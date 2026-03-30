@@ -218,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(children: [
             _miniStat('$questions', 'Questions', Icons.quiz_outlined, Colors.blue),
             const SizedBox(width: 10),
-            _miniStat('${accuracy is double ? accuracy.toStringAsFixed(1) : accuracy}%', 'Accuracy', Icons.target, Colors.green),
+            _miniStat('${accuracy is double ? accuracy.toStringAsFixed(1) : accuracy}%', 'Accuracy', Icons.gps_fixed, Colors.green),
             const SizedBox(width: 10),
             _miniStat('$tests', 'Tests', Icons.assignment_outlined, Colors.purple),
           ]),
