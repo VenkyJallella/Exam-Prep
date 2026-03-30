@@ -14,14 +14,28 @@ Allow: /dmca
 Allow: /login
 Allow: /register
 
-# Disallow private/dashboard routes
+# Allow public API endpoints for Google to render pages
+Allow: /api/v1/blog/
+Allow: /api/v1/exams/
+Allow: /api/v1/pages/
+Allow: /api/v1/ssr
+
+# Block private API endpoints
+Disallow: /api/v1/admin/
+Disallow: /api/v1/users/
+Disallow: /api/v1/practice/
+Disallow: /api/v1/payments/
+Disallow: /api/v1/analytics/
+Disallow: /api/v1/notifications/
+Disallow: /api/v1/chatbot/
+Disallow: /api/v1/auth/
+
+# Block dashboard routes
 Disallow: /dashboard
-Disallow: /practice
 Disallow: /tests/
 Disallow: /analytics
 Disallow: /profile
 Disallow: /admin
-Disallow: /api/
 Disallow: /coding
 Disallow: /daily-quiz
 Disallow: /challenges
