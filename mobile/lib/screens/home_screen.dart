@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Practice Tab — full selection flow like web app
+// Practice Tab — interactive design
 class PracticeTab extends StatefulWidget {
   const PracticeTab({super.key});
   @override
@@ -238,6 +238,9 @@ class _PracticeTabState extends State<PracticeTab> {
   int? _difficulty;
   bool _loading = true;
   bool _starting = false;
+
+  final _examIcons = {'UPSC': '🏛️', 'JEE': '⚙️', 'SSC CGL': '📋', 'Banking': '🏦', 'GATE CS': '💻', 'NEET': '🩺', 'CAT': '📊', 'Coding': '🖥️'};
+  final _examColors = {'UPSC': [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)], 'JEE': [const Color(0xFF10B981), const Color(0xFF059669)], 'SSC CGL': [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)], 'Banking': [const Color(0xFFF97316), const Color(0xFFEA580C)], 'GATE CS': [const Color(0xFF06B6D4), const Color(0xFF0891B2)], 'NEET': [const Color(0xFFEC4899), const Color(0xFFDB2777)], 'CAT': [const Color(0xFFF59E0B), const Color(0xFFD97706)], 'Coding': [const Color(0xFF6366F1), const Color(0xFF4F46E5)]};
 
   @override
   void initState() {
@@ -260,13 +263,7 @@ class _PracticeTabState extends State<PracticeTab> {
     if (_selectedExam == null) return;
     setState(() => _starting = true);
     Navigator.push(context, MaterialPageRoute(
-      builder: (_) => PracticeSessionScreen(
-        examId: _selectedExam!['id'],
-        examName: _selectedExam!['name'],
-        subjectId: _selectedSubject?['id'],
-        questionCount: _questionCount,
-        difficulty: _difficulty,
-      ),
+      builder: (_) => PracticeSessionScreen(examId: _selectedExam!['id'], examName: _selectedExam!['name'], subjectId: _selectedSubject?['id'], questionCount: _questionCount, difficulty: _difficulty),
     ));
     setState(() => _starting = false);
   }
@@ -276,137 +273,130 @@ class _PracticeTabState extends State<PracticeTab> {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Start Practice', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text('Select exam, subject, and preferences', style: TextStyle(color: Colors.grey[600])),
-            const SizedBox(height: 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Start Practice', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Select exam, subject, and preferences', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+          const SizedBox(height: 24),
 
-            // Step 1: Select Exam
-            _sectionTitle('1. SELECT EXAM'),
-            const SizedBox(height: 8),
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _exams.map((exam) {
-                  final selected = _selectedExam?['id'] == exam['id'];
-                  return ChoiceChip(
-                    label: Text(exam['name']),
-                    selected: selected,
-                    onSelected: (_) => _selectExam(Map<String, dynamic>.from(exam)),
-                    selectedColor: const Color(0xFF4F46E5).withOpacity(0.15),
-                    labelStyle: TextStyle(
-                      color: selected ? const Color(0xFF4F46E5) : Colors.grey[700],
-                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: selected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-            // Step 2: Select Subject
-            if (_subjects.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              _sectionTitle('2. SELECT SUBJECT'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _subjects.map((subject) {
-                  final selected = _selectedSubject?['id'] == subject['id'];
-                  return ChoiceChip(
-                    label: Text(subject['name']),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _selectedSubject = selected ? null : Map<String, dynamic>.from(subject)),
-                    selectedColor: const Color(0xFF4F46E5).withOpacity(0.15),
-                    labelStyle: TextStyle(
-                      color: selected ? const Color(0xFF4F46E5) : Colors.grey[700],
-                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: selected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            // Step 3: Settings
-            if (_selectedExam != null) ...[
-              const SizedBox(height: 20),
-              _sectionTitle('SETTINGS'),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Questions', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(12)),
-                      child: DropdownButton<int>(
-                        value: _questionCount, isExpanded: true, underline: const SizedBox(),
-                        items: [5, 10, 15, 20, 25, 30].map((n) => DropdownMenuItem(value: n, child: Text('$n questions'))).toList(),
-                        onChanged: (v) => setState(() => _questionCount = v!),
-                      ),
-                    ),
-                  ],
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Difficulty', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(12)),
-                      child: DropdownButton<int?>(
-                        value: _difficulty, isExpanded: true, underline: const SizedBox(),
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('Any')),
-                          ...([1, 2, 3, 4, 5].map((d) => DropdownMenuItem(value: d, child: Text(['Easy', 'Medium-Easy', 'Medium', 'Hard', 'Very Hard'][d - 1])))),
-                        ],
-                        onChanged: (v) => setState(() => _difficulty = v),
-                      ),
-                    ),
-                  ],
-                )),
-              ]),
-            ],
-
-            // Start button
-            if (_selectedExam != null) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity, height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _starting ? null : _startPractice,
-                  icon: _starting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.play_arrow),
-                  label: Text(_starting ? 'Starting...' : 'Start Practice ($_questionCount questions)', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5), foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
+          // Exam cards grid
+          Text('SELECT EXAM', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.5)),
+          const SizedBox(height: 12),
+          if (_loading) const Center(child: CircularProgressIndicator())
+          else GridView.builder(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 2.2),
+            itemCount: _exams.length,
+            itemBuilder: (context, i) {
+              final exam = _exams[i];
+              final selected = _selectedExam?['id'] == exam['id'];
+              final colors = _examColors[exam['name']] ?? [const Color(0xFF4F46E5), const Color(0xFF7C3AED)];
+              return GestureDetector(
+                onTap: () => _selectExam(Map<String, dynamic>.from(exam)),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    gradient: selected ? LinearGradient(colors: colors) : null,
+                    color: selected ? null : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: selected ? Colors.transparent : Colors.grey[200]!, width: selected ? 0 : 1.5),
+                    boxShadow: selected ? [BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    child: Row(children: [
+                      Text(_examIcons[exam['name']] ?? '📝', style: const TextStyle(fontSize: 24)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text(exam['name'], style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: selected ? Colors.white : Colors.grey[900])),
+                        Text(exam['description']?.toString().split('.')[0] ?? '', style: TextStyle(fontSize: 10, color: selected ? Colors.white70 : Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ])),
+                      if (selected) const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    ]),
                   ),
                 ),
-              ),
-            ],
+              );
+            },
+          ),
+
+          // Subjects
+          if (_subjects.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text('SELECT SUBJECT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.5)),
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: _subjects.map((s) {
+              final sel = _selectedSubject?['id'] == s['id'];
+              return GestureDetector(
+                onTap: () => setState(() => _selectedSubject = sel ? null : Map<String, dynamic>.from(s)),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: sel ? const Color(0xFF4F46E5) : Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: sel ? const Color(0xFF4F46E5) : Colors.grey[300]!),
+                    boxShadow: sel ? [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                  ),
+                  child: Text(s['name'], style: TextStyle(color: sel ? Colors.white : Colors.grey[700], fontWeight: sel ? FontWeight.bold : FontWeight.w500, fontSize: 13)),
+                ),
+              );
+            }).toList()),
           ],
-        ),
+
+          // Settings
+          if (_selectedExam != null) ...[
+            const SizedBox(height: 24),
+            Text('SETTINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.5)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Questions', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
+                    child: DropdownButton<int>(value: _questionCount, isExpanded: true, underline: const SizedBox(), icon: Icon(Icons.expand_more, color: Colors.grey[600]),
+                      items: [5, 10, 15, 20, 30].map((n) => DropdownMenuItem(value: n, child: Text('$n', style: const TextStyle(fontWeight: FontWeight.w600)))).toList(),
+                      onChanged: (v) => setState(() => _questionCount = v!)),
+                  ),
+                ])),
+                const SizedBox(width: 16),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Difficulty', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
+                    child: DropdownButton<int?>(value: _difficulty, isExpanded: true, underline: const SizedBox(), icon: Icon(Icons.expand_more, color: Colors.grey[600]),
+                      items: [const DropdownMenuItem(value: null, child: Text('Any', style: TextStyle(fontWeight: FontWeight.w600))),
+                        ...[1,2,3,4,5].map((d) => DropdownMenuItem(value: d, child: Text(['Easy','Med-E','Med','Hard','V.Hard'][d-1], style: const TextStyle(fontWeight: FontWeight.w600))))],
+                      onChanged: (v) => setState(() => _difficulty = v)),
+                  ),
+                ])),
+              ]),
+            ),
+
+            // Start button
+            const SizedBox(height: 28),
+            SizedBox(width: double.infinity, height: 60, child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 6))],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: _starting ? null : _startPractice,
+                icon: _starting ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Icon(Icons.play_arrow_rounded, size: 28),
+                label: Text(_starting ? 'Preparing...' : 'Start Practice ($_questionCount Q)', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+              ),
+            )),
+          ],
+        ]),
       ),
     );
-  }
-
-  Widget _sectionTitle(String text) {
-    return Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 1));
   }
 }
