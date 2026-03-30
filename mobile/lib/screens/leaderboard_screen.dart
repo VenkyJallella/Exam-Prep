@@ -22,14 +22,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   Future<void> _load() async {
-    try {
-      final results = await Future.wait([
-        _api.get('/gamification/leaderboard'),
-        _api.get('/gamification/leaderboard/weekly'),
-        _api.get('/gamification/me'),
-      ]);
-      if (mounted) setState(() { _global = results[0]['data']; _weekly = results[1]['data']; _myStats = results[2]['data']; _loading = false; });
-    } catch (_) { if (mounted) setState(() => _loading = false); }
+    // Load each independently so one failure doesn't break everything
+    try { final r = await _api.get('/gamification/leaderboard'); if (mounted) setState(() => _global = r['data']); } catch (_) {}
+    try { final r = await _api.get('/gamification/leaderboard/weekly'); if (mounted) setState(() => _weekly = r['data']); } catch (_) {}
+    try { final r = await _api.get('/gamification/me'); if (mounted) setState(() => _myStats = r['data']); } catch (_) {}
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
