@@ -7,6 +7,7 @@ import 'daily_quiz_screen.dart';
 import 'leaderboard_screen.dart';
 import 'coding_screen.dart';
 import 'chatbot_screen.dart';
+import 'subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -236,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _divider(),
               _profileMenuTile(Icons.chat, 'AI Tutor', 'Ask anything', const Color(0xFF4F46E5), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()))),
               _divider(),
-              _profileMenuTile(Icons.workspace_premium, 'Subscription', 'Manage plan', Colors.orange, () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visit examprep.in/subscription')))),
+              _profileMenuTile(Icons.workspace_premium, 'Subscription', 'Manage plan', Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()))),
             ]),
           ),
           const SizedBox(height: 16),
