@@ -126,8 +126,8 @@ async def generate_blog_post(
     result = await generate_completion(
         prompt,
         model=settings.GEMINI_MODEL_PRO,
-        temperature=0.9,
-        max_tokens=8000,
+        temperature=0.85,
+        max_tokens=12000,  # 2000 words needs ~10k tokens
         use_cache=False,  # Each blog should be unique
     )
 
