@@ -44,11 +44,11 @@ else
     echo "[5/8] Certbot already installed"
 fi
 
-# 6. Build frontend
+# 6. Build frontend (skip tsc, use vite directly)
 echo "[6/8] Building frontend..."
 cd web
 npm install
-VITE_API_URL=https://zencodio.com/api/v1 npm run build
+VITE_API_URL=/api/v1 npx vite build
 sudo mkdir -p /var/www/examprep
 sudo cp -r dist/* /var/www/examprep/
 cd ..
