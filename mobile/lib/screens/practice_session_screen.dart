@@ -4,7 +4,10 @@ import '../services/api_service.dart';
 class PracticeSessionScreen extends StatefulWidget {
   final String examId;
   final String examName;
-  const PracticeSessionScreen({super.key, required this.examId, required this.examName});
+  final String? subjectId;
+  final int questionCount;
+  final int? difficulty;
+  const PracticeSessionScreen({super.key, required this.examId, required this.examName, this.subjectId, this.questionCount = 10, this.difficulty});
 
   @override
   State<PracticeSessionScreen> createState() => _PracticeSessionScreenState();
@@ -33,10 +36,13 @@ class _PracticeSessionScreenState extends State<PracticeSessionScreen> {
 
   Future<void> _startSession() async {
     try {
-      final res = await _api.post('/practice/sessions', {
+      final body = <String, dynamic>{
         'exam_id': widget.examId,
-        'question_count': 10,
-      });
+        'question_count': widget.questionCount,
+      };
+      if (widget.subjectId != null) body['subject_id'] = widget.subjectId;
+      if (widget.difficulty != null) body['difficulty'] = widget.difficulty;
+      final res = await _api.post('/practice/sessions', body);
       _sessionId = res['data']['id'];
       final sessionRes = await _api.get('/practice/sessions/$_sessionId');
       if (mounted) setState(() { _questions = sessionRes['data']['questions']; _loading = false; });

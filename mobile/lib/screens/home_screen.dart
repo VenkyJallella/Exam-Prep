@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Practice Tab
+// Practice Tab — full selection flow like web app
 class PracticeTab extends StatefulWidget {
   const PracticeTab({super.key});
   @override
@@ -229,17 +229,46 @@ class PracticeTab extends StatefulWidget {
 }
 
 class _PracticeTabState extends State<PracticeTab> {
+  final _api = ApiService();
   List<dynamic> _exams = [];
+  List<dynamic> _subjects = [];
+  Map<String, dynamic>? _selectedExam;
+  Map<String, dynamic>? _selectedSubject;
+  int _questionCount = 10;
+  int? _difficulty;
   bool _loading = true;
+  bool _starting = false;
 
   @override
   void initState() {
     super.initState();
-    ApiService().get('/exams').then((res) {
+    _api.get('/exams').then((res) {
       if (mounted) setState(() { _exams = res['data']; _loading = false; });
     }).catchError((_) {
       if (mounted) setState(() => _loading = false);
     });
+  }
+
+  void _selectExam(Map<String, dynamic> exam) {
+    setState(() { _selectedExam = exam; _selectedSubject = null; _subjects = []; });
+    _api.get('/exams/${exam['slug']}/subjects').then((res) {
+      if (mounted) setState(() => _subjects = res['data']);
+    }).catchError((_) {});
+  }
+
+  Future<void> _startPractice() async {
+    if (_selectedExam == null) return;
+    setState(() => _starting = true);
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => PracticeSessionScreen(
+        examId: _selectedExam!['id'],
+        examName: _selectedExam!['name'],
+        subjectId: _selectedSubject?['id'],
+        questionCount: _questionCount,
+        difficulty: _difficulty,
+      ),
+    ));
+    setState(() => _starting = false);
   }
 
   @override
@@ -252,51 +281,132 @@ class _PracticeTabState extends State<PracticeTab> {
           children: [
             const Text('Start Practice', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Select an exam to begin', style: TextStyle(color: Colors.grey[600])),
+            Text('Select exam, subject, and preferences', style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 20),
+
+            // Step 1: Select Exam
+            _sectionTitle('1. SELECT EXAM'),
+            const SizedBox(height: 8),
             if (_loading)
               const Center(child: CircularProgressIndicator())
             else
-              ...(_exams.map((exam) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PracticeSessionScreen(examId: exam['id'], examName: exam['name']),
-                    ));
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[200]!),
-                      borderRadius: BorderRadius.circular(16),
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: _exams.map((exam) {
+                  final selected = _selectedExam?['id'] == exam['id'];
+                  return ChoiceChip(
+                    label: Text(exam['name']),
+                    selected: selected,
+                    onSelected: (_) => _selectExam(Map<String, dynamic>.from(exam)),
+                    selectedColor: const Color(0xFF4F46E5).withOpacity(0.15),
+                    labelStyle: TextStyle(
+                      color: selected ? const Color(0xFF4F46E5) : Colors.grey[700],
+                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                     ),
-                    child: Row(children: [
-                      Container(
-                        width: 48, height: 48,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Center(child: Text(exam['name'][0], style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: selected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+            // Step 2: Select Subject
+            if (_subjects.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _sectionTitle('2. SELECT SUBJECT'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: _subjects.map((subject) {
+                  final selected = _selectedSubject?['id'] == subject['id'];
+                  return ChoiceChip(
+                    label: Text(subject['name']),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _selectedSubject = selected ? null : Map<String, dynamic>.from(subject)),
+                    selectedColor: const Color(0xFF4F46E5).withOpacity(0.15),
+                    labelStyle: TextStyle(
+                      color: selected ? const Color(0xFF4F46E5) : Colors.grey[700],
+                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: selected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+
+            // Step 3: Settings
+            if (_selectedExam != null) ...[
+              const SizedBox(height: 20),
+              _sectionTitle('SETTINGS'),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Questions', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(12)),
+                      child: DropdownButton<int>(
+                        value: _questionCount, isExpanded: true, underline: const SizedBox(),
+                        items: [5, 10, 15, 20, 25, 30].map((n) => DropdownMenuItem(value: n, child: Text('$n questions'))).toList(),
+                        onChanged: (v) => setState(() => _questionCount = v!),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(exam['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                          Text(exam['description'] ?? '', style: TextStyle(color: Colors.grey[500], fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Difficulty', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(12)),
+                      child: DropdownButton<int?>(
+                        value: _difficulty, isExpanded: true, underline: const SizedBox(),
+                        items: [
+                          const DropdownMenuItem(value: null, child: Text('Any')),
+                          ...([1, 2, 3, 4, 5].map((d) => DropdownMenuItem(value: d, child: Text(['Easy', 'Medium-Easy', 'Medium', 'Hard', 'Very Hard'][d - 1])))),
                         ],
-                      )),
-                      const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                    ]),
+                        onChanged: (v) => setState(() => _difficulty = v),
+                      ),
+                    ),
+                  ],
+                )),
+              ]),
+            ],
+
+            // Start button
+            if (_selectedExam != null) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity, height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _starting ? null : _startPractice,
+                  icon: _starting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.play_arrow),
+                  label: Text(_starting ? 'Starting...' : 'Start Practice ($_questionCount questions)', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F46E5), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
                   ),
                 ),
-              ))),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 1));
   }
 }
