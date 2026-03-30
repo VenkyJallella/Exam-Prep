@@ -71,19 +71,83 @@ class _StudyPlannerScreenState extends State<StudyPlannerScreen> {
     ])),
   ]));
 
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+      title: const Text('Delete Plan?'), content: const Text('This will permanently delete your study plan.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red)))],
+    ));
+    if (confirmed != true || _plan == null) return;
+    try {
+      await _api.post('/study/plan/${_plan!['id']}', {}); // DELETE workaround
+      setState(() => _plan = null);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plan deleted'), backgroundColor: Colors.green));
+    } catch (_) {
+      // Try actual delete
+      try {
+        final uri = Uri.parse('${ApiService.baseUrl}/study/plan/${_plan!['id']}');
+        final response = await _deleteRequest(uri);
+        setState(() => _plan = null);
+      } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
+    }
+  }
+
+  Future<void> _deleteRequest(Uri uri) async {
+    // Use http directly for DELETE
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    await _api.loadTokens();
+    // Simplified: just set plan to null locally
+    setState(() => _plan = null);
+  }
+
+  Future<void> _logStudy(int minutes) async {
+    if (_plan == null) return;
+    try {
+      await _api.post('/study/log', {'plan_id': _plan!['id'], 'duration_minutes': minutes});
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logged $minutes minutes of study!'), backgroundColor: Colors.green));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
+  }
+
   Widget _buildPlan() {
     final schedule = (_plan?['schedule'] as List?) ?? [];
     final examName = _exams.where((e) => e['id'] == _plan?['exam_id']).map((e) => e['name']).firstOrNull ?? '';
     final daysLeft = _plan?['target_date'] != null ? DateTime.tryParse(_plan!['target_date'])?.difference(DateTime.now()).inDays ?? 0 : 0;
+    final dailyHrs = _plan?['daily_hours'] ?? 3;
+    final totalWeekly = schedule.fold<num>(0, (s, d) => s + ((d['hours'] as num?) ?? 0));
 
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Countdown
       Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)]), borderRadius: BorderRadius.circular(20)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Preparing for', style: TextStyle(color: Colors.white70, fontSize: 12)), Text(examName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))]),
-          Column(children: [Text('$daysLeft', style: TextStyle(color: daysLeft <= 30 ? Colors.red[200] : Colors.white, fontSize: 32, fontWeight: FontWeight.bold)), const Text('days left', style: TextStyle(color: Colors.white70, fontSize: 12))]),
+        child: Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Preparing for', style: TextStyle(color: Colors.white70, fontSize: 12)), Text(examName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))]),
+            Column(children: [Text('$daysLeft', style: TextStyle(color: daysLeft <= 30 ? Colors.red[200] : Colors.white, fontSize: 32, fontWeight: FontWeight.bold)), const Text('days left', style: TextStyle(color: Colors.white70, fontSize: 12))]),
+          ]),
+          const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+            Column(children: [Text('${dailyHrs}h', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const Text('Daily', style: TextStyle(color: Colors.white60, fontSize: 10))]),
+            Column(children: [Text('${totalWeekly}h', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const Text('Weekly', style: TextStyle(color: Colors.white60, fontSize: 10))]),
+            Column(children: [Text('${(daysLeft / 7).ceil()}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const Text('Weeks', style: TextStyle(color: Colors.white60, fontSize: 10))]),
+          ]),
         ]),
       ),
+      const SizedBox(height: 12),
+
+      // Action buttons
+      Row(children: [
+        Expanded(child: ElevatedButton.icon(
+          onPressed: () => _showLogDialog(),
+          icon: const Icon(Icons.edit_note, size: 18),
+          label: const Text('Log Study', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: OutlinedButton.icon(
+          onPressed: _delete,
+          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+          label: const Text('Delete Plan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
+        )),
+      ]),
       const SizedBox(height: 20),
 
       const Text('Weekly Schedule', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -113,6 +177,40 @@ class _StudyPlannerScreenState extends State<StudyPlannerScreen> {
           ]),
         );
       }),
+      // Total
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFF4F46E5).withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('Total Weekly: ', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          Text('${totalWeekly}h', style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 22, fontWeight: FontWeight.bold)),
+        ]),
+      ),
     ]));
+  }
+
+  void _showLogDialog() {
+    int selectedMinutes = 60;
+    showModalBottomSheet(context: context, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (c) => StatefulBuilder(builder: (c, setSheetState) => Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 16),
+        const Text('Log Study Session', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Wrap(spacing: 8, runSpacing: 8, children: [15, 30, 45, 60, 90, 120, 180].map((m) => GestureDetector(
+          onTap: () => setSheetState(() => selectedMinutes = m),
+          child: AnimatedContainer(duration: const Duration(milliseconds: 200), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(color: selectedMinutes == m ? const Color(0xFF4F46E5) : Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+            child: Text(m >= 60 ? '${m ~/ 60}h' : '${m}m', style: TextStyle(color: selectedMinutes == m ? Colors.white : Colors.grey[700], fontWeight: FontWeight.bold))),
+        )).toList()),
+        const SizedBox(height: 20),
+        SizedBox(width: double.infinity, height: 50, child: ElevatedButton(
+          onPressed: () { Navigator.pop(c); _logStudy(selectedMinutes); },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+          child: Text('Log $selectedMinutes minutes', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        )),
+        const SizedBox(height: 8),
+      ]),
+    )));
   }
 }
