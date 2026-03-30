@@ -16,7 +16,9 @@ class AuthProvider extends ChangeNotifier {
     if (_api.isLoggedIn) {
       try {
         final res = await _api.get('/users/me');
-        _user = res['data'];
+        // API returns {data: {user: {...}, profile: {...}}} — flatten it
+        final data = res['data'];
+        _user = data['user'] ?? data;
         _isLoggedIn = true;
       } catch (_) {
         await _api.clearTokens();
@@ -31,7 +33,8 @@ class AuthProvider extends ChangeNotifier {
     final res = await _api.post('/auth/login', {'email': email, 'password': password});
     await _api.saveTokens(res['data']['access_token'], res['data']['refresh_token']);
     final userRes = await _api.get('/users/me');
-    _user = userRes['data'];
+    final userData = userRes['data'];
+    _user = userData['user'] ?? userData;
     _isLoggedIn = true;
     notifyListeners();
   }
