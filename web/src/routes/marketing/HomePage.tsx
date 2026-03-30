@@ -58,8 +58,8 @@ export default function HomePage() {
         <meta property="og:title" content="ExamPrep - AI-Powered Competitive Exam Preparation" />
         <meta property="og:description" content="Crack UPSC, JEE, SSC, Banking exams with AI-powered practice. 1500+ questions, daily quizzes, coding challenges. Free to start." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://examprep.in" />
-        <link rel="canonical" href="https://examprep.in" />
+        <meta property="og:url" content="https://zencodio.com" />
+        <link rel="canonical" href="https://zencodio.com" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org", "@type": "FAQPage",
           "mainEntity": [

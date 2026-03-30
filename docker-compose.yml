@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: examprep
+      POSTGRES_USER: examprep
+      POSTGRES_PASSWORD: CHANGE_ME_STRONG_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  backend:
+    build: ./backend
+    restart: always
+    env_file: ./backend/.env.production
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run build"
+    volumes:
+      - ./web:/app
+      - frontend_build:/app/dist
+
+volumes:
+  postgres_data:
+  frontend_build:

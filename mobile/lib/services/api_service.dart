@@ -4,8 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   // Change this to your backend URL
-  // For Android emulator: use 10.0.2.2 instead of localhost
-  static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
+  // Production: https://zencodio.com/api/v1
+  // Dev emulator: http://10.0.2.2:8000/api/v1
+  static const String baseUrl = 'https://zencodio.com/api/v1';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String? _accessToken;

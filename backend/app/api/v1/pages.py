@@ -38,7 +38,7 @@ We are a team of engineers, educators, and exam toppers who understand the chall
 
 ### Contact
 
-Email: support@examprep.in
+Email: support@zencodio.com
 """,
     },
     "terms": {
@@ -92,7 +92,7 @@ We may update these terms at any time. Continued use of the Platform constitutes
 
 ### 9. Contact
 
-For questions about these terms, contact us at legal@examprep.in.
+For questions about these terms, contact us at legal@zencodio.com.
 """,
     },
     "privacy": {
@@ -155,7 +155,7 @@ We will notify users of significant changes to this privacy policy via email or 
 
 ### 9. Contact
 
-For privacy-related inquiries: privacy@examprep.in
+For privacy-related inquiries: privacy@zencodio.com
 """,
     },
     "contact": {
@@ -166,9 +166,9 @@ We'd love to hear from you! Whether you have a question, feedback, or just want 
 
 ### Email
 
-- **General**: support@examprep.in
-- **Business**: business@examprep.in
-- **Privacy**: privacy@examprep.in
+- **General**: support@zencodio.com
+- **Business**: business@zencodio.com
+- **Privacy**: privacy@zencodio.com
 
 ### Office
 

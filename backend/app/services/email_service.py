@@ -76,7 +76,7 @@ async def send_welcome_email(to_email: str, full_name: str) -> bool:
             <li><strong>Coding</strong> — Solve problems with in-browser code editor</li>
             <li><strong>AI Tutor</strong> — Chat with an AI that knows your performance</li>
         </ul>
-        <a href="https://examprep.in/dashboard" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Start Practicing</a>
+        <a href="https://zencodio.com/dashboard" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Start Practicing</a>
         <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">Happy preparing!<br/>Team ExamPrep</p>
     </div>
     """

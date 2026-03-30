@@ -73,7 +73,7 @@ def create_app() -> FastAPI:
         from app.models.blog import BlogPost
         from app.models.exam import Exam
 
-        base_url = "https://examprep.in"
+        base_url = "https://zencodio.com"
 
         urls = [
             (f"{base_url}/", "daily", "1.0"),

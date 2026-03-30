@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_NAME: str = "ExamPrep"
-    SMTP_FROM_EMAIL: str = "noreply@examprep.in"
+    SMTP_FROM_EMAIL: str = "noreply@zencodio.com"
     SMTP_USE_TLS: bool = True
 
     # CORS
