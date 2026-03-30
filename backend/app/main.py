@@ -18,14 +18,52 @@ logging.basicConfig(
 logger = logging.getLogger("examprep")
 
 
+async def _pool_refill_loop():
+    """Background loop that keeps question pools healthy.
+
+    Runs every 10 minutes, refills up to 5 topic+difficulty combos per cycle.
+    Each cycle generates ~50 questions (5 batches x 10 questions).
+    Runs inside the FastAPI process — no separate worker needed.
+    """
+    import asyncio
+    from app.database import AsyncSessionLocal
+
+    # Wait 30 seconds after startup before first run
+    await asyncio.sleep(30)
+    logger.info("Pool auto-refill loop started")
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                from app.services.question_pool_service import refill_all_low_pools
+                result = await refill_all_low_pools(db, max_batches=5)
+                if result["total_generated"] > 0:
+                    logger.info(
+                        "Auto-refill: %d batches, %d questions generated",
+                        result["refilled"], result["total_generated"],
+                    )
+        except Exception as e:
+            logger.error("Auto-refill error: %s", e)
+
+        # Wait 10 minutes between cycles
+        await asyncio.sleep(600)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
     logger.info("Starting ExamPrep API...")
     await init_db()
     await init_redis()
     logger.info("Database and Redis connected.")
+
+    # Start background pool refill loop
+    refill_task = asyncio.create_task(_pool_refill_loop())
+
     yield
+
     logger.info("Shutting down...")
+    refill_task.cancel()
     await close_db()
     await close_redis()
 

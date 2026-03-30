@@ -127,24 +127,43 @@ async def refill_pool(
 
 
 async def refill_all_low_pools(db: AsyncSession, max_batches: int = 5) -> dict:
-    """Refill all low pools, limited to max_batches to avoid API rate limits."""
+    """Refill low pools, spread across different exams for balanced coverage.
+
+    Prioritizes completely empty pools and distributes batches across exams
+    so all exams get questions, not just the first exam alphabetically.
+    """
     low_pools = await get_low_pool_topics(db)
 
     if not low_pools:
         logger.info("All pools are healthy, no refill needed")
         return {"refilled": 0, "total_generated": 0}
 
-    # Sort by most needed first
-    low_pools.sort(key=lambda x: x["current_count"])
+    # Group by exam, then round-robin across exams for balanced coverage
+    from collections import defaultdict
+    by_exam: dict[str, list] = defaultdict(list)
+    for pool in low_pools:
+        if pool["exam_id"]:
+            by_exam[str(pool["exam_id"])].append(pool)
+
+    # Sort each exam's pools: empty first, then by least questions
+    for pools in by_exam.values():
+        pools.sort(key=lambda x: x["current_count"])
+
+    # Round-robin: pick one pool from each exam in rotation
+    ordered_pools: list[dict] = []
+    exam_lists = list(by_exam.values())
+    max_len = max(len(v) for v in exam_lists) if exam_lists else 0
+    for i in range(max_len):
+        for pools in exam_lists:
+            if i < len(pools):
+                ordered_pools.append(pools[i])
 
     total_generated = 0
     batches_done = 0
 
-    for pool in low_pools:
+    for pool in ordered_pools:
         if batches_done >= max_batches:
             break
-        if not pool["exam_id"]:
-            continue
 
         generated = await refill_pool(
             db,
