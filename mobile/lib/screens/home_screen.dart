@@ -12,6 +12,9 @@ import 'mock_tests_screen.dart';
 import 'analytics_screen.dart';
 import 'mistakes_screen.dart';
 import 'challenges_screen.dart';
+import 'study_planner_screen.dart';
+import 'pyq_screen.dart';
+import 'scheduled_tests_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -117,6 +120,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 _actionCard(Icons.emoji_events, 'Challenges', 'Weekly goals for bonus XP', Colors.deepOrange, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChallengesScreen()))),
                 _actionCard(Icons.analytics, 'Analytics', 'Track your performance', Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()))),
                 _actionCard(Icons.menu_book, 'Mistake Book', 'Review wrong answers', Colors.red[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MistakesScreen()))),
+                _actionCard(Icons.calendar_month, 'Study Planner', 'Weekly schedule', Colors.cyan, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyPlannerScreen()))),
+                _actionCard(Icons.history_edu, 'PYQ Papers', 'Previous year questions', Colors.brown, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PYQScreen()))),
+                _actionCard(Icons.schedule, 'Scheduled Tests', 'Join live tests', Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduledTestsScreen()))),
                 _actionCard(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
               ],
             ],
@@ -250,6 +256,12 @@ class _HomeScreenState extends State<HomeScreen> {
               _profileMenuTile(Icons.leaderboard, 'Leaderboard', 'Compete with peers', Colors.deepPurple, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()))),
               _divider(),
               _profileMenuTile(Icons.code, 'Coding', 'Solve problems', Colors.teal, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CodingScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.calendar_month, 'Study Planner', 'Weekly schedule', Colors.cyan, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyPlannerScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.history_edu, 'PYQ Papers', 'Previous year Qs', Colors.brown, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PYQScreen()))),
+              _divider(),
+              _profileMenuTile(Icons.schedule, 'Scheduled Tests', 'Join live tests', Colors.pink, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScheduledTestsScreen()))),
               _divider(),
               _profileMenuTile(Icons.chat, 'AI Tutor', 'Ask anything', const Color(0xFF4F46E5), () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()))),
               _divider(),
