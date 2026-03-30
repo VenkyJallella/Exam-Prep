@@ -23,6 +23,7 @@ export default function DailyQuizPage() {
   const [reviewAnswers, setReviewAnswers] = useState<Record<string, AttemptAnswer>>({});
   const [showReview, setShowReview] = useState(false);
   const [alreadyAttempted, setAlreadyAttempted] = useState(false);
+  const [started, setStarted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout>();
   const startTime = useRef(Date.now());
   const autoSubmittedRef = useRef(false);
@@ -50,7 +51,7 @@ export default function DailyQuizPage() {
   }, []);
 
   useEffect(() => {
-    if (timeLeft <= 0 || submitted || !questions.length) return;
+    if (timeLeft <= 0 || submitted || !questions.length || !started) return;
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -62,7 +63,7 @@ export default function DailyQuizPage() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [questions, submitted]);
+  }, [questions, submitted, started]);
 
   const handleSelect = (qid: string, option: string) => {
     if (submitted) return;
@@ -181,6 +182,39 @@ export default function DailyQuizPage() {
           )}
 
           {showReview && questions.length === 0 && <div className="card text-center py-8 text-gray-500">Review available on same day of attempt.</div>}
+        </div>
+      </>
+    );
+  }
+
+  // Start screen — show before quiz begins
+  if (!started && questions.length > 0) {
+    return (
+      <>
+        <Helmet><title>Daily Quiz - ExamPrep</title></Helmet>
+        <div className="mx-auto max-w-lg py-8 text-center space-y-6">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-purple-600 text-4xl shadow-lg">⚡</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
+          <div className="card space-y-3 text-left">
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Questions</span><span className="font-semibold text-gray-900 dark:text-white">{questions.length}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Time Limit</span><span className="font-semibold text-gray-900 dark:text-white">{durationMinutes} minutes</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Difficulty</span><span className="font-semibold text-gray-900 dark:text-white">Mixed (Easy to Hard)</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">Attempts</span><span className="font-semibold text-red-600">One attempt only</span></div>
+          </div>
+          <div className="card bg-yellow-50 text-left text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+            <p className="font-semibold mb-1">Instructions:</p>
+            <ul className="space-y-1 text-xs">
+              <li>• You have {durationMinutes} minutes to complete the quiz</li>
+              <li>• Timer starts when you click "Start Quiz"</li>
+              <li>• Quiz auto-submits when time runs out</li>
+              <li>• You can navigate between questions freely</li>
+              <li>• Only one attempt allowed per day</li>
+            </ul>
+          </div>
+          <button onClick={() => { setStarted(true); startTime.current = Date.now(); }}
+            className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-purple-600 py-4 text-lg font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]">
+            Start Quiz
+          </button>
         </div>
       </>
     );
