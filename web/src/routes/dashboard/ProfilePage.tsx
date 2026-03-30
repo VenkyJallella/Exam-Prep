@@ -327,7 +327,7 @@ export default function ProfilePage() {
                   <Link to="/subscription" className="text-sm font-medium text-primary-600 hover:underline">Manage</Link>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-                  <div><p className="text-sm font-medium text-gray-900 dark:text-white">Member Since</p><p className="text-xs text-gray-500">{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</p></div>
+                  <div><p className="text-sm font-medium text-gray-900 dark:text-white">Member Since</p><p className="text-xs text-gray-500">{(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</p></div>
                 </div>
               </div>
             </div>

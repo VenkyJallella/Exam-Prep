@@ -24,7 +24,7 @@ export default function DailyQuizPage() {
   const [showReview, setShowReview] = useState(false);
   const [alreadyAttempted, setAlreadyAttempted] = useState(false);
   const [started, setStarted] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
   const startTime = useRef(Date.now());
   const autoSubmittedRef = useRef(false);
 
