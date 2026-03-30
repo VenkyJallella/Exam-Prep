@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_MODEL_PRO: str = "gemini-2.5-pro"
 
+    # Razorpay
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+
     # OTP
     OTP_EXPIRE_MINUTES: int = 5
 

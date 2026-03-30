@@ -85,19 +85,58 @@ export default function SubscriptionPage() {
     if (planId === 'free' || planId === currentPlan) return;
     setUpgrading(planId);
     try {
+      // 1. Create Razorpay order via backend
       const orderRes = await apiClient.post('/payments/orders', { plan: planId });
-      const { payment_id } = orderRes.data.data;
+      const orderData = orderRes.data.data;
 
-      // In dev mode: auto-verify. In production: integrate Razorpay checkout
-      await apiClient.post('/payments/verify', { payment_id });
-      toast.success(`Upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)}!`);
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: orderData.razorpay_key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: orderData.name,
+        description: orderData.description,
+        order_id: orderData.razorpay_order_id,
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          // 3. Verify payment via backend
+          try {
+            await apiClient.post('/payments/verify', {
+              payment_id: orderData.payment_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            toast.success(`Upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)}!`);
 
-      // Refresh usage
-      const usageRes = await apiClient.get('/payments/usage');
-      setUsage(usageRes.data.data);
-      setCurrentPlan(usageRes.data.data.plan);
-    } catch { toast.error('Upgrade failed. Please try again.'); }
-    finally { setUpgrading(null); }
+            // Refresh usage
+            const usageRes = await apiClient.get('/payments/usage');
+            setUsage(usageRes.data.data);
+            setCurrentPlan(usageRes.data.data.plan);
+          } catch {
+            toast.error('Payment verification failed. Contact support if amount was deducted.');
+          }
+          setUpgrading(null);
+        },
+        modal: {
+          ondismiss: () => {
+            setUpgrading(null);
+            toast.error('Payment cancelled');
+          },
+        },
+        prefill: {},
+        theme: { color: '#4f46e5' },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', (response: any) => {
+        toast.error(response.error?.description || 'Payment failed. Please try again.');
+        setUpgrading(null);
+      });
+      rzp.open();
+    } catch {
+      toast.error('Could not initiate payment. Please try again.');
+      setUpgrading(null);
+    }
   };
 
   const handleDowngrade = async () => {

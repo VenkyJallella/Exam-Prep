@@ -19,6 +19,7 @@ class CreateOrderRequest(BaseModel):
 class VerifyPaymentRequest(BaseModel):
     payment_id: UUID
     razorpay_payment_id: str | None = None
+    razorpay_order_id: str | None = None
     razorpay_signature: str | None = None
 
 
@@ -71,4 +72,15 @@ async def get_usage(user: User = Depends(get_current_user), db: AsyncSession = D
     """Get current plan, limits, features, and today's usage."""
     from app.core.subscription import get_usage_summary
     data = await get_usage_summary(db, user.id)
+    return {"status": "success", "data": data}
+
+
+@router.post("/webhook")
+async def razorpay_webhook(request_body: dict, db: AsyncSession = Depends(get_db)):
+    """Razorpay webhook endpoint — no auth required (Razorpay calls this)."""
+    import hmac, hashlib
+    from app.config import settings
+
+    event = request_body.get("event", "")
+    data = await payment_service.handle_webhook(db, event, request_body)
     return {"status": "success", "data": data}
