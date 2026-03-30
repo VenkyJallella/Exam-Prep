@@ -1,15 +1,51 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.exam import Exam, Subject, Topic
+from app.models.question import Question
 from app.schemas.exam import ExamRead, ExamDetailRead, SubjectRead, TopicRead
 from app.schemas.common import APIResponse
 from app.exceptions import NotFoundError
 
 router = APIRouter()
+
+
+@router.get("/stats")
+async def platform_stats(db: AsyncSession = Depends(get_db)):
+    """Public platform stats for homepage — no auth required."""
+    questions_count = (await db.execute(
+        select(func.count()).select_from(Question).where(Question.is_active == True)
+    )).scalar() or 0
+
+    exams_count = (await db.execute(
+        select(func.count()).select_from(Exam).where(Exam.is_active == True)
+    )).scalar() or 0
+
+    topics_count = (await db.execute(
+        select(func.count()).select_from(Topic).where(Topic.is_active == True)
+    )).scalar() or 0
+
+    users_count = 0
+    try:
+        from app.models.user import User
+        users_count = (await db.execute(
+            select(func.count()).select_from(User).where(User.is_active == True)
+        )).scalar() or 0
+    except Exception:
+        pass
+
+    return {
+        "status": "success",
+        "data": {
+            "questions": questions_count,
+            "exams": exams_count,
+            "topics": topics_count,
+            "users": users_count,
+        },
+    }
 
 
 @router.get("", response_model=APIResponse[list[ExamRead]])

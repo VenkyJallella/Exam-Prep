@@ -35,17 +35,60 @@ const testimonials = [
   { name: 'Sneha Reddy', exam: 'Banking PO', text: 'The mistake book with flashcard review changed my preparation. I finally stopped repeating the same errors.', avatar: 'S' },
 ];
 
-const stats = [
-  { value: '1,500+', label: 'Questions' },
-  { value: '8', label: 'Exam Types' },
-  { value: '50+', label: 'Topics' },
-  { value: '100%', label: 'AI-Powered' },
-];
+const EXAM_COLORS: Record<string, { color: string; icon: string }> = {
+  upsc: { color: 'from-blue-500 to-blue-600', icon: '🏛️' },
+  jee: { color: 'from-green-500 to-emerald-600', icon: '⚙️' },
+  'ssc-cgl': { color: 'from-purple-500 to-purple-600', icon: '📋' },
+  banking: { color: 'from-orange-500 to-red-500', icon: '🏦' },
+  neet: { color: 'from-pink-500 to-rose-600', icon: '🩺' },
+  'gate-cs': { color: 'from-cyan-500 to-blue-600', icon: '💻' },
+  cat: { color: 'from-amber-500 to-orange-600', icon: '📊' },
+  coding: { color: 'from-indigo-500 to-violet-600', icon: '🖥️' },
+};
+
+function formatCount(n: number): string {
+  if (n >= 10000) return `${Math.floor(n / 1000)}K+`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace('.0', '')}K+`;
+  if (n >= 100) return `${Math.floor(n / 10) * 10}+`;
+  return String(n);
+}
 
 export default function HomePage() {
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [dynamicExams, setDynamicExams] = useState(exams);
+  const [stats, setStats] = useState([
+    { value: '1,500+', label: 'Questions' },
+    { value: '8', label: 'Exam Types' },
+    { value: '50+', label: 'Topics' },
+    { value: '100%', label: 'AI-Powered' },
+  ]);
 
   useEffect(() => {
+    // Fetch real stats
+    apiClient.get('/exams/stats').then(r => {
+      const d = r.data.data;
+      setStats([
+        { value: formatCount(d.questions), label: 'Questions' },
+        { value: String(d.exams), label: 'Exam Types' },
+        { value: formatCount(d.topics), label: 'Topics' },
+        { value: '100%', label: 'AI-Powered' },
+      ]);
+    }).catch(() => {});
+
+    // Fetch real exams
+    apiClient.get('/exams').then(r => {
+      const apiExams = r.data.data || [];
+      if (apiExams.length > 0) {
+        setDynamicExams(apiExams.map((e: any) => ({
+          name: e.name,
+          slug: e.slug,
+          description: e.full_name || e.description || '',
+          color: EXAM_COLORS[e.slug]?.color || 'from-gray-500 to-gray-600',
+          icon: EXAM_COLORS[e.slug]?.icon || '📚',
+        })));
+      }
+    }).catch(() => {});
+
     apiClient.get('/blog/', { params: { per_page: 3 } }).then(r => setBlogPosts(r.data.data || [])).catch(() => {});
   }, []);
 
@@ -126,11 +169,11 @@ export default function HomePage() {
       <section id="exams" className="bg-white py-20 dark:bg-gray-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">8 Competitive Exams</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{dynamicExams.length} Competitive Exams</h2>
             <p className="mt-3 text-gray-600 dark:text-gray-400">Comprehensive preparation for India's top exams</p>
           </div>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {exams.map(exam => (
+            {dynamicExams.map(exam => (
               <Link key={exam.slug} to={`/exams/${exam.slug}`}
                 className="group overflow-hidden rounded-xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg hover:-translate-y-1 dark:border-gray-800 dark:bg-gray-950">
                 <div className={`mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${exam.color} text-2xl`}>
