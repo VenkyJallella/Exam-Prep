@@ -103,14 +103,41 @@ async def generate_questions(
     return questions
 
 
+def _clean_json_response(result: str) -> dict:
+    """Clean and parse JSON from AI response."""
+    import json
+
+    s = result.strip()
+
+    # Remove markdown code blocks
+    if s.startswith("```"):
+        s = s.split("\n", 1)[1]
+        s = s.rsplit("```", 1)[0].strip()
+
+    # Try direct parse
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+
+    # Try to find JSON object in the response
+    import re
+    match = re.search(r'\{[\s\S]*\}', s)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Failed to parse blog JSON. First 300 chars: {s[:300]}")
+
+
 async def generate_blog_post(
     topic: str,
     explanation: str,
     exam_name: str = "",
 ) -> dict:
-    """Generate an AI blog post and return parsed JSON."""
-    import json
-
+    """Generate an AI blog post. Tries Pro model first, falls back to Flash."""
     from datetime import date
     today = date.today()
     prompt = BLOG_GENERATION.format(
@@ -123,26 +150,40 @@ async def generate_blog_post(
 
     logger.info("Generating blog post for topic: %s", topic)
 
-    result = await generate_completion(
-        prompt,
-        model=settings.GEMINI_MODEL_PRO,
-        temperature=0.85,
-        max_tokens=12000,  # 2000 words needs ~10k tokens
-        use_cache=False,  # Each blog should be unique
-    )
+    # Try Pro model first, fall back to Flash if it fails
+    models_to_try = [settings.GEMINI_MODEL_PRO, settings.GEMINI_MODEL]
+    last_error = None
 
-    # Clean markdown code blocks if present
-    if result.startswith("```"):
-        result = result.split("\n", 1)[1]
-        result = result.rsplit("```", 1)[0]
+    for model in models_to_try:
+        try:
+            result = await generate_completion(
+                prompt,
+                model=model,
+                temperature=0.85,
+                max_tokens=12000,
+                use_cache=False,
+            )
 
-    blog_data = json.loads(result)
+            blog_data = _clean_json_response(result)
 
-    # Validate required fields
-    required = ("title", "content", "excerpt", "meta_description")
-    for field in required:
-        if not blog_data.get(field):
-            raise ValueError(f"AI response missing required field: {field}")
+            # Validate required fields
+            required = ("title", "content", "excerpt", "meta_description")
+            for field in required:
+                if not blog_data.get(field):
+                    raise ValueError(f"AI response missing required field: {field}")
 
-    logger.info("Blog post generated: %s", blog_data["title"])
-    return blog_data
+            # Ensure meta_keywords is a list
+            if not isinstance(blog_data.get("meta_keywords"), list):
+                blog_data["meta_keywords"] = []
+            if not isinstance(blog_data.get("tags"), list):
+                blog_data["tags"] = []
+
+            logger.info("Blog post generated with %s: %s", model, blog_data["title"])
+            return blog_data
+
+        except Exception as e:
+            logger.warning("Blog generation failed with %s: %s", model, e)
+            last_error = e
+            continue
+
+    raise ValueError(f"Blog generation failed with all models. Last error: {last_error}")
