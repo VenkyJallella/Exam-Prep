@@ -80,7 +80,7 @@ async def create_order(db: AsyncSession, user_id: UUID, plan: str) -> dict:
     razorpay_order = await _razorpay_request("POST", "/orders", {
         "amount": amount_paise,
         "currency": "INR",
-        "receipt": f"examprep_{user_id}_{plan}",
+        "receipt": f"ep_{str(user_id)[:8]}_{plan}",
         "notes": {"plan": plan, "user_id": str(user_id)},
     })
     logger.info("Razorpay order created: %s for user %s, plan %s", razorpay_order["id"], user_id, plan)
