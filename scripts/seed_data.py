@@ -294,7 +294,7 @@ async def seed():
 
         # Create admin user (skip if already exists)
         existing_admin = (await db.execute(
-            select(User).where(User.role == UserRole.ADMIN)
+            select(User).where(User.role == UserRole.ADMIN).limit(1)
         )).scalar_one_or_none()
         if not existing_admin:
             admin = User(
