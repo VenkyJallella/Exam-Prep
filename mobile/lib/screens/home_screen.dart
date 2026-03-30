@@ -276,7 +276,21 @@ class _PracticeTabState extends State<PracticeTab> {
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Start Practice', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+          Row(children: [
+            GestureDetector(
+              onTap: () {
+                final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                homeState?.setState(() => homeState._currentIndex = 0);
+              },
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.grey[700]),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Start Practice', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
+          ]),
           const SizedBox(height: 4),
           Text('Select exam, subject, and preferences', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
           const SizedBox(height: 24),
