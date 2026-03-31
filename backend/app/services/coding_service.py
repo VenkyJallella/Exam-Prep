@@ -13,9 +13,9 @@ logger = logging.getLogger("examprep.coding")
 
 def _slugify(text: str) -> str:
     slug = text.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    return slug.strip("-")[:350]
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r'[\s-]+', '-', slug).strip('-')
+    return slug[:300]
 
 
 async def list_problems(
@@ -33,16 +33,15 @@ async def list_problems(
     if difficulty:
         base = base.where(CodingQuestion.difficulty == difficulty)
         count_q = count_q.where(CodingQuestion.difficulty == difficulty)
+    if tag:
+        base = base.where(CodingQuestion.tags.contains([tag]))
+        count_q = count_q.where(CodingQuestion.tags.contains([tag]))
+    if search:
+        base = base.where(CodingQuestion.title.ilike(f"%{search}%"))
+        count_q = count_q.where(CodingQuestion.title.ilike(f"%{search}%"))
     if exam_id:
         base = base.where(CodingQuestion.exam_id == exam_id)
         count_q = count_q.where(CodingQuestion.exam_id == exam_id)
-    if search:
-        like = f"%{search}%"
-        base = base.where(CodingQuestion.title.ilike(like))
-        count_q = count_q.where(CodingQuestion.title.ilike(like))
-    if tag:
-        base = base.where(CodingQuestion.tags.any(tag))
-        count_q = count_q.where(CodingQuestion.tags.any(tag))
 
     total = (await db.execute(count_q)).scalar() or 0
     problems = (await db.execute(
@@ -123,12 +122,10 @@ async def generate_coding_challenges(
             break
         except Exception as e:
             logger.warning("Coding generation failed with %s: %s", model, e)
-            continue
 
     if not raw:
         raise ValueError("AI coding generation failed with all models")
 
-    # Parse JSON
     text = raw.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
@@ -136,7 +133,6 @@ async def generate_coding_challenges(
     try:
         problems_data = json.loads(text)
     except json.JSONDecodeError:
-        import re
         match = re.search(r'\[[\s\S]*\]', text)
         if match:
             problems_data = json.loads(match.group())
@@ -167,7 +163,7 @@ async def submit_code(
     language: str,
     code: str,
 ) -> CodingSubmission:
-    """Submit code and run against test cases."""
+    """Submit code and run against ALL test cases."""
     problem = await get_problem_by_id(db, question_id)
 
     test_results, status, error = await _execute_code(code, language, problem.test_cases, problem.time_limit_ms)
@@ -199,6 +195,37 @@ async def submit_code(
     return submission
 
 
+async def run_code(code: str, language: str, test_cases: list[dict], time_limit_ms: int = 2000) -> dict:
+    """Run code against sample test cases only (no DB save). Used for 'Run' button."""
+    sample_cases = [tc for tc in test_cases if tc.get("is_sample", False)]
+    if not sample_cases:
+        sample_cases = test_cases[:2]  # Fallback: use first 2
+
+    test_results, status, error = await _execute_code(code, language, sample_cases, time_limit_ms)
+    passed = sum(1 for r in test_results if r.get("passed"))
+    return {
+        "status": status,
+        "passed_test_cases": passed,
+        "total_test_cases": len(test_results),
+        "execution_time_ms": max((r.get("time_ms", 0) for r in test_results), default=0),
+        "error_message": error,
+        "test_results": test_results,
+    }
+
+
+async def run_custom_input(code: str, language: str, custom_input: str, time_limit_ms: int = 2000) -> dict:
+    """Run code with custom user input (no expected output)."""
+    test_cases = [{"input": custom_input, "expected_output": "__CUSTOM__", "is_sample": True}]
+    test_results, status, error = await _execute_code(code, language, test_cases, time_limit_ms)
+
+    output = test_results[0]["output"] if test_results else ""
+    return {
+        "output": output,
+        "error_message": error,
+        "execution_time_ms": test_results[0].get("time_ms", 0) if test_results else 0,
+    }
+
+
 async def get_user_submissions(
     db: AsyncSession,
     user_id: UUID,
@@ -221,6 +248,48 @@ async def get_user_submissions(
     return list(submissions), total
 
 
+# ─── Blocked modules for sandbox ───────────────────────────────────
+BLOCKED_MODULES = {
+    "os", "subprocess", "sys", "shutil", "signal", "socket", "http",
+    "urllib", "requests", "pathlib", "glob", "importlib", "ctypes",
+    "multiprocessing", "threading", "pickle", "shelve", "sqlite3",
+}
+
+SANDBOX_CODE = """
+import builtins as __b
+# Block dangerous builtins
+for __n in ['exec', 'eval', 'compile', '__import__', 'exit', 'quit', 'breakpoint']:
+    if hasattr(__b, __n):
+        delattr(__b, __n)
+
+# Restrict open to read-only on non-system paths
+_orig_open = open
+def _safe_open(name, mode='r', *a, **kw):
+    if 'w' in str(mode) or 'a' in str(mode) or 'x' in str(mode):
+        raise PermissionError("Write access denied")
+    return _orig_open(name, mode, *a, **kw)
+__b.open = _safe_open
+
+# Block dangerous modules via meta_path hook
+import sys as __sys
+class __BlockedImporter:
+    blocked = """ + repr(BLOCKED_MODULES) + """
+    def find_module(self, name, path=None):
+        if name.split('.')[0] in self.blocked:
+            return self
+    def load_module(self, name):
+        raise ImportError(f"Module '{name}' is not allowed")
+__sys.meta_path.insert(0, __BlockedImporter())
+del __sys, __b, __BlockedImporter, _orig_open
+"""
+
+
+def _normalize_output(text: str) -> str:
+    """Normalize output for comparison: strip trailing whitespace per line, strip trailing newlines."""
+    lines = text.rstrip().split('\n')
+    return '\n'.join(line.rstrip() for line in lines)
+
+
 def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool) -> dict:
     """Run a single test case synchronously (called in thread pool)."""
     import subprocess
@@ -229,25 +298,18 @@ def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: i
     import time
     import sys
 
-    python_cmd = sys.executable  # Use the same Python that runs the server
-
-    # Security: wrap code to block dangerous operations
-    sandbox_prefix = (
-        "import builtins as _b\n"
-        "for _n in ['open','exec','eval','compile','__import__','exit','quit']:\n"
-        "  if hasattr(_b,_n): delattr(_b,_n)\n"
-        "import os as _os; _os.system=lambda *a:None; _os.popen=lambda *a:None\n"
-    )
+    python_cmd = sys.executable
+    is_custom = (expected == "__CUSTOM__")
 
     temp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(sandbox_prefix + code)
+            f.write(SANDBOX_CODE + "\n" + code)
             temp_path = f.name
 
         start = time.perf_counter()
         proc = subprocess.run(
-            [python_cmd, "-u", temp_path],
+            [python_cmd, "-u", "-B", temp_path],
             input=test_input,
             capture_output=True,
             text=True,
@@ -256,16 +318,35 @@ def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: i
         elapsed_ms = int((time.perf_counter() - start) * 1000)
 
         if proc.returncode != 0:
-            return {"passed": False, "time_ms": elapsed_ms, "output": proc.stderr[:500], "expected": expected, "is_sample": is_sample}
+            error_output = proc.stderr.strip()
+            # Clean up sandbox traceback noise
+            if "temp" in error_output or "tmp" in error_output:
+                lines = error_output.split('\n')
+                error_output = '\n'.join(l for l in lines if 'NamedTemporaryFile' not in l and '/tmp/' not in l and '\\Temp\\' not in l)
+            return {
+                "passed": False, "time_ms": elapsed_ms,
+                "output": error_output[:1000], "expected": expected if not is_custom else "",
+                "is_sample": is_sample,
+            }
 
-        actual = proc.stdout.strip()
-        passed = actual == expected
-        return {"passed": passed, "time_ms": elapsed_ms, "output": actual[:500], "expected": expected, "is_sample": is_sample}
+        actual = _normalize_output(proc.stdout)
+
+        if is_custom:
+            return {"passed": True, "time_ms": elapsed_ms, "output": actual[:2000], "expected": "", "is_sample": True}
+
+        normalized_expected = _normalize_output(expected)
+        passed = actual == normalized_expected
+
+        return {
+            "passed": passed, "time_ms": elapsed_ms,
+            "output": actual[:1000], "expected": expected,
+            "is_sample": is_sample,
+        }
 
     except subprocess.TimeoutExpired:
-        return {"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected, "is_sample": is_sample}
+        return {"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected if not is_custom else "", "is_sample": is_sample}
     except Exception as e:
-        return {"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected, "is_sample": is_sample}
+        return {"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected if not is_custom else "", "is_sample": is_sample}
     finally:
         if temp_path:
             try:
@@ -280,17 +361,20 @@ async def _execute_code(
     test_cases: list[dict],
     time_limit_ms: int,
 ) -> tuple[list[dict], str, str | None]:
-    """Execute code against test cases. Runs in thread pool to avoid blocking event loop."""
+    """Execute code against test cases. Runs in thread pool."""
     import asyncio
     from functools import partial
 
     if language not in ("python", "python3"):
-        return [], "compilation_error", f"Language '{language}' not supported yet. Use Python."
+        return [], "compilation_error", f"Language '{language}' is not supported yet. Currently only Python is available."
 
     if not test_cases:
         return [], "wrong_answer", "No test cases available for this problem."
 
-    # Run all test cases in thread pool (subprocess is blocking)
+    # Basic code validation
+    if not code.strip():
+        return [], "compilation_error", "Empty code submitted."
+
     loop = asyncio.get_event_loop()
     results = []
     all_passed = True
@@ -308,8 +392,16 @@ async def _execute_code(
         results.append(result)
         if not result["passed"]:
             all_passed = False
-            if not error_msg:
-                error_msg = result["output"] if not result["passed"] else None
+            if not error_msg and result.get("output") and not result["passed"]:
+                error_msg = result["output"]
 
-    status = "accepted" if all_passed else ("runtime_error" if error_msg and "Error" in str(error_msg) else "wrong_answer")
+    if all_passed:
+        status = "accepted"
+    elif error_msg and ("Error" in str(error_msg) or "Traceback" in str(error_msg)):
+        status = "runtime_error"
+    elif error_msg and "Time Limit" in str(error_msg):
+        status = "time_limit_exceeded"
+    else:
+        status = "wrong_answer"
+
     return results, status, error_msg

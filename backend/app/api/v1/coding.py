@@ -94,6 +94,31 @@ async def get_problem(
     }
 
 
+@router.post("/{slug}/run")
+async def run_code(
+    slug: str,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Run code against sample test cases only (no submission saved)."""
+    p = await coding_service.get_problem(db, slug)
+    language = body.get("language", "python")
+    code = body.get("code", "")
+    custom_input = body.get("custom_input")
+
+    if not code.strip():
+        from app.exceptions import AppException
+        raise AppException(400, "EMPTY_CODE", "Code cannot be empty")
+
+    if custom_input is not None:
+        result = await coding_service.run_custom_input(code, language, custom_input, p.time_limit_ms)
+    else:
+        result = await coding_service.run_code(code, language, p.test_cases, p.time_limit_ms)
+
+    return {"status": "success", "data": result}
+
+
 @router.post("/{slug}/submit")
 async def submit_solution(
     slug: str,
