@@ -250,37 +250,34 @@ async def get_user_submissions(
 
 # ─── Blocked modules for sandbox ───────────────────────────────────
 BLOCKED_MODULES = {
-    "os", "subprocess", "sys", "shutil", "signal", "socket", "http",
-    "urllib", "requests", "pathlib", "glob", "importlib", "ctypes",
+    "os", "subprocess", "shutil", "signal", "socket", "http",
+    "urllib", "requests", "pathlib", "glob", "ctypes",
     "multiprocessing", "threading", "pickle", "shelve", "sqlite3",
 }
 
 SANDBOX_CODE = """
-import builtins as __b
-# Block dangerous builtins
-for __n in ['exec', 'eval', 'compile', '__import__', 'exit', 'quit', 'breakpoint']:
-    if hasattr(__b, __n):
-        delattr(__b, __n)
-
-# Restrict open to read-only on non-system paths
-_orig_open = open
-def _safe_open(name, mode='r', *a, **kw):
-    if 'w' in str(mode) or 'a' in str(mode) or 'x' in str(mode):
-        raise PermissionError("Write access denied")
-    return _orig_open(name, mode, *a, **kw)
-__b.open = _safe_open
-
-# Block dangerous modules via meta_path hook
-import sys as __sys
-class __BlockedImporter:
-    blocked = """ + repr(BLOCKED_MODULES) + """
-    def find_module(self, name, path=None):
-        if name.split('.')[0] in self.blocked:
-            return self
-    def load_module(self, name):
-        raise ImportError(f"Module '{name}' is not allowed")
-__sys.meta_path.insert(0, __BlockedImporter())
-del __sys, __b, __BlockedImporter, _orig_open
+# --- ExamPrep Sandbox ---
+def _setup_sandbox():
+    import builtins
+    _blocked = """ + repr(BLOCKED_MODULES) + """
+    _real_import = builtins.__import__
+    def _safe_import(name, *args, **kwargs):
+        if name.split('.')[0] in _blocked:
+            raise ImportError(f"Module '{name}' is not allowed")
+        return _real_import(name, *args, **kwargs)
+    builtins.__import__ = _safe_import
+    for n in ['exit', 'quit', 'breakpoint']:
+        if hasattr(builtins, n):
+            setattr(builtins, n, None)
+    _orig_open = builtins.open
+    def _safe_open(name, mode='r', *a, **kw):
+        if any(c in str(mode) for c in 'wax'):
+            raise PermissionError("Write access denied")
+        return _orig_open(name, mode, *a, **kw)
+    builtins.open = _safe_open
+_setup_sandbox()
+del _setup_sandbox
+# --- End Sandbox ---
 """
 
 
