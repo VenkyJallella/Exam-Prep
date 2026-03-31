@@ -128,6 +128,8 @@ export default function App() {
             <Route path="/scheduled-tests" element={<ScheduledTestsPage />} />
             <Route path="/export-pdf" element={<PdfExportPage />} />
             <Route path="/custom-test" element={<CustomTestPage />} />
+            <Route path="/dashboard/blog" element={<BlogListPage />} />
+            <Route path="/dashboard/blog/:slug" element={<BlogDetailPage />} />
           </Route>
         </Route>
 
