@@ -22,18 +22,23 @@ def get_gemini_client() -> genai.Client:
 
 def _sync_generate(client: genai.Client, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
     """Synchronous Gemini call — runs in a thread pool to avoid blocking the event loop."""
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            temperature=temperature,
-            max_output_tokens=max_tokens,
-        ),
-    )
-    text = response.text
-    if not text:
-        raise ValueError(f"Gemini returned empty response for model {model}")
-    return text.strip()
+    import httpx
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                http_options={"timeout": 30000},  # 30 second timeout
+            ),
+        )
+        text = response.text
+        if not text:
+            raise ValueError(f"Gemini returned empty response for model {model}")
+        return text.strip()
+    except Exception as e:
+        raise ValueError(f"Gemini API error ({model}): {e}")
 
 
 async def generate_completion(
@@ -56,12 +61,18 @@ async def generate_completion(
 
     client = get_gemini_client()
 
-    # Run synchronous Gemini SDK call in thread pool so it doesn't block the event loop
+    # Run synchronous Gemini SDK call in thread pool with 30s timeout
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None,
-        partial(_sync_generate, client, model, prompt, temperature, max_tokens),
-    )
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                partial(_sync_generate, client, model, prompt, temperature, max_tokens),
+            ),
+            timeout=35.0,
+        )
+    except asyncio.TimeoutError:
+        raise ValueError(f"Gemini API timed out after 35 seconds (model: {model})")
 
     # Cache result
     if use_cache:
