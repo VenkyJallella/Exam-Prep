@@ -20,11 +20,15 @@ logger = logging.getLogger("examprep.mock_test")
 # Real exam patterns — question counts match official exam structure
 EXAM_PATTERNS = {
     "upsc": {
-        "title": "UPSC Prelims Mock Test",
+        "title": "UPSC Prelims GS Paper I Mock Test",
         "duration": 120, "total_marks": 200, "neg_pct": 33.33,
         "sections": [
-            {"name": "General Studies", "questions": 50, "marks_per_q": 2, "neg": 0.66},
-            {"name": "CSAT", "questions": 40, "marks_per_q": 2.5, "neg": 0.83},
+            {"name": "Indian Polity", "questions": 15, "marks_per_q": 2, "neg": 0.66},
+            {"name": "History", "questions": 15, "marks_per_q": 2, "neg": 0.66},
+            {"name": "Geography", "questions": 15, "marks_per_q": 2, "neg": 0.66},
+            {"name": "Economy", "questions": 15, "marks_per_q": 2, "neg": 0.66},
+            {"name": "Science & Technology", "questions": 20, "marks_per_q": 2, "neg": 0.66},
+            {"name": "Environment", "questions": 20, "marks_per_q": 2, "neg": 0.66},
         ],
     },
     "jee": {
@@ -59,17 +63,19 @@ EXAM_PATTERNS = {
         "title": "NEET Mock Test",
         "duration": 200, "total_marks": 720, "neg_pct": 25,
         "sections": [
-            {"name": "Physics", "questions": 45, "marks_per_q": 4, "neg": 1},
-            {"name": "Chemistry", "questions": 45, "marks_per_q": 4, "neg": 1},
-            {"name": "Biology", "questions": 90, "marks_per_q": 4, "neg": 1},
+            {"name": "Physics", "questions": 50, "marks_per_q": 4, "neg": 1},
+            {"name": "Chemistry", "questions": 50, "marks_per_q": 4, "neg": 1},
+            {"name": "Biology", "questions": 100, "marks_per_q": 4, "neg": 1},
         ],
     },
     "gate-cs": {
         "title": "GATE CS Mock Test",
         "duration": 180, "total_marks": 100, "neg_pct": 33.33,
         "sections": [
-            {"name": "General Aptitude", "questions": 10, "marks_per_q": 1, "neg": 0.33},
-            {"name": "Technical", "questions": 55, "marks_per_q": 1.5, "neg": 0.5},
+            {"name": "General Aptitude", "questions": 5, "marks_per_q": 1, "neg": 0.33},
+            {"name": "General Aptitude", "questions": 5, "marks_per_q": 2, "neg": 0.66},
+            {"name": "Technical", "questions": 25, "marks_per_q": 1, "neg": 0.33},
+            {"name": "Technical", "questions": 30, "marks_per_q": 2, "neg": 0.66},
         ],
     },
     "cat": {
