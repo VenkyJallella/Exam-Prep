@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuthStore } from '@/lib/store/authStore';
 import { authAPI } from '@/lib/api/auth';
@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { setTokens, setUser } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const validateEmail = (value: string): string | undefined => {
     if (!value) return 'Email is required';
@@ -67,7 +68,8 @@ export default function LoginPage() {
       setUser(userRes.data.data.user);
 
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      navigate(redirectTo);
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Login failed');
     } finally {

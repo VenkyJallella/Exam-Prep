@@ -12,6 +12,8 @@ from app.core.security import (
     create_refresh_token,
     create_reset_token,
     decode_token,
+    blacklist_token,
+    is_token_blacklisted,
 )
 from app.exceptions import ConflictError, UnauthorizedError
 
@@ -76,12 +78,19 @@ async def refresh_tokens(db: AsyncSession, body: RefreshRequest) -> TokenRespons
     if payload.get("type") != "refresh":
         raise UnauthorizedError("Invalid refresh token")
 
+    # Check if old refresh token was already used (blacklisted)
+    if await is_token_blacklisted(body.refresh_token):
+        raise UnauthorizedError("Refresh token has been revoked")
+
     user_id = payload.get("sub")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
         raise UnauthorizedError("User not found or inactive")
+
+    # Blacklist old refresh token so it can't be reused
+    await blacklist_token(body.refresh_token)
 
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)

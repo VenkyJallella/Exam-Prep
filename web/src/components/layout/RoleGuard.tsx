@@ -8,7 +8,10 @@ interface RoleGuardProps {
 export default function RoleGuard({ allowedRoles }: RoleGuardProps) {
   const user = useAuthStore((s) => s.user);
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
 
