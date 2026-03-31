@@ -3,6 +3,7 @@ import re
 import logging
 import hashlib
 import asyncio
+import time
 from functools import partial
 from google import genai
 from app.config import settings
@@ -11,6 +12,7 @@ from app.core.cache import cache_get, cache_set
 logger = logging.getLogger("examprep.ai")
 
 _client: genai.Client | None = None
+_rate_limit_until: float = 0  # timestamp when rate limit expires
 
 
 def get_gemini_client() -> genai.Client:
@@ -21,24 +23,20 @@ def get_gemini_client() -> genai.Client:
 
 
 def _sync_generate(client: genai.Client, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
-    """Synchronous Gemini call — runs in a thread pool to avoid blocking the event loop."""
-    import httpx
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                http_options={"timeout": 30000},  # 30 second timeout
-            ),
-        )
-        text = response.text
-        if not text:
-            raise ValueError(f"Gemini returned empty response for model {model}")
-        return text.strip()
-    except Exception as e:
-        raise ValueError(f"Gemini API error ({model}): {e}")
+    """Synchronous Gemini call — runs in a thread pool."""
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=genai.types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+            http_options={"timeout": 30000},
+        ),
+    )
+    text = response.text
+    if not text:
+        raise ValueError(f"Gemini returned empty response for model {model}")
+    return text.strip()
 
 
 async def generate_completion(
@@ -48,20 +46,26 @@ async def generate_completion(
     max_tokens: int = 4000,
     use_cache: bool = True,
 ) -> str:
-    """Generate a completion from Gemini with optional caching."""
+    """Generate a completion from Gemini with caching, timeout, and rate limit handling."""
+    global _rate_limit_until
     model = model or settings.GEMINI_MODEL
+
+    # Check if we're rate limited
+    if time.time() < _rate_limit_until:
+        wait = int(_rate_limit_until - time.time())
+        raise ValueError(f"Gemini API rate limited. Retry in {wait}s.")
 
     # Check cache
     if use_cache:
         cache_key = f"ai:completion:{hashlib.md5(prompt.encode()).hexdigest()}"
         cached = await cache_get(cache_key)
         if cached:
-            logger.info("AI cache hit for prompt hash")
+            logger.info("AI cache hit")
             return cached
 
     client = get_gemini_client()
 
-    # Run synchronous Gemini SDK call in thread pool with 30s timeout
+    # Run in thread pool with 35s timeout
     loop = asyncio.get_event_loop()
     try:
         result = await asyncio.wait_for(
@@ -72,38 +76,38 @@ async def generate_completion(
             timeout=35.0,
         )
     except asyncio.TimeoutError:
-        raise ValueError(f"Gemini API timed out after 35 seconds (model: {model})")
+        raise ValueError(f"Gemini API timed out (model: {model})")
+    except Exception as e:
+        error_str = str(e).lower()
+        # Handle rate limits
+        if "429" in error_str or "rate" in error_str or "quota" in error_str or "resource_exhausted" in error_str:
+            _rate_limit_until = time.time() + 60  # Back off 60 seconds
+            logger.warning("Gemini rate limited. Backing off 60s. Error: %s", e)
+            raise ValueError(f"Gemini API rate limited. Please try again in 60 seconds.")
+        raise
 
     # Cache result
     if use_cache:
-        await cache_set(cache_key, result, ttl_seconds=86400)  # 24h
+        await cache_set(cache_key, result, ttl_seconds=86400)
 
     logger.info("AI generation complete. Model: %s", model)
     return result
 
 
 def _fix_json(raw: str) -> str:
-    """Fix common JSON issues from AI responses (LaTeX, truncation, etc.)."""
-    import re
-
+    """Fix common JSON issues from AI responses."""
     s = raw.strip()
 
-    # Remove markdown code blocks
     if s.startswith("```"):
         s = s.split("\n", 1)[1]
         s = s.rsplit("```", 1)[0].strip()
 
-    # Fix unescaped backslashes from LaTeX (e.g., \alpha, \frac, \n inside strings)
-    # This replaces \ followed by a non-escape char inside JSON string values
     def escape_backslashes(m):
         content = m.group(0)
-        # Don't touch already-valid JSON escapes: \n \t \r \\ \" \/ \b \f \uXXXX
         content = re.sub(r'\\(?![ntrb\\"/fu])', r'\\\\', content)
         return content
 
-    # Apply backslash fix to string values between quotes
     s = re.sub(r'"(?:[^"\\]|\\.)*"', escape_backslashes, s)
-
     return s
 
 
@@ -111,14 +115,12 @@ def _parse_json_robust(raw: str) -> list[dict]:
     """Parse JSON with multiple fallback strategies."""
     s = _fix_json(raw)
 
-    # Try direct parse
     try:
         data = json.loads(s)
         return data if isinstance(data, list) else [data]
     except json.JSONDecodeError:
         pass
 
-    # Try truncation repair: find last complete object
     for marker in ["},\n", "},", "}\n]"]:
         pos = s.rfind(marker)
         if pos > 0:
@@ -133,7 +135,6 @@ def _parse_json_robust(raw: str) -> list[dict]:
             except json.JSONDecodeError:
                 continue
 
-    # Last resort: extract individual JSON objects with regex
     objects = []
     for m in re.finditer(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', s):
         try:
@@ -155,5 +156,4 @@ async def generate_questions_json(prompt: str, model: str | None = None) -> list
     result = await generate_completion(
         prompt, model=model, temperature=0.8, max_tokens=16000, use_cache=False,
     )
-
     return _parse_json_robust(result)
