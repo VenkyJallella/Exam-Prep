@@ -31,9 +31,11 @@ async def get_plan_prices() -> dict[PlanType, int]:
     """Get current plan prices from Redis cache, fallback to defaults."""
     from app.core.cache import cache_get
     try:
-        import json
         cached = await cache_get("plan_prices")
-        if cached:
+        if cached and isinstance(cached, dict):
+            return {PlanType.FREE: 0, PlanType.PRO: int(cached.get("pro", 149)), PlanType.PREMIUM: int(cached.get("premium", 199))}
+        elif cached and isinstance(cached, str):
+            import json
             data = json.loads(cached)
             return {PlanType.FREE: 0, PlanType.PRO: int(data.get("pro", 149)), PlanType.PREMIUM: int(data.get("premium", 199))}
     except Exception:
@@ -44,8 +46,8 @@ async def get_plan_prices() -> dict[PlanType, int]:
 async def set_plan_prices(pro_price: int, premium_price: int):
     """Update plan prices in Redis cache."""
     from app.core.cache import cache_set
-    import json
-    await cache_set("plan_prices", json.dumps({"pro": pro_price, "premium": premium_price}), ttl_seconds=0)
+    # cache_set auto-serializes with json.dumps, so pass dict directly
+    await cache_set("plan_prices", {"pro": pro_price, "premium": premium_price}, ttl_seconds=86400 * 365)
     logger.info("Plan prices updated: Pro=₹%d, Premium=₹%d", pro_price, premium_price)
 
 
