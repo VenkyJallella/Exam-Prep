@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import apiClient from '../../lib/api/client';
 
 const tiers = [
   {
@@ -101,8 +102,15 @@ const faqs = [
 ];
 
 export default function PricingPage() {
-  // INR only pricing
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiClient.get('/payments/pricing').then(r => {
+      const d = r.data.data;
+      tiers[1].priceINR = `₹${d.pro}`;
+      tiers[2].priceINR = `₹${d.premium}`;
+    }).catch(() => {});
+  }, []);
 
   return (
     <>

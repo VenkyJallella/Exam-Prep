@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import apiClient from '@/lib/api/client';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -8,6 +10,11 @@ interface UpgradeModalProps {
 }
 
 export default function UpgradeModal({ isOpen, onClose, feature, message }: UpgradeModalProps) {
+  const [prices, setPrices] = useState({ pro: 149, premium: 199 });
+  useEffect(() => {
+    if (isOpen) apiClient.get('/payments/pricing').then(r => setPrices(r.data.data)).catch(() => {});
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -51,11 +58,11 @@ export default function UpgradeModal({ isOpen, onClose, feature, message }: Upgr
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-xl border-2 border-primary-500 bg-primary-50 p-3 text-center dark:bg-primary-900/20">
             <p className="text-xs font-medium text-primary-600">Pro</p>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">₹149<span className="text-xs font-normal text-gray-500">/mo</span></p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">₹{prices.pro}<span className="text-xs font-normal text-gray-500">/mo</span></p>
           </div>
           <div className="rounded-xl border-2 border-purple-500 bg-purple-50 p-3 text-center dark:bg-purple-900/20">
             <p className="text-xs font-medium text-purple-600">Premium</p>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">₹199<span className="text-xs font-normal text-gray-500">/mo</span></p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">₹{prices.premium}<span className="text-xs font-normal text-gray-500">/mo</span></p>
           </div>
         </div>
 

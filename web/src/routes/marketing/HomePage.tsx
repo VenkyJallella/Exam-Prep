@@ -62,6 +62,7 @@ export default function HomePage() {
     { value: '50+', label: 'Topics' },
     { value: '100%', label: 'AI-Powered' },
   ]);
+  const [prices, setPrices] = useState({ pro: 149, premium: 199 });
 
   useEffect(() => {
     // Fetch real stats
@@ -90,6 +91,7 @@ export default function HomePage() {
     }).catch(() => {});
 
     apiClient.get('/blog', { params: { per_page: 3 } }).then(r => setBlogPosts(r.data.data || [])).catch(() => {});
+    apiClient.get('/payments/pricing').then(r => setPrices(r.data.data)).catch(() => {});
   }, []);
 
   return (
@@ -238,8 +240,8 @@ export default function HomePage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {[
               { name: 'Free', price: 'Free', desc: '10 sessions/day, daily quiz, all coding', cta: 'Start Free', link: '/register', border: 'border-gray-200 dark:border-gray-800' },
-              { name: 'Pro', price: '₹149/mo', desc: 'Unlimited practice, AI features, 90d analytics', cta: 'Get Pro', link: '/register?plan=pro', border: 'border-primary-500 ring-2 ring-primary-200' },
-              { name: 'Premium', price: '₹199/mo', desc: 'Everything + topper comparison, PDF export', cta: 'Go Premium', link: '/register?plan=premium', border: 'border-purple-500' },
+              { name: 'Pro', price: `₹${prices.pro}/mo`, desc: 'Unlimited practice, AI features, 90d analytics', cta: 'Get Pro', link: '/register?plan=pro', border: 'border-primary-500 ring-2 ring-primary-200' },
+              { name: 'Premium', price: `₹${prices.premium}/mo`, desc: 'Everything + topper comparison, PDF export', cta: 'Go Premium', link: '/register?plan=premium', border: 'border-purple-500' },
             ].map(p => (
               <div key={p.name} className={`rounded-2xl border-2 bg-white p-6 text-center dark:bg-gray-950 ${p.border}`}>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">{p.name}</h3>
