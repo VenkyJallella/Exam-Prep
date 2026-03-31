@@ -36,13 +36,14 @@ export default function ProfilePage() {
   const [gamification, setGamification] = useState<GamificationStats | null>(null);
   const [usageData, setUsageData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'topics' | 'badges' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'topics' | 'coding' | 'badges' | 'settings'>('overview');
   const [topicPage, setTopicPage] = useState(1);
 
   // Edit profile
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(user?.full_name || '');
   const [saving, setSaving] = useState(false);
+  const [codingStats, setCodingStats] = useState<any>(null);
 
   useEffect(() => {
     Promise.allSettled([
@@ -51,6 +52,7 @@ export default function ProfilePage() {
       analyticsAPI.topicPerformance().then(r => setTopicPerf(r.data.data)),
       leaderboardAPI.myStats().then(r => setGamification(r.data.data)),
       apiClient.get('/payments/usage').then(r => setUsageData(r.data.data)),
+      apiClient.get('/coding/my-stats').then(r => setCodingStats(r.data.data)),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -179,7 +181,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-          {(['overview', 'topics', 'badges', 'settings'] as const).map(tab => (
+          {(['overview', 'topics', 'coding', 'badges', 'settings'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-medium capitalize transition-all ${activeTab === tab ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
             >{tab}</button>
@@ -276,6 +278,90 @@ export default function ProfilePage() {
                     <button onClick={() => setTopicPage(p => Math.max(1, p - 1))} disabled={topicPage === 1} className="btn-secondary text-sm disabled:opacity-40">Prev</button>
                     <span className="text-sm text-gray-500">Page {topicPage} of {totalTopicPages}</span>
                     <button onClick={() => setTopicPage(p => Math.min(totalTopicPages, p + 1))} disabled={topicPage === totalTopicPages} className="btn-secondary text-sm disabled:opacity-40">Next</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Coding tab */}
+        {activeTab === 'coding' && (
+          <div className="space-y-6">
+            {!codingStats ? (
+              <div className="card py-8 text-center text-sm text-gray-500">Start solving coding problems to see your stats.</div>
+            ) : (
+              <>
+                {/* Coding overview */}
+                <div className="grid gap-4 sm:grid-cols-4">
+                  <div className="card text-center">
+                    <p className="text-2xl font-bold text-blue-600">{codingStats.problems_solved}</p>
+                    <p className="text-xs text-gray-500">Problems Solved</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{codingStats.problems_attempted}</p>
+                    <p className="text-xs text-gray-500">Attempted</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className="text-2xl font-bold text-purple-600">{codingStats.total_submissions}</p>
+                    <p className="text-xs text-gray-500">Submissions</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className={`text-2xl font-bold ${codingStats.acceptance_rate >= 60 ? 'text-green-600' : codingStats.acceptance_rate >= 30 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {codingStats.acceptance_rate}%
+                    </p>
+                    <p className="text-xs text-gray-500">Acceptance Rate</p>
+                  </div>
+                </div>
+
+                {/* Difficulty breakdown */}
+                <div className="card">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">Difficulty Breakdown</h3>
+                  <div className="space-y-3">
+                    {['easy', 'medium', 'hard'].map(diff => {
+                      const d = codingStats.difficulty?.[diff] || { solved: 0, total: 0 };
+                      const pct = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
+                      const color = diff === 'easy' ? 'bg-green-500' : diff === 'medium' ? 'bg-yellow-500' : 'bg-red-500';
+                      const textColor = diff === 'easy' ? 'text-green-600' : diff === 'medium' ? 'text-yellow-600' : 'text-red-600';
+                      return (
+                        <div key={diff}>
+                          <div className="flex justify-between text-sm">
+                            <span className={`font-medium capitalize ${textColor}`}>{diff}</span>
+                            <span className="text-gray-500">{d.solved}/{d.total}</span>
+                          </div>
+                          <div className="mt-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                            <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Recent submissions */}
+                {codingStats.recent_submissions?.length > 0 && (
+                  <div className="card">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">Recent Submissions</h3>
+                    <div className="space-y-2">
+                      {codingStats.recent_submissions.map((s: any) => (
+                        <div key={s.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-800">
+                          <div>
+                            <a href={`/coding/${s.problem_slug}`} className="text-sm font-medium text-primary-600 hover:underline">{s.problem_title}</a>
+                            <p className="text-xs text-gray-400">{new Date(s.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400">{s.passed}/{s.total}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              s.status === 'accepted' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : s.status === 'wrong_answer' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}>
+                              {s.status === 'accepted' ? 'Accepted' : s.status === 'wrong_answer' ? 'Wrong Answer' : s.status.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>

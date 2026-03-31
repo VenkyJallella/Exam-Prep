@@ -1,5 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Body
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.core.security import get_current_user, require_role
@@ -7,6 +8,82 @@ from app.models.user import User
 from app.services import coding_service
 
 router = APIRouter()
+
+
+@router.get("/my-stats")
+async def my_coding_stats(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get user's coding performance summary."""
+    from sqlalchemy import func, distinct
+    from app.models.coding import CodingSubmission, CodingQuestion
+
+    total_submissions = (await db.execute(
+        select(func.count()).select_from(CodingSubmission).where(CodingSubmission.user_id == user.id)
+    )).scalar() or 0
+
+    problems_attempted = (await db.execute(
+        select(func.count(distinct(CodingSubmission.question_id))).where(CodingSubmission.user_id == user.id)
+    )).scalar() or 0
+
+    problems_solved = (await db.execute(
+        select(func.count(distinct(CodingSubmission.question_id))).where(
+            CodingSubmission.user_id == user.id, CodingSubmission.status == "accepted"
+        )
+    )).scalar() or 0
+
+    # Difficulty breakdown
+    difficulty_stats = {}
+    for diff in ["easy", "medium", "hard"]:
+        solved = (await db.execute(
+            select(func.count(distinct(CodingSubmission.question_id)))
+            .join(CodingQuestion, CodingSubmission.question_id == CodingQuestion.id)
+            .where(
+                CodingSubmission.user_id == user.id,
+                CodingSubmission.status == "accepted",
+                CodingQuestion.difficulty == diff,
+            )
+        )).scalar() or 0
+        total = (await db.execute(
+            select(func.count()).select_from(CodingQuestion).where(CodingQuestion.difficulty == diff, CodingQuestion.is_active == True)
+        )).scalar() or 0
+        difficulty_stats[diff] = {"solved": solved, "total": total}
+
+    # Recent submissions
+    recent = (await db.execute(
+        select(CodingSubmission)
+        .where(CodingSubmission.user_id == user.id)
+        .order_by(CodingSubmission.created_at.desc())
+        .limit(10)
+    )).scalars().all()
+
+    recent_list = []
+    for s in recent:
+        q = (await db.execute(select(CodingQuestion).where(CodingQuestion.id == s.question_id))).scalar_one_or_none()
+        recent_list.append({
+            "id": str(s.id),
+            "problem_title": q.title if q else "Unknown",
+            "problem_slug": q.slug if q else "",
+            "status": s.status,
+            "language": s.language,
+            "passed": s.passed_test_cases,
+            "total": s.total_test_cases,
+            "time_ms": s.execution_time_ms,
+            "created_at": s.created_at.isoformat(),
+        })
+
+    return {
+        "status": "success",
+        "data": {
+            "total_submissions": total_submissions,
+            "problems_attempted": problems_attempted,
+            "problems_solved": problems_solved,
+            "acceptance_rate": round((problems_solved / problems_attempted * 100), 1) if problems_attempted > 0 else 0,
+            "difficulty": difficulty_stats,
+            "recent_submissions": recent_list,
+        },
+    }
 
 
 @router.get("")

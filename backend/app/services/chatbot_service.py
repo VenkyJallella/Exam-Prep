@@ -103,6 +103,36 @@ TOPIC PERFORMANCE (top practiced):
 WEAK AREAS (below 50% accuracy): {', '.join(weak_topics) if weak_topics else 'None identified yet'}
 STRONG AREAS (above 75% accuracy): {', '.join(strong_topics) if strong_topics else 'None yet'}
 """
+
+    # Add coding stats
+    try:
+        from app.models.coding import CodingSubmission, CodingQuestion
+        from sqlalchemy import func, distinct
+
+        coding_total = (await db.execute(
+            select(func.count()).select_from(CodingSubmission).where(CodingSubmission.user_id == user_id)
+        )).scalar() or 0
+
+        coding_solved = (await db.execute(
+            select(func.count(distinct(CodingSubmission.question_id))).where(
+                CodingSubmission.user_id == user_id, CodingSubmission.status == "accepted"
+            )
+        )).scalar() or 0
+
+        coding_attempted = (await db.execute(
+            select(func.count(distinct(CodingSubmission.question_id))).where(CodingSubmission.user_id == user_id)
+        )).scalar() or 0
+
+        context += f"""
+CODING PERFORMANCE:
+- Problems attempted: {coding_attempted}
+- Problems solved: {coding_solved}
+- Total submissions: {coding_total}
+- Coding acceptance rate: {round(coding_solved / coding_attempted * 100, 1) if coding_attempted > 0 else 0}%
+"""
+    except Exception:
+        pass
+
     return context
 
 
