@@ -73,11 +73,18 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [dynamicPrices, setDynamicPrices] = useState<{ pro: number; premium: number }>({ pro: 149, premium: 199 });
 
   useEffect(() => {
     Promise.allSettled([
       apiClient.get('/payments/usage').then(r => { setUsage(r.data.data); setCurrentPlan(r.data.data.plan); }),
       apiClient.get('/payments/subscription').then(r => { if (r.data.data?.plan) setCurrentPlan(r.data.data.plan); }),
+      apiClient.get('/payments/pricing').then(r => {
+        const d = r.data.data;
+        setDynamicPrices({ pro: d.pro, premium: d.premium });
+        plans[1].price = d.pro;
+        plans[2].price = d.premium;
+      }),
     ]).finally(() => setLoading(false));
   }, []);
 

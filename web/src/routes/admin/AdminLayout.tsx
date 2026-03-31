@@ -11,6 +11,7 @@ const adminNav = [
   { to: '/admin/coding', label: 'Coding' },
   { to: '/admin/analytics', label: 'Analytics' },
   { to: '/admin/pages', label: 'Pages' },
+  { to: '/admin/settings', label: 'Settings' },
 ];
 
 export default function AdminLayout() {

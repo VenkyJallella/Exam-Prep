@@ -1,10 +1,10 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Body
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_role
 from app.models.user import User
 from app.schemas.common import APIResponse
 from app.services import payment_service
@@ -73,6 +73,44 @@ async def get_usage(user: User = Depends(get_current_user), db: AsyncSession = D
     from app.core.subscription import get_usage_summary
     data = await get_usage_summary(db, user.id)
     return {"status": "success", "data": data}
+
+
+@router.get("/pricing")
+async def get_pricing():
+    """Get current plan pricing (public)."""
+    prices = await payment_service.get_plan_prices()
+    return {
+        "status": "success",
+        "data": {
+            "free": 0,
+            "pro": prices[payment_service.PlanType.PRO],
+            "premium": prices[payment_service.PlanType.PREMIUM],
+        },
+    }
+
+
+@router.put("/pricing")
+async def update_pricing(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    """Update plan pricing (admin only)."""
+    pro_price = int(body.get("pro", 149))
+    premium_price = int(body.get("premium", 199))
+
+    if pro_price < 1 or premium_price < 1:
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_PRICE", "Price must be at least ₹1")
+    if premium_price <= pro_price:
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_PRICE", "Premium must be more than Pro")
+
+    await payment_service.set_plan_prices(pro_price, premium_price)
+    return {
+        "status": "success",
+        "data": {"pro": pro_price, "premium": premium_price, "message": "Prices updated"},
+    }
 
 
 @router.post("/webhook")

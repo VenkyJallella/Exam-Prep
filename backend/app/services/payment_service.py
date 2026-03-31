@@ -18,13 +18,35 @@ from app.config import settings
 
 logger = logging.getLogger("examprep.payments")
 
-PLAN_PRICES = {
+DEFAULT_PLAN_PRICES = {
     PlanType.FREE: 0,
     PlanType.PRO: 149,
     PlanType.PREMIUM: 199,
 }
 
 RAZORPAY_API = "https://api.razorpay.com/v1"
+
+
+async def get_plan_prices() -> dict[PlanType, int]:
+    """Get current plan prices from Redis cache, fallback to defaults."""
+    from app.core.cache import cache_get
+    try:
+        import json
+        cached = await cache_get("plan_prices")
+        if cached:
+            data = json.loads(cached)
+            return {PlanType.FREE: 0, PlanType.PRO: int(data.get("pro", 149)), PlanType.PREMIUM: int(data.get("premium", 199))}
+    except Exception:
+        pass
+    return dict(DEFAULT_PLAN_PRICES)
+
+
+async def set_plan_prices(pro_price: int, premium_price: int):
+    """Update plan prices in Redis cache."""
+    from app.core.cache import cache_set
+    import json
+    await cache_set("plan_prices", json.dumps({"pro": pro_price, "premium": premium_price}), ttl_seconds=0)
+    logger.info("Plan prices updated: Pro=₹%d, Premium=₹%d", pro_price, premium_price)
 
 
 async def _razorpay_request(method: str, path: str, json_data: dict | None = None) -> dict:
@@ -73,7 +95,8 @@ async def create_order(db: AsyncSession, user_id: UUID, plan: str) -> dict:
     if plan_type == PlanType.FREE:
         raise AppException(400, "INVALID_PLAN", "Cannot purchase free plan")
 
-    amount_inr = PLAN_PRICES[plan_type]
+    prices = await get_plan_prices()
+    amount_inr = prices[plan_type]
     amount_paise = amount_inr * 100
 
     # Create Razorpay order via async HTTP (no SDK needed)
