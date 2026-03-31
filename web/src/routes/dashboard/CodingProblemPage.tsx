@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '@/lib/api/client';
 import toast from 'react-hot-toast';
+import CodeMirror from '@uiw/react-codemirror';
+import { python } from '@codemirror/lang-python';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 interface Problem {
   id: string; title: string; slug: string; description: string; difficulty: string;
@@ -33,7 +36,6 @@ export default function CodingProblemPage() {
   const [activeTab, setActiveTab] = useState<'testcases' | 'result' | 'custom'>('testcases');
   const [customInput, setCustomInput] = useState('');
   const [customOutput, setCustomOutput] = useState('');
-  const editorRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -49,19 +51,6 @@ export default function CodingProblemPage() {
       .catch(() => toast.error('Problem not found'))
       .finally(() => setLoading(false));
   }, [slug]);
-
-  // Handle Tab key in editor
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const target = e.target as HTMLTextAreaElement;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-      const newCode = code.substring(0, start) + '    ' + code.substring(end);
-      setCode(newCode);
-      setTimeout(() => { target.selectionStart = target.selectionEnd = start + 4; }, 0);
-    }
-  };
 
   const handleRun = async () => {
     if (!slug || !code.trim()) return;
@@ -103,7 +92,6 @@ export default function CodingProblemPage() {
   if (!problem) return <div className="text-center text-gray-500">Problem not found. <Link to="/coding" className="text-primary-600 hover:underline">Back</Link></div>;
 
   const diffColor = problem.difficulty === 'easy' ? 'text-green-600' : problem.difficulty === 'hard' ? 'text-red-600' : 'text-yellow-600';
-  const lineCount = code.split('\n').length;
 
   return (
     <>
@@ -175,7 +163,6 @@ export default function CodingProblemPage() {
           <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
             <div className="flex items-center gap-2">
               <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Python 3</span>
-              <span className="text-xs text-gray-400">{lineCount} lines</span>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={handleRun} disabled={running || submitting}
@@ -189,26 +176,26 @@ export default function CodingProblemPage() {
             </div>
           </div>
 
-          {/* Code editor with line numbers */}
-          <div className="relative flex-1 overflow-hidden">
-            <div className="flex h-full">
-              {/* Line numbers */}
-              <div className="w-10 shrink-0 select-none overflow-hidden bg-gray-900 pt-4 text-right text-xs leading-[1.35rem] text-gray-600 dark:bg-gray-950">
-                {Array.from({ length: lineCount }, (_, i) => (
-                  <div key={i} className="pr-2">{i + 1}</div>
-                ))}
-              </div>
-              {/* Editor */}
-              <textarea
-                ref={editorRef}
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="h-full w-full resize-none border-0 bg-gray-900 p-4 pl-3 font-mono text-sm leading-[1.35rem] text-green-400 focus:outline-none dark:bg-gray-950"
-                spellCheck={false}
-                placeholder="Write your Python solution here..."
-              />
-            </div>
+          {/* CodeMirror Editor */}
+          <div className="flex-1 overflow-hidden">
+            <CodeMirror
+              value={code}
+              onChange={(val) => setCode(val)}
+              theme={oneDark}
+              extensions={[python()]}
+              height="100%"
+              style={{ height: '100%', fontSize: '14px' }}
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLine: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                foldGutter: true,
+                indentOnInput: true,
+                tabSize: 4,
+              }}
+            />
           </div>
 
           {/* Bottom panel: Test cases / Results / Custom Input */}
