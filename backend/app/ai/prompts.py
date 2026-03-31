@@ -129,53 +129,62 @@ Return valid JSON:
 Return ONLY the JSON object, no other text."""
 
 
-CODING_GENERATION = """You are a senior software engineer at Google who creates LeetCode-style coding problems.
+CODING_GENERATION = """You are a senior software engineer creating coding problems for an online judge.
 
-Generate {count} coding problems for practice. Difficulty: {difficulty}
+Generate {count} coding problems. Difficulty: {difficulty}. Topic: {topic}
+
+CRITICAL: This is a STDIN/STDOUT based judge. User code reads from input() and prints to stdout.
+- Test case "input" = raw text fed to stdin (NOT function arguments like LeetCode)
+- Test case "expected_output" = exact text printed to stdout
+- Starter code must use input() to read and print() to output
+- NO class-based solutions. Just standalone Python scripts.
 
 Difficulty levels:
-- easy: Simple loops, basic data structures, string manipulation. Solvable in 10-15 min.
-- medium: Requires knowledge of hash maps, sorting, binary search, BFS/DFS, dynamic programming basics. 20-30 min.
-- hard: Advanced DP, graph algorithms, complex data structures, mathematical reasoning. 30-60 min.
-
-Topic focus: {topic}
-
-For EACH problem, generate:
-1. A clear problem title (like LeetCode naming)
-2. Detailed description with examples
-3. Input/output format
-4. Constraints (array size, value ranges)
-5. 4-6 test cases (2 marked as sample, rest hidden)
-6. Starter code in Python and Java
-7. Solution in Python
-8. Tags and company associations
+- easy: Simple loops, basic data structures. 10-15 min.
+- medium: Hash maps, sorting, binary search, BFS/DFS, basic DP. 20-30 min.
+- hard: Advanced DP, graph algorithms, complex problems. 30-60 min.
 
 Return a JSON array:
 [
   {{
-    "title": "Problem Title",
-    "slug": "problem-title",
-    "description": "Full problem description with examples in markdown. Include:\\n\\n**Example 1:**\\n```\\nInput: nums = [2,7,11,15], target = 9\\nOutput: [0,1]\\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\\n```",
+    "title": "Two Sum",
+    "slug": "two-sum",
+    "description": "Given an array of integers and a target, return indices of two numbers that add up to target.\\n\\nYou may assume each input has exactly one solution.\\n\\n**Example 1:**\\n```\\nInput:\\n2 7 11 15\\n9\\nOutput:\\n0 1\\n```\\n\\n**Example 2:**\\n```\\nInput:\\n3 2 4\\n6\\nOutput:\\n1 2\\n```",
     "difficulty": "{difficulty}",
-    "constraints": "1 <= nums.length <= 10^4\\n-10^9 <= nums[i] <= 10^9",
-    "input_format": "An array of integers nums and an integer target",
-    "output_format": "An array of two indices",
+    "constraints": "2 <= nums.length <= 10^4\\n-10^9 <= nums[i] <= 10^9",
+    "input_format": "First line: space-separated integers\\nSecond line: target integer",
+    "output_format": "Space-separated indices",
     "test_cases": [
-      {{"input": "nums = [2,7,11,15], target = 9", "expected_output": "[0, 1]", "is_sample": true}},
-      {{"input": "nums = [3,2,4], target = 6", "expected_output": "[1, 2]", "is_sample": true}},
-      {{"input": "nums = [1,2,3,4,5], target = 9", "expected_output": "[3, 4]", "is_sample": false}},
-      {{"input": "nums = [0,0], target = 0", "expected_output": "[0, 1]", "is_sample": false}}
+      {{"input": "2 7 11 15\\n9", "expected_output": "0 1", "is_sample": true}},
+      {{"input": "3 2 4\\n6", "expected_output": "1 2", "is_sample": true}},
+      {{"input": "1 2 3 4 5\\n9", "expected_output": "3 4", "is_sample": false}},
+      {{"input": "3 3\\n6", "expected_output": "0 1", "is_sample": false}}
     ],
     "starter_code": {{
-      "python": "class Solution:\\n    def solve(self, nums: list[int], target: int) -> list[int]:\\n        # Write your code here\\n        pass",
-      "java": "class Solution {{\\n    public int[] solve(int[] nums, int target) {{\\n        // Write your code here\\n        return new int[]{{}};\\n    }}\\n}}"
+      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\n\\n# Write your solution here\\n"
     }},
     "solutions": {{
-      "python": "class Solution:\\n    def solve(self, nums, target):\\n        seen = {{}}\\n        for i, n in enumerate(nums):\\n            if target - n in seen:\\n                return [seen[target-n], i]\\n            seen[n] = i"
+      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\nseen = {{}}\\nfor i, n in enumerate(nums):\\n    if target - n in seen:\\n        print(seen[target-n], i)\\n        break\\n    seen[n] = i"
     }},
     "tags": ["Array", "Hash Table"],
-    "companies": ["Google", "Amazon", "Microsoft"]
+    "companies": ["Google", "Amazon"]
   }}
 ]
+
+RULES FOR TEST CASES:
+1. "input" must be PLAIN TEXT that goes to stdin. Each line separated by \\n
+   GOOD: "2 7 11 15\\n9"
+   BAD: "nums = [2,7,11,15], target = 9"
+2. "expected_output" must be PLAIN TEXT printed to stdout
+   GOOD: "0 1"
+   BAD: "[0, 1]"
+3. Starter code MUST use input() and print()
+   GOOD: "nums = list(map(int, input().split()))\\nprint(result)"
+   BAD: "class Solution:\\n    def solve(self, nums):"
+4. For arrays: input as space-separated on one line, output as space-separated
+5. For single values: one value per line
+6. For strings: one string per line
+7. For boolean: print True or False (Python style)
+8. For multiple lines output: each value on its own line
 
 Return ONLY the JSON array, no other text."""
