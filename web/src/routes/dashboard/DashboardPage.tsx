@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/lib/store/authStore';
 import { analyticsAPI, leaderboardAPI, OverviewStats, ProgressPoint, TopicPerformance } from '@/lib/api/analytics';
+import apiClient from '@/lib/api/client';
 import OnboardingWizard from '@/components/ui/OnboardingWizard';
 
 const quickActions = [
@@ -23,6 +24,8 @@ export default function DashboardPage() {
   const [topTopics, setTopTopics] = useState<TopicPerformance[]>([]);
   const [heatmap, setHeatmap] = useState<Array<{ date: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [quizDone, setQuizDone] = useState(false);
+  const [codingStats, setCodingStats] = useState<{ problems_solved: number; problems_attempted: number } | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -33,6 +36,8 @@ export default function DashboardPage() {
         analyticsAPI.progress(7),
         analyticsAPI.topicPerformance(),
         analyticsAPI.activityHeatmap(30),
+        apiClient.get('/quiz/today'),
+        apiClient.get('/coding/my-stats'),
       ]);
 
       if (results[0].status === 'fulfilled') setStats(results[0].value.data.data);
@@ -40,6 +45,8 @@ export default function DashboardPage() {
       if (results[2].status === 'fulfilled') setProgress(results[2].value.data.data);
       if (results[3].status === 'fulfilled') setTopTopics(results[3].value.data.data);
       if (results[4].status === 'fulfilled') setHeatmap(results[4].value.data.data);
+      if (results[5].status === 'fulfilled') setQuizDone(!!results[5].value.data.data?.attempted);
+      if (results[6].status === 'fulfilled') setCodingStats(results[6].value.data.data);
       setLoading(false);
     };
     fetchAll();
@@ -367,8 +374,6 @@ export default function DashboardPage() {
                   recommendations.push({ text: 'Start your daily practice', to: '/practice', icon: '📚', color: 'bg-blue-100 dark:bg-blue-900/20' });
                 }
 
-                // Check if daily quiz done
-                const quizDone = false; // Would need API check
                 if (!quizDone) {
                   recommendations.push({ text: 'Take today\'s Daily Quiz', to: '/daily-quiz', icon: '⚡', color: 'bg-yellow-100 dark:bg-yellow-900/20' });
                 }
@@ -379,6 +384,10 @@ export default function DashboardPage() {
 
                 if (streak === 0) {
                   recommendations.push({ text: 'Start a practice streak today!', to: '/practice', icon: '🔥', color: 'bg-orange-100 dark:bg-orange-900/20' });
+                }
+
+                if (codingStats && codingStats.problems_solved < 5) {
+                  recommendations.push({ text: 'Solve coding problems', to: '/coding', icon: '💻', color: 'bg-indigo-100 dark:bg-indigo-900/20' });
                 }
 
                 if (topTopics.length > 0) {
