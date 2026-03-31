@@ -221,65 +221,95 @@ async def get_user_submissions(
     return list(submissions), total
 
 
+def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool) -> dict:
+    """Run a single test case synchronously (called in thread pool)."""
+    import subprocess
+    import tempfile
+    import os
+    import time
+    import sys
+
+    python_cmd = sys.executable  # Use the same Python that runs the server
+
+    # Security: wrap code to block dangerous operations
+    sandbox_prefix = (
+        "import builtins as _b\n"
+        "for _n in ['open','exec','eval','compile','__import__','exit','quit']:\n"
+        "  if hasattr(_b,_n): delattr(_b,_n)\n"
+        "import os as _os; _os.system=lambda *a:None; _os.popen=lambda *a:None\n"
+    )
+
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sandbox_prefix + code)
+            temp_path = f.name
+
+        start = time.perf_counter()
+        proc = subprocess.run(
+            [python_cmd, "-u", temp_path],
+            input=test_input,
+            capture_output=True,
+            text=True,
+            timeout=time_limit_ms / 1000 + 1,
+        )
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+
+        if proc.returncode != 0:
+            return {"passed": False, "time_ms": elapsed_ms, "output": proc.stderr[:500], "expected": expected, "is_sample": is_sample}
+
+        actual = proc.stdout.strip()
+        passed = actual == expected
+        return {"passed": passed, "time_ms": elapsed_ms, "output": actual[:500], "expected": expected, "is_sample": is_sample}
+
+    except subprocess.TimeoutExpired:
+        return {"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected, "is_sample": is_sample}
+    except Exception as e:
+        return {"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected, "is_sample": is_sample}
+    finally:
+        if temp_path:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
 async def _execute_code(
     code: str,
     language: str,
     test_cases: list[dict],
     time_limit_ms: int,
 ) -> tuple[list[dict], str, str | None]:
-    """Execute code against test cases using subprocess (Python only for now)."""
+    """Execute code against test cases. Runs in thread pool to avoid blocking event loop."""
     import asyncio
-    import subprocess
-    import tempfile
-    import os
-
-    results = []
-    all_passed = True
-    error_msg = None
+    from functools import partial
 
     if language not in ("python", "python3"):
         return [], "compilation_error", f"Language '{language}' not supported yet. Use Python."
 
+    if not test_cases:
+        return [], "wrong_answer", "No test cases available for this problem."
+
+    # Run all test cases in thread pool (subprocess is blocking)
+    loop = asyncio.get_event_loop()
+    results = []
+    all_passed = True
+    error_msg = None
+
     for tc in test_cases:
         test_input = tc.get("input", "")
         expected = tc.get("expected_output", "").strip()
+        is_sample = tc.get("is_sample", False)
 
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-                f.write(code)
-                temp_path = f.name
-
-            proc = subprocess.run(
-                ["python", temp_path],
-                input=test_input,
-                capture_output=True,
-                text=True,
-                timeout=time_limit_ms / 1000 + 1,
-            )
-
-            os.unlink(temp_path)
-
-            if proc.returncode != 0:
-                results.append({"passed": False, "time_ms": 0, "output": proc.stderr[:500], "expected": expected, "is_sample": tc.get("is_sample", False)})
-                all_passed = False
-                if not error_msg:
-                    error_msg = proc.stderr[:500]
-                continue
-
-            actual = proc.stdout.strip()
-            passed = actual == expected
-            results.append({"passed": passed, "time_ms": 0, "output": actual[:500], "expected": expected, "is_sample": tc.get("is_sample", False)})
-            if not passed:
-                all_passed = False
-
-        except subprocess.TimeoutExpired:
-            results.append({"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected, "is_sample": tc.get("is_sample", False)})
+        result = await loop.run_in_executor(
+            None,
+            partial(_run_single_test, code, test_input, expected, time_limit_ms, is_sample),
+        )
+        results.append(result)
+        if not result["passed"]:
             all_passed = False
-            error_msg = "Time Limit Exceeded"
-        except Exception as e:
-            results.append({"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected, "is_sample": tc.get("is_sample", False)})
-            all_passed = False
-            error_msg = str(e)[:500]
+            if not error_msg:
+                error_msg = result["output"] if not result["passed"] else None
 
     status = "accepted" if all_passed else ("runtime_error" if error_msg and "Error" in str(error_msg) else "wrong_answer")
     return results, status, error_msg
