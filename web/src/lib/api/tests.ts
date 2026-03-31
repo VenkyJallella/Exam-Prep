@@ -24,6 +24,7 @@ export interface TestAttempt {
   time_taken_seconds: number;
   section_scores: Record<string, number> | null;
   rank: number | null;
+  created_at: string;
 }
 
 export interface TestQuestion {

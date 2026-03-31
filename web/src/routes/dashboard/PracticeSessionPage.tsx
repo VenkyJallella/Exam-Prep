@@ -31,6 +31,15 @@ export default function PracticeSessionPage() {
       .then((res) => {
         if (cancelled) return;
         setSession(res.data.data.session, res.data.data.questions);
+        // Restore timer from localStorage or start fresh
+        const timerKey = `examprep_practice_start_${sessionId}`;
+        let startTime = localStorage.getItem(timerKey);
+        if (!startTime) {
+          startTime = String(Date.now());
+          localStorage.setItem(timerKey, startTime);
+        }
+        const elapsed = Math.floor((Date.now() - Number(startTime)) / 1000);
+        timer.reset(elapsed);
         timer.start();
       })
       .catch(() => {

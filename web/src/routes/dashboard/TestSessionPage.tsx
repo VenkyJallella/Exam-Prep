@@ -71,7 +71,17 @@ export default function TestSessionPage() {
               data.negative_marking_pct,
               data.instructions,
             );
-            timer.reset(data.duration_minutes * 60);
+            // Calculate remaining time from when attempt started
+            const startedAt = new Date(data.attempt.created_at).getTime();
+            const deadlineMs = startedAt + data.duration_minutes * 60 * 1000;
+            const remainingSec = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+            if (remainingSec <= 0) {
+              // Time already expired — auto submit
+              toast.error('Test time has expired');
+              navigate(`/tests/${attemptId}/results`, { replace: true });
+              return;
+            }
+            timer.reset(remainingSec);
             timer.start();
             setLoading(false);
           });
@@ -97,17 +107,38 @@ export default function TestSessionPage() {
   const currentQuestion = questions[currentIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestion.question_id] : undefined;
 
+  // Sync offline answers queue
+  useEffect(() => {
+    if (!attemptId) return;
+    const key = `examprep_pending_answers_${attemptId}`;
+    const pending = JSON.parse(localStorage.getItem(key) || '[]');
+    if (pending.length > 0) {
+      Promise.allSettled(
+        pending.map((ans: any) => testsAPI.submitAnswer(attemptId, ans))
+      ).then(() => localStorage.removeItem(key));
+    }
+  }, [attemptId]);
+
   const handleOptionSelect = (key: string) => {
     if (!currentQuestion) return;
     setAnswer(currentQuestion.question_id, [key]);
 
-    // Save to backend in background
+    const answerData = {
+      question_id: currentQuestion.question_id,
+      selected_answer: [key],
+      time_taken_seconds: 0,
+    };
+
+    // Save to backend, fallback to localStorage if offline
     if (attemptId) {
-      testsAPI.submitAnswer(attemptId, {
-        question_id: currentQuestion.question_id,
-        selected_answer: [key],
-        time_taken_seconds: 0,
-      }).catch(() => {}); // silent save
+      testsAPI.submitAnswer(attemptId, answerData).catch(() => {
+        // Offline — queue in localStorage
+        const key = `examprep_pending_answers_${attemptId}`;
+        const pending = JSON.parse(localStorage.getItem(key) || '[]');
+        const idx = pending.findIndex((a: any) => a.question_id === answerData.question_id);
+        if (idx >= 0) pending[idx] = answerData; else pending.push(answerData);
+        localStorage.setItem(key, JSON.stringify(pending));
+      });
     }
   };
 
