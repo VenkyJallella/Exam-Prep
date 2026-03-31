@@ -29,7 +29,7 @@ export default function BlogListPage() {
       const params: Record<string, any> = { page, per_page: 12 };
       if (search) params.search = search;
       if (activeTag) params.tag = activeTag;
-      const res = await apiClient.get('/blog/', { params });
+      const res = await apiClient.get('/blog', { params });
       setPosts(res.data.data);
       setTotal(res.data.meta.total);
     } catch {

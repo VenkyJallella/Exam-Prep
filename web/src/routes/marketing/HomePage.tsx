@@ -89,7 +89,7 @@ export default function HomePage() {
       }
     }).catch(() => {});
 
-    apiClient.get('/blog/', { params: { per_page: 3 } }).then(r => setBlogPosts(r.data.data || [])).catch(() => {});
+    apiClient.get('/blog', { params: { per_page: 3 } }).then(r => setBlogPosts(r.data.data || [])).catch(() => {});
   }, []);
 
   return (
