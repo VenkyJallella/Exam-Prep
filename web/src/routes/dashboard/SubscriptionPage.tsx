@@ -93,10 +93,10 @@ export default function SubscriptionPage() {
     setUpgrading(planId);
     try {
       // 1. Create Razorpay order via backend
-      console.log('[Payment] Creating order for plan:', planId);
+      // console.log('[Payment] Creating order for plan:', planId);
       const orderRes = await apiClient.post('/payments/orders', { plan: planId });
       const orderData = orderRes.data.data;
-      console.log('[Payment] Order created:', orderData);
+      // console.log('[Payment] Order created:', orderData);
 
       if (!orderData.razorpay_order_id) {
         throw new Error('No Razorpay order ID received from server');
@@ -111,7 +111,7 @@ export default function SubscriptionPage() {
         description: orderData.description || `ExamPrep ${planId} Plan`,
         order_id: orderData.razorpay_order_id,
         handler: async (response: any) => {
-          console.log('[Payment] Razorpay success:', response);
+          // console.log('[Payment] Razorpay success:', response);
           try {
             await apiClient.post('/payments/verify', {
               payment_id: orderData.payment_id,
@@ -130,7 +130,7 @@ export default function SubscriptionPage() {
         },
         modal: {
           ondismiss: () => {
-            console.log('[Payment] Modal dismissed');
+            // console.log('[Payment] Modal dismissed');
             setUpgrading(null);
           },
           escape: true,
@@ -140,19 +140,19 @@ export default function SubscriptionPage() {
         theme: { color: '#4f46e5' },
       };
 
-      console.log('[Payment] Opening Razorpay with key:', orderData.razorpay_key_id, 'order:', orderData.razorpay_order_id);
+      // console.log('[Payment] Opening Razorpay with key:', orderData.razorpay_key_id, 'order:', orderData.razorpay_order_id);
       const rzp = new (window as any).Razorpay(options);
 
       rzp.on('payment.failed', (response: any) => {
-        console.log('[Payment] Payment failed:', response.error);
+        // console.log('[Payment] Payment failed:', response.error);
         toast.error(response.error?.description || 'Payment failed. Please try again.');
         setUpgrading(null);
       });
 
       rzp.open();
-      console.log('[Payment] rzp.open() called successfully');
+      // console.log('[Payment] rzp.open() called successfully');
     } catch (err: any) {
-      console.error('[Payment] Error:', err);
+      // console.error('[Payment] Error:', err);
       toast.error(err?.message || 'Could not initiate payment. Please try again.');
       setUpgrading(null);
     }
