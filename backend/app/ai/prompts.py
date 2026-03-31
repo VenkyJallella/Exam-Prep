@@ -21,7 +21,8 @@ Rules:
 - For policy/law topics: reference the LATEST amendments and changes as of {current_year}
 - For science topics: include recent discoveries and developments
 - Do NOT reference outdated data, old statistics, or events from years ago as if they are current
-- Each question: exactly 4 options (A, B, C, D), one correct answer
+- MANDATORY: Each question MUST have exactly 4 options with keys "A", "B", "C", "D" — no more, no less, no other keys
+- correct_answer MUST be one of "A", "B", "C", or "D" — never a number or full text
 - Include a clear 2-3 sentence explanation for the correct answer
 - All {count} questions must be UNIQUE — different concepts, different approaches, no repetition
 - Options should be plausible (common mistakes as wrong options, not obviously wrong)

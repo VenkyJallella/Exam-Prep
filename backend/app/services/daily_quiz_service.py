@@ -82,6 +82,7 @@ async def _generate_daily_quiz(db: AsyncSession, quiz_date: date) -> DailyQuiz:
     # If we still need more (not enough per difficulty), fill randomly
     shortfall = QUIZ_QUESTIONS - len(all_question_ids)
     if shortfall > 0:
+        logger.warning("Daily quiz shortfall: need %d more questions (got %d/%d from difficulty mix)", shortfall, len(all_question_ids), QUIZ_QUESTIONS)
         filler = select(Question.id).where(Question.is_active == True)
         if all_question_ids:
             filler = filler.where(Question.id.notin_(all_question_ids))

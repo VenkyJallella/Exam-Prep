@@ -46,6 +46,9 @@ async def check_duplicate(db: AsyncSession, question_text: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+VALID_OPTION_KEYS = {"A", "B", "C", "D"}
+
+
 def validate_question_data(q_data: dict) -> str | None:
     """Validate generated question data. Returns error string or None if valid."""
     question_text = q_data.get("question_text", "")
@@ -53,16 +56,38 @@ def validate_question_data(q_data: dict) -> str | None:
         return "Question text too short (min 10 chars)"
 
     options = q_data.get("options", {})
-    if not options:
+    if not options or not isinstance(options, dict):
         return "No options provided"
 
-    for key, value in options.items():
+    # Must have exactly 4 options with keys A, B, C, D
+    option_keys = set(options.keys())
+    if option_keys != VALID_OPTION_KEYS:
+        # Try to fix: remap numbered/wrong keys to A,B,C,D
+        values = list(options.values())
+        if len(values) >= 4:
+            q_data["options"] = {"A": values[0], "B": values[1], "C": values[2], "D": values[3]}
+            options = q_data["options"]
+        elif len(values) < 4:
+            return f"Only {len(values)} options (need 4)"
+
+    for key in VALID_OPTION_KEYS:
+        value = options.get(key, "")
         if not value or not str(value).strip():
             return f"Option '{key}' is empty"
 
     correct_answer = q_data.get("correct_answer")
     if not correct_answer:
         return "No correct answer specified"
+
+    # Normalize correct answer to valid key
+    if correct_answer not in VALID_OPTION_KEYS:
+        # Try mapping: "1" → "A", "2" → "B", etc.
+        key_map = {"1": "A", "2": "B", "3": "C", "4": "D"}
+        if correct_answer in key_map:
+            q_data["correct_answer"] = key_map[correct_answer]
+            correct_answer = q_data["correct_answer"]
+        else:
+            return f"Correct answer '{correct_answer}' is not A, B, C, or D"
 
     if correct_answer not in options:
         return f"Correct answer '{correct_answer}' not found in options"

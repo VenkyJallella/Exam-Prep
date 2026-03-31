@@ -46,7 +46,8 @@ export default function PracticePage() {
   }, [selectedSubject, selectedExam]);
 
   const handleStart = async () => {
-    if (!selectedExam) { toast.error('Select an exam'); return; }
+    if (!selectedExam) { toast.error('Please select an exam'); return; }
+    if (!selectedSubject) { toast.error('Please select a subject'); return; }
     setStarting(true);
     try {
       const res = await practiceAPI.createSession({

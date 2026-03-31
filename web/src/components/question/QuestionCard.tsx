@@ -107,7 +107,9 @@ export default function QuestionCard({
 
       {/* Options */}
       <div className="space-y-3">
-        {Object.entries(options).map(([key, value]) => (
+        {(['A', 'B', 'C', 'D'].filter(k => k in options)).map((key) => {
+          const value = options[key];
+          return (
           <button
             key={key}
             onClick={() => handleOptionClick(key)}
@@ -127,7 +129,8 @@ export default function QuestionCard({
             </span>
             <span className="flex-1 pt-1 text-sm text-gray-800 dark:text-gray-200">{value}</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Explanation */}
