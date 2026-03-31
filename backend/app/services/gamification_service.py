@@ -133,6 +133,9 @@ async def check_and_award_badges(db: AsyncSession, user_id: UUID, context: dict)
                 "earned_at": str(date.today()),
             })
         gam.badges = badges_list
+        # Force SQLAlchemy to detect JSONB mutation
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(gam, "badges")
 
     return new_badges
 
@@ -157,6 +160,19 @@ async def get_my_stats(db: AsyncSession, user_id: UUID) -> dict:
             "longest_streak": 0,
             "badges": [],
         }
+
+    # Retroactive badge check — ensures badges are awarded even if missed earlier
+    from app.models.practice import UserAnswer
+    correct_result = await db.execute(
+        select(func.count()).select_from(UserAnswer).where(
+            UserAnswer.user_id == user_id, UserAnswer.is_correct == True
+        )
+    )
+    total_correct = correct_result.scalar() or 0
+    new = await check_and_award_badges(db, user_id, {"total_correct": total_correct})
+    if new:
+        await db.commit()
+
     return {
         "total_xp": gam.total_xp,
         "level": gam.level,
