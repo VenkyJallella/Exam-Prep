@@ -21,6 +21,11 @@ export default function AdminCoding() {
   const [starterCodeJson, setStarterCodeJson] = useState('{"python": "# Write your solution\\n"}');
   const [tags, setTags] = useState('');
   const [creating, setCreating] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [genDifficulty, setGenDifficulty] = useState('medium');
+  const [genTopic, setGenTopic] = useState('Arrays and Strings');
+  const [genCount, setGenCount] = useState(3);
+  const [showGenerate, setShowGenerate] = useState(false);
 
   const loadProblems = () => {
     setLoading(true);
@@ -46,6 +51,17 @@ export default function AdminCoding() {
     finally { setCreating(false); }
   };
 
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const res = await apiClient.post('/coding/admin/generate', { count: genCount, difficulty: genDifficulty, topic: genTopic });
+      toast.success(`Generated ${res.data.data.generated} coding problems!`);
+      setShowGenerate(false);
+      loadProblems();
+    } catch { toast.error('Failed to generate. Check AI configuration.'); }
+    finally { setGenerating(false); }
+  };
+
   const diffColor = (d: string) => d === 'easy' ? 'text-green-600' : d === 'hard' ? 'text-red-600' : 'text-yellow-600';
 
   return (
@@ -57,7 +73,10 @@ export default function AdminCoding() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Coding Problems</h1>
             <p className="mt-1 text-sm text-gray-500">{total} problems</p>
           </div>
-          <button onClick={() => setShowCreate(true)} className="btn-primary text-sm">Add Problem</button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowGenerate(true)} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">Generate with AI</button>
+            <button onClick={() => setShowCreate(true)} className="btn-primary text-sm">Add Problem</button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
@@ -89,6 +108,59 @@ export default function AdminCoding() {
           </table>
         </div>
       </div>
+
+      {/* Generate AI modal */}
+      {showGenerate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Generate Coding Problems with AI</h2>
+            <p className="mt-1 text-sm text-gray-500">AI will generate LeetCode-style problems with test cases and starter code.</p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Topic</label>
+                <select value={genTopic} onChange={e => setGenTopic(e.target.value)} className="input mt-1 w-full">
+                  <option value="Arrays and Strings">Arrays & Strings</option>
+                  <option value="Linked Lists">Linked Lists</option>
+                  <option value="Trees and Graphs">Trees & Graphs</option>
+                  <option value="Dynamic Programming">Dynamic Programming</option>
+                  <option value="Sorting and Searching">Sorting & Searching</option>
+                  <option value="Stacks and Queues">Stacks & Queues</option>
+                  <option value="Hash Tables">Hash Tables</option>
+                  <option value="Greedy Algorithms">Greedy Algorithms</option>
+                  <option value="Backtracking">Backtracking</option>
+                  <option value="Math and Number Theory">Math & Number Theory</option>
+                  <option value="Bit Manipulation">Bit Manipulation</option>
+                  <option value="SQL Queries">SQL Queries</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Difficulty</label>
+                  <select value={genDifficulty} onChange={e => setGenDifficulty(e.target.value)} className="input mt-1 w-full">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Count</label>
+                  <select value={genCount} onChange={e => setGenCount(Number(e.target.value))} className="input mt-1 w-full">
+                    <option value={3}>3 problems</option>
+                    <option value={5}>5 problems</option>
+                    <option value={10}>10 problems</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setShowGenerate(false)} className="btn-secondary text-sm">Cancel</button>
+              <button onClick={handleGenerate} disabled={generating} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
+                {generating ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create modal */}
       {showCreate && (

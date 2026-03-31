@@ -53,6 +53,26 @@ async def _pool_refill_loop():
                             "Auto-refill: %d batches, %d questions (total: %d/%d)",
                             result["refilled"], result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS,
                         )
+
+                # Auto-refill coding problems if pool is low
+                from app.models.coding import CodingQuestion
+                coding_count = (await db.execute(
+                    select(func.count()).select_from(CodingQuestion).where(CodingQuestion.is_active == True)
+                )).scalar() or 0
+
+                MIN_CODING_PROBLEMS = 30
+                if coding_count < MIN_CODING_PROBLEMS:
+                    try:
+                        from app.services.coding_service import generate_coding_challenges
+                        topics = ["Arrays and Strings", "Dynamic Programming", "Trees and Graphs", "Sorting and Searching", "Hash Tables", "Linked Lists"]
+                        topic = topics[coding_count % len(topics)]
+                        difficulties = ["easy", "medium", "hard"]
+                        diff = difficulties[coding_count % len(difficulties)]
+                        generated = await generate_coding_challenges(db, count=3, difficulty=diff, topic=topic)
+                        if generated:
+                            logger.info("Auto-refill coding: %d problems generated (total: %d/%d)", len(generated), coding_count + len(generated), MIN_CODING_PROBLEMS)
+                    except Exception as e:
+                        logger.error("Coding auto-refill error: %s", e)
         except Exception as e:
             logger.error("Auto-refill error: %s", e)
 
