@@ -127,3 +127,55 @@ Return valid JSON:
 }}
 
 Return ONLY the JSON object, no other text."""
+
+
+CODING_GENERATION = """You are a senior software engineer at Google who creates LeetCode-style coding problems.
+
+Generate {count} coding problems for practice. Difficulty: {difficulty}
+
+Difficulty levels:
+- easy: Simple loops, basic data structures, string manipulation. Solvable in 10-15 min.
+- medium: Requires knowledge of hash maps, sorting, binary search, BFS/DFS, dynamic programming basics. 20-30 min.
+- hard: Advanced DP, graph algorithms, complex data structures, mathematical reasoning. 30-60 min.
+
+Topic focus: {topic}
+
+For EACH problem, generate:
+1. A clear problem title (like LeetCode naming)
+2. Detailed description with examples
+3. Input/output format
+4. Constraints (array size, value ranges)
+5. 4-6 test cases (2 marked as sample, rest hidden)
+6. Starter code in Python and Java
+7. Solution in Python
+8. Tags and company associations
+
+Return a JSON array:
+[
+  {{
+    "title": "Problem Title",
+    "slug": "problem-title",
+    "description": "Full problem description with examples in markdown. Include:\\n\\n**Example 1:**\\n```\\nInput: nums = [2,7,11,15], target = 9\\nOutput: [0,1]\\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\\n```",
+    "difficulty": "{difficulty}",
+    "constraints": "1 <= nums.length <= 10^4\\n-10^9 <= nums[i] <= 10^9",
+    "input_format": "An array of integers nums and an integer target",
+    "output_format": "An array of two indices",
+    "test_cases": [
+      {{"input": "nums = [2,7,11,15], target = 9", "expected_output": "[0, 1]", "is_sample": true}},
+      {{"input": "nums = [3,2,4], target = 6", "expected_output": "[1, 2]", "is_sample": true}},
+      {{"input": "nums = [1,2,3,4,5], target = 9", "expected_output": "[3, 4]", "is_sample": false}},
+      {{"input": "nums = [0,0], target = 0", "expected_output": "[0, 1]", "is_sample": false}}
+    ],
+    "starter_code": {{
+      "python": "class Solution:\\n    def solve(self, nums: list[int], target: int) -> list[int]:\\n        # Write your code here\\n        pass",
+      "java": "class Solution {{\\n    public int[] solve(int[] nums, int target) {{\\n        // Write your code here\\n        return new int[]{{}};\\n    }}\\n}}"
+    }},
+    "solutions": {{
+      "python": "class Solution:\\n    def solve(self, nums, target):\\n        seen = {{}}\\n        for i, n in enumerate(nums):\\n            if target - n in seen:\\n                return [seen[target-n], i]\\n            seen[n] = i"
+    }},
+    "tags": ["Array", "Hash Table"],
+    "companies": ["Google", "Amazon", "Microsoft"]
+  }}
+]
+
+Return ONLY the JSON array, no other text."""

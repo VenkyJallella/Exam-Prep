@@ -156,15 +156,22 @@ Student's message: {message}
 
 Respond as a helpful, encouraging AI tutor:"""
 
-    try:
-        response = await generate_completion(
-            system_prompt,
-            model=settings.GEMINI_MODEL,
-            temperature=0.7,
-            max_tokens=1000,
-            use_cache=False,
-        )
-        return response.strip()
-    except Exception as e:
-        logger.error("Chatbot error: %s", e)
-        return "I'm having trouble connecting right now. Please try again in a moment."
+    models_to_try = [settings.GEMINI_MODEL, settings.GEMINI_MODEL_PRO]
+    last_error = None
+    for model in models_to_try:
+        try:
+            response = await generate_completion(
+                system_prompt,
+                model=model,
+                temperature=0.7,
+                max_tokens=1000,
+                use_cache=False,
+            )
+            return response.strip()
+        except Exception as e:
+            logger.warning("Chatbot failed with %s: %s", model, e)
+            last_error = e
+            continue
+
+    logger.error("Chatbot failed with all models: %s", last_error)
+    return "I'm having trouble connecting right now. Please try again in a moment."

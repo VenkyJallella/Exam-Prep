@@ -159,3 +159,28 @@ async def admin_create_problem(
 ):
     problem = await coding_service.create_problem(db, body)
     return {"status": "success", "data": {"id": str(problem.id), "slug": problem.slug}}
+
+
+@router.post("/admin/generate")
+async def admin_generate_problems(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    """Generate coding challenges using AI."""
+    count = min(body.get("count", 3), 10)
+    difficulty = body.get("difficulty", "medium")
+    topic = body.get("topic", "Arrays and Strings")
+
+    if difficulty not in ("easy", "medium", "hard"):
+        from app.exceptions import AppException
+        raise AppException(400, "INVALID_DIFFICULTY", "Difficulty must be easy, medium, or hard")
+
+    problems = await coding_service.generate_coding_challenges(db, count=count, difficulty=difficulty, topic=topic)
+    return {
+        "status": "success",
+        "data": {
+            "generated": len(problems),
+            "problems": [{"id": str(p.id), "title": p.title, "slug": p.slug, "difficulty": p.difficulty.value} for p in problems],
+        },
+    }

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { questionsAPI, QuestionRead } from '@/lib/api/questions';
 import NotificationDropdown from './NotificationDropdown';
 import { authAPI } from '@/lib/api/auth';
+import apiClient from '@/lib/api/client';
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -14,6 +15,13 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const { theme, setTheme } = useThemeStore();
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    apiClient.get('/gamification/stats').then(r => {
+      setStreak(r.data.data?.current_streak || 0);
+    }).catch(() => {});
+  }, []);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,10 +152,12 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
       {/* Right */}
       <div className="flex items-center gap-4">
         {/* Streak indicator */}
-        <div className="hidden items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 sm:flex">
-          <span>5</span>
-          <span className="text-xs">day streak</span>
-        </div>
+        {streak > 0 && (
+          <div className="hidden items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 sm:flex">
+            <span>{streak}</span>
+            <span className="text-xs">day streak</span>
+          </div>
+        )}
 
         {/* Dark mode toggle */}
         <button

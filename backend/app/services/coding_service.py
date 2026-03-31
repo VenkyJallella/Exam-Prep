@@ -104,6 +104,62 @@ async def create_problem(db: AsyncSession, data: dict) -> CodingQuestion:
     return problem
 
 
+async def generate_coding_challenges(
+    db: AsyncSession, count: int = 3, difficulty: str = "medium", topic: str = "Arrays and Strings",
+) -> list[CodingQuestion]:
+    """Generate coding challenges using AI."""
+    from app.ai.client import generate_completion
+    from app.ai.prompts import CODING_GENERATION
+    from app.config import settings
+    import json
+
+    prompt = CODING_GENERATION.format(count=count, difficulty=difficulty, topic=topic)
+
+    models = [settings.GEMINI_MODEL, settings.GEMINI_MODEL_PRO]
+    raw = None
+    for model in models:
+        try:
+            raw = await generate_completion(prompt, model=model, temperature=0.8, max_tokens=12000, use_cache=False)
+            break
+        except Exception as e:
+            logger.warning("Coding generation failed with %s: %s", model, e)
+            continue
+
+    if not raw:
+        raise ValueError("AI coding generation failed with all models")
+
+    # Parse JSON
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+    try:
+        problems_data = json.loads(text)
+    except json.JSONDecodeError:
+        import re
+        match = re.search(r'\[[\s\S]*\]', text)
+        if match:
+            problems_data = json.loads(match.group())
+        else:
+            raise ValueError("Failed to parse AI coding response")
+
+    if not isinstance(problems_data, list):
+        problems_data = [problems_data]
+
+    created = []
+    for data in problems_data:
+        if not data.get("title") or not data.get("description"):
+            continue
+        try:
+            problem = await create_problem(db, data)
+            created.append(problem)
+            logger.info("AI generated coding problem: %s", problem.title)
+        except Exception as e:
+            logger.warning("Failed to save coding problem '%s': %s", data.get("title", "?"), e)
+
+    return created
+
+
 async def submit_code(
     db: AsyncSession,
     user_id: UUID,
