@@ -19,62 +19,61 @@ logger = logging.getLogger("examprep")
 
 
 async def _pool_refill_loop():
-    """Background loop that keeps question pools healthy.
+    """Background loop that keeps all content pools healthy.
 
-    Stops generating when total questions exceed MAX_TOTAL_QUESTIONS.
-    This prevents unnecessary Gemini API costs.
+    Manages: MCQ questions, coding problems.
+    Each module has independent error handling — one failure doesn't block others.
     """
     import asyncio
     from app.database import AsyncSessionLocal
     from sqlalchemy import select, func
     from app.models.question import Question
 
-    MAX_TOTAL_QUESTIONS = 5000  # Stop auto-refill after this many total questions
-    REFILL_INTERVAL = 1800      # 30 minutes between cycles (saves API costs)
+    MAX_TOTAL_QUESTIONS = 5000
+    MIN_CODING_PROBLEMS = 30
+    REFILL_INTERVAL = 1800  # 30 minutes
 
     await asyncio.sleep(60)
-    logger.info("Pool auto-refill loop started (max: %d questions)", MAX_TOTAL_QUESTIONS)
+    logger.info("Pool auto-refill started (MCQ max: %d, Coding min: %d)", MAX_TOTAL_QUESTIONS, MIN_CODING_PROBLEMS)
 
     while True:
+        # --- MCQ Question Pool ---
         try:
             async with AsyncSessionLocal() as db:
-                # Check total question count first
                 total = (await db.execute(
                     select(func.count()).select_from(Question).where(Question.is_active == True)
                 )).scalar() or 0
 
                 if total >= MAX_TOTAL_QUESTIONS:
-                    logger.info("Pool healthy: %d questions (max: %d). Skipping refill.", total, MAX_TOTAL_QUESTIONS)
+                    pass  # Silently skip — no noisy log every 30 min
                 else:
                     from app.services.question_pool_service import refill_all_low_pools
                     result = await refill_all_low_pools(db, max_batches=3)
                     if result["total_generated"] > 0:
-                        logger.info(
-                            "Auto-refill: %d batches, %d questions (total: %d/%d)",
-                            result["refilled"], result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS,
-                        )
+                        logger.info("MCQ refill: +%d questions (total: %d/%d)", result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS)
+        except Exception as e:
+            logger.error("MCQ refill error: %s", e)
 
-                # Auto-refill coding problems if pool is low
+        # --- Coding Problems Pool ---
+        try:
+            async with AsyncSessionLocal() as db:
                 from app.models.coding import CodingQuestion
                 coding_count = (await db.execute(
                     select(func.count()).select_from(CodingQuestion).where(CodingQuestion.is_active == True)
                 )).scalar() or 0
 
-                MIN_CODING_PROBLEMS = 30
                 if coding_count < MIN_CODING_PROBLEMS:
-                    try:
-                        from app.services.coding_service import generate_coding_challenges
-                        topics = ["Arrays and Strings", "Dynamic Programming", "Trees and Graphs", "Sorting and Searching", "Hash Tables", "Linked Lists"]
-                        topic = topics[coding_count % len(topics)]
-                        difficulties = ["easy", "medium", "hard"]
-                        diff = difficulties[coding_count % len(difficulties)]
-                        generated = await generate_coding_challenges(db, count=3, difficulty=diff, topic=topic)
-                        if generated:
-                            logger.info("Auto-refill coding: %d problems generated (total: %d/%d)", len(generated), coding_count + len(generated), MIN_CODING_PROBLEMS)
-                    except Exception as e:
-                        logger.error("Coding auto-refill error: %s", e)
+                    from app.services.coding_service import generate_coding_challenges
+                    topics = ["Arrays and Strings", "Dynamic Programming", "Trees and Graphs",
+                              "Sorting and Searching", "Hash Tables", "Linked Lists",
+                              "Stacks and Queues", "Greedy Algorithms", "Backtracking", "Math and Number Theory"]
+                    topic = topics[coding_count % len(topics)]
+                    diff = ["easy", "medium", "hard"][coding_count % 3]
+                    generated = await generate_coding_challenges(db, count=3, difficulty=diff, topic=topic)
+                    if generated:
+                        logger.info("Coding refill: +%d problems (total: %d/%d)", len(generated), coding_count + len(generated), MIN_CODING_PROBLEMS)
         except Exception as e:
-            logger.error("Auto-refill error: %s", e)
+            logger.error("Coding refill error: %s", e)
 
         await asyncio.sleep(REFILL_INTERVAL)
 
