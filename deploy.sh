@@ -47,9 +47,12 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements/base.txt
 
-# 5. Create production .env
-echo "[5/10] Creating production config..."
-cat > "$APP_DIR/backend/.env" << EOF
+# 5. Production .env — NEVER overwrite existing config (contains API keys, secrets)
+if [ -f "$APP_DIR/backend/.env" ]; then
+    echo "[5/10] .env already exists — skipping (preserves API keys, Razorpay, SMTP secrets)"
+else
+    echo "[5/10] Creating production config (first-time setup)..."
+    cat > "$APP_DIR/backend/.env" << EOF
 APP_NAME=ExamPrep
 APP_VERSION=1.0.0
 DEBUG=false
@@ -65,18 +68,23 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 
 CORS_ORIGINS=["https://zencodio.com","https://www.zencodio.com"]
 
-GEMINI_API_KEY=${GEMINI_API_KEY:-YOUR_KEY_HERE}
+GEMINI_API_KEY=YOUR_KEY_HERE
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_MODEL_PRO=gemini-2.5-pro
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=${SMTP_USER:-}
-SMTP_PASSWORD=${SMTP_PASSWORD:-}
+SMTP_USER=
+SMTP_PASSWORD=
 SMTP_FROM_NAME=ExamPrep
 SMTP_FROM_EMAIL=noreply@zencodio.com
 SMTP_USE_TLS=true
+
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
 EOF
+    echo "  ⚠ UPDATE API KEYS: nano $APP_DIR/backend/.env"
+fi
 
 # 6. Run database migrations
 echo "[6/10] Running database migrations..."
