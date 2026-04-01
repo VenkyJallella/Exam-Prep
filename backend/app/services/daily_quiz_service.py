@@ -185,6 +185,23 @@ async def submit_quiz(
         answers=answer_details,
     )
     db.add(attempt)
+
+    # Award XP and update streak
+    from app.models.gamification import UserGamification, XPTransaction
+    from app.services.gamification_service import update_streak, check_and_award_badges
+
+    xp = (correct * 10) + 20  # 10 XP per correct + 20 bonus for completing quiz
+    tx = XPTransaction(user_id=user_id, amount=xp, reason="daily_quiz")
+    db.add(tx)
+
+    gam = (await db.execute(select(UserGamification).where(UserGamification.user_id == user_id))).scalar_one_or_none()
+    if gam:
+        gam.total_xp += xp
+        gam.level = (gam.total_xp // 500) + 1
+
+    await update_streak(db, user_id)
+    await check_and_award_badges(db, user_id, {"total_correct": correct})
+
     await db.commit()
     await db.refresh(attempt)
     return attempt

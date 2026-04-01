@@ -197,6 +197,30 @@ async def submit_code(
         problem.total_accepted += 1
     problem.acceptance_rate = round((problem.total_accepted / problem.total_submissions) * 100, 1) if problem.total_submissions > 0 else 0
 
+    # Award XP for coding submissions
+    from app.models.gamification import UserGamification, XPTransaction
+    from app.services.gamification_service import update_streak, check_and_award_badges
+    from sqlalchemy import select as sel
+
+    xp = 20 if status == "accepted" else 5  # More XP for accepted solutions
+    tx = XPTransaction(user_id=user_id, amount=xp, reason="coding_accepted" if status == "accepted" else "coding_attempt")
+    db.add(tx)
+
+    gam = (await db.execute(sel(UserGamification).where(UserGamification.user_id == user_id))).scalar_one_or_none()
+    if gam:
+        gam.total_xp += xp
+        gam.level = (gam.total_xp // 500) + 1
+
+    await update_streak(db, user_id)
+
+    # Check badges
+    from app.models.practice import UserAnswer
+    from sqlalchemy import func as sqlfunc
+    total_correct = (await db.execute(
+        sel(sqlfunc.count()).select_from(UserAnswer).where(UserAnswer.user_id == user_id, UserAnswer.is_correct == True)
+    )).scalar() or 0
+    await check_and_award_badges(db, user_id, {"total_correct": total_correct})
+
     await db.commit()
     await db.refresh(submission)
     return submission
