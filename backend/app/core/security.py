@@ -91,7 +91,9 @@ async def get_current_user(
         from app.core.cache import cache_get
         raw = await cache_get(f"active_sessions:{user_id}")
         sessions = raw if isinstance(raw, list) else None
-        if sessions is not None and token_hash not in sessions:
+        # Only reject if sessions exist AND this token is not in them
+        # If sessions is None/empty (Redis flushed), allow access
+        if sessions and len(sessions) > 0 and token_hash not in sessions:
             raise UnauthorizedError("Session expired. Please login again — you may have logged in from another device.")
     except UnauthorizedError:
         raise
