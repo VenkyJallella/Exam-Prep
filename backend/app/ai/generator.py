@@ -104,47 +104,40 @@ async def generate_questions(
 
 
 def _clean_json_response(result: str) -> dict:
-    """Clean and parse JSON from AI response — handles blog content with special chars."""
+    """Clean and parse JSON from AI response."""
     import json
+    import logging
+    _log = logging.getLogger("examprep.ai")
 
     s = result.strip()
 
-    # Remove markdown code blocks
-    if s.startswith("```"):
-        first_newline = s.index("\n") if "\n" in s else 3
-        s = s[first_newline + 1:]
-        if "```" in s:
-            s = s[:s.rfind("```")].strip()
+    # Step 1: Remove markdown code blocks (```json ... ```)
+    if "```" in s:
+        # Find content between first ``` and last ```
+        lines = s.split("\n")
+        start = 0
+        end = len(lines)
+        for i, line in enumerate(lines):
+            if line.strip().startswith("```") and i == 0:
+                start = i + 1
+            elif line.strip() == "```" and i > 0:
+                end = i
+        s = "\n".join(lines[start:end]).strip()
 
-    # Try direct parse
+    # Step 2: Try direct parse
     try:
         return json.loads(s)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        _log.debug("Direct JSON parse failed: %s", e)
 
-    # Fix common issues: control characters inside JSON strings
+    # Step 3: Find JSON object with regex
     import re
-    # Remove control characters except \n \r \t
-    s_cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', s)
-    try:
-        return json.loads(s_cleaned)
-    except json.JSONDecodeError:
-        pass
-
-    # Try to extract JSON object
-    match = re.search(r'\{[\s\S]*\}', s_cleaned)
+    match = re.search(r'\{[\s\S]*\}', s)
     if match:
         try:
             return json.loads(match.group())
         except json.JSONDecodeError:
-            # Try fixing unescaped newlines in string values
-            fixed = match.group()
-            # Replace literal newlines inside JSON strings with \n
-            fixed = re.sub(r'(?<=": ")([\s\S]*?)(?="[,\}])', lambda m: m.group().replace('\n', '\\n').replace('\r', ''), fixed)
-            try:
-                return json.loads(fixed)
-            except json.JSONDecodeError:
-                pass
+            pass
 
     raise ValueError(f"Failed to parse blog JSON. First 300 chars: {s[:300]}")
 
