@@ -6,6 +6,7 @@ Allow: /blog/*
 Allow: /about
 Allow: /pricing
 Allow: /exams/*
+Allow: /try/*
 Allow: /terms
 Allow: /privacy
 Allow: /contact

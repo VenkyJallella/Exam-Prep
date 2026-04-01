@@ -183,6 +183,10 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 dark:text-white">{exam.name}</h3>
                 <p className="mt-1 text-sm text-gray-500">{exam.description}</p>
+                <Link to={`/try/${exam.slug}`} onClick={e => e.stopPropagation()}
+                  className="mt-3 inline-block rounded-lg bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-600 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400">
+                  Try 5 Questions Free →
+                </Link>
               </Link>
             ))}
           </div>

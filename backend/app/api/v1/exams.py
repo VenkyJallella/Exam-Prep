@@ -13,6 +13,52 @@ from app.exceptions import NotFoundError
 router = APIRouter()
 
 
+@router.get("/try-free/{exam_slug}")
+async def try_free_questions(exam_slug: str, db: AsyncSession = Depends(get_db)):
+    """Get 5 sample questions for a guest user — no auth required.
+
+    This lets visitors try the platform before signing up.
+    Returns questions with answers so the frontend can grade locally.
+    """
+    exam = (await db.execute(
+        select(Exam).where(Exam.slug == exam_slug, Exam.is_active == True)
+    )).scalar_one_or_none()
+
+    if not exam:
+        raise NotFoundError("Exam")
+
+    # Get 5 random questions from this exam
+    questions = (await db.execute(
+        select(Question)
+        .where(Question.exam_id == exam.id, Question.is_active == True)
+        .order_by(func.random())
+        .limit(5)
+    )).scalars().all()
+
+    if not questions:
+        return {"status": "success", "data": {"exam": exam.name, "questions": [], "message": "No questions available yet."}}
+
+    return {
+        "status": "success",
+        "data": {
+            "exam": exam.name,
+            "exam_slug": exam_slug,
+            "total": len(questions),
+            "questions": [
+                {
+                    "id": str(q.id),
+                    "question_text": q.question_text,
+                    "options": q.options,
+                    "correct_answer": q.correct_answer,
+                    "explanation": q.explanation,
+                    "difficulty": q.difficulty,
+                }
+                for q in questions
+            ],
+        },
+    }
+
+
 @router.get("/stats")
 async def platform_stats(db: AsyncSession = Depends(get_db)):
     """Public platform stats for homepage — no auth required."""

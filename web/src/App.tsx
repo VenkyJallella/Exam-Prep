@@ -17,6 +17,7 @@ const AboutPage = lazy(() => import('./routes/marketing/AboutPage'));
 const PricingPage = lazy(() => import('./routes/marketing/PricingPage'));
 const ExamDetailPage = lazy(() => import('./routes/marketing/ExamDetailPage'));
 const StaticPage = lazy(() => import('./routes/marketing/StaticPage'));
+const TryFreePage = lazy(() => import('./routes/marketing/TryFreePage'));
 
 // Lazy load all app pages
 const LoginPage = lazy(() => import('./routes/auth/LoginPage'));
@@ -98,6 +99,7 @@ export default function App() {
           <Route path="/page/:slug" element={<StaticPage />} />
           <Route path="/blog" element={<BlogListPage />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
+          <Route path="/try/:slug" element={<TryFreePage />} />
         </Route>
 
         {/* Auth */}

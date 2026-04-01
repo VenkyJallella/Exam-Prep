@@ -213,13 +213,13 @@ export default function ExamDetailPage() {
             <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-400">
               {exam.description}
             </p>
-            <div className="mt-8 flex items-center justify-center gap-4">
-              <Link to="/register" className="btn-primary px-8 py-3 text-base">
-                Start Practicing
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link to={`/try/${exam.slug}`} className="btn-primary px-8 py-3 text-base">
+                Try 5 Questions Free
               </Link>
-              <a href="#syllabus" className="btn-secondary px-6 py-3 text-base">
-                View Syllabus
-              </a>
+              <Link to="/register" className="btn-secondary px-6 py-3 text-base">
+                Sign Up & Start
+              </Link>
             </div>
           </div>
         </div>
