@@ -24,19 +24,21 @@ def get_gemini_client() -> genai.Client:
 
 def _sync_generate(client: genai.Client, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
     """Synchronous Gemini call — runs in a thread pool."""
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            temperature=temperature,
-            max_output_tokens=max_tokens,
-            http_options={"timeout": 30000},
-        ),
-    )
-    text = response.text
-    if not text:
-        raise ValueError(f"Gemini returned empty response for model {model}")
-    return text.strip()
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            ),
+        )
+        text = response.text
+        if not text:
+            raise ValueError(f"Gemini returned empty response for model {model}")
+        return text.strip()
+    except Exception as e:
+        raise ValueError(f"Gemini error ({model}): {type(e).__name__}: {e}")
 
 
 async def generate_completion(

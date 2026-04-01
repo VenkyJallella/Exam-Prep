@@ -31,8 +31,13 @@ async def send_message(
     limit = CHATBOT_LIMITS.get(plan.value, 5)
     await check_daily_limit(user.id, "chatbot_messages", limit)
 
-    # Get AI response
-    response = await chatbot_service.chat(db, user.id, message, history)
+    # Get AI response (never let errors reach user — always return a message)
+    try:
+        response = await chatbot_service.chat(db, user.id, message, history)
+    except Exception as e:
+        import logging
+        logging.getLogger("examprep.chatbot").error("Chatbot endpoint error: %s", e)
+        response = "I'm having trouble connecting right now. Please try again in a moment."
 
     # Increment usage
     await increment_daily_usage(user.id, "chatbot_messages")
