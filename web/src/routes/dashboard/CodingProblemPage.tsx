@@ -5,7 +5,13 @@ import apiClient from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
 import { oneDark } from '@codemirror/theme-one-dark';
+
+const LANGUAGES = [
+  { id: 'python', label: 'Python 3', extension: () => python() },
+  { id: 'java', label: 'Java', extension: () => java() },
+] as const;
 
 interface Problem {
   id: string; title: string; slug: string; description: string; difficulty: string;
@@ -30,6 +36,7 @@ export default function CodingProblemPage() {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
+  const [language, setLanguage] = useState('python');
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -44,6 +51,7 @@ export default function CodingProblemPage() {
         const p = res.data.data;
         setProblem(p);
         setCode(p.starter_code?.python || '# Write your solution here\n');
+        setLanguage('python');
         if (p.sample_test_cases?.length > 0) {
           setCustomInput(p.sample_test_cases[0].input);
         }
@@ -58,7 +66,7 @@ export default function CodingProblemPage() {
     setResult(null);
     setActiveTab('result');
     try {
-      const res = await apiClient.post(`/coding/${slug}/run`, { language: 'python', code });
+      const res = await apiClient.post(`/coding/${slug}/run`, { language, code });
       setResult(res.data.data);
     } catch { toast.error('Run failed'); }
     finally { setRunning(false); }
@@ -69,7 +77,7 @@ export default function CodingProblemPage() {
     setRunning(true);
     setCustomOutput('');
     try {
-      const res = await apiClient.post(`/coding/${slug}/run`, { language: 'python', code, custom_input: customInput });
+      const res = await apiClient.post(`/coding/${slug}/run`, { language, code, custom_input: customInput });
       setCustomOutput(res.data.data.output || res.data.data.error_message || 'No output');
     } catch { toast.error('Run failed'); }
     finally { setRunning(false); }
@@ -81,7 +89,7 @@ export default function CodingProblemPage() {
     setResult(null);
     setActiveTab('result');
     try {
-      const res = await apiClient.post(`/coding/${slug}/submit`, { language: 'python', code });
+      const res = await apiClient.post(`/coding/${slug}/submit`, { language, code });
       setResult(res.data.data);
       if (res.data.data.status === 'accepted') toast.success('All test cases passed!');
     } catch { toast.error('Submission failed'); }
@@ -162,7 +170,20 @@ export default function CodingProblemPage() {
           {/* Editor header */}
           <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Python 3</span>
+              <select
+                value={language}
+                onChange={(e) => {
+                  const lang = e.target.value;
+                  setLanguage(lang);
+                  setCode(problem?.starter_code?.[lang] || (lang === 'java' ? 'import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Write your solution here\n    }\n}' : '# Write your solution here\n'));
+                  setResult(null);
+                }}
+                className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 cursor-pointer"
+              >
+                {LANGUAGES.map(l => (
+                  <option key={l.id} value={l.id}>{l.label}</option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={handleRun} disabled={running || submitting}
@@ -182,7 +203,7 @@ export default function CodingProblemPage() {
               value={code}
               onChange={(val) => setCode(val)}
               theme={oneDark}
-              extensions={[python()]}
+              extensions={[LANGUAGES.find(l => l.id === language)?.extension() ?? python()]}
               height="100%"
               style={{ height: '100%', fontSize: '14px' }}
               basicSetup={{

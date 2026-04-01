@@ -107,20 +107,10 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
 
-    # Middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    app.add_middleware(RequestLoggingMiddleware)
+    # Middleware — order matters! Last added = outermost (runs first).
+    # CORS must be outermost to handle OPTIONS preflight before other middleware.
 
-    from app.core.rate_limit import RateLimitMiddleware
-    app.add_middleware(RateLimitMiddleware)
-
-    # Security headers — hide server version, add basic protections
+    # Security headers (inner — runs after CORS)
     from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.requests import Request as StarletteRequest
 
@@ -130,11 +120,23 @@ def create_app() -> FastAPI:
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-            # Remove server version header if present
             response.headers.pop("server", None)
             return response
 
     app.add_middleware(SecurityHeadersMiddleware)
+
+    from app.core.rate_limit import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
+
+    # CORS — added last so it's the outermost middleware (handles OPTIONS first)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # Exception handlers
     app.add_exception_handler(AppException, app_exception_handler)

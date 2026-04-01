@@ -18,7 +18,7 @@ export default function AdminCoding() {
   const [inputFormat, setInputFormat] = useState('');
   const [outputFormat, setOutputFormat] = useState('');
   const [testCasesJson, setTestCasesJson] = useState('[{"input": "", "expected_output": "", "is_sample": true}]');
-  const [starterCodeJson, setStarterCodeJson] = useState('{"python": "# Write your solution\\n"}');
+  const [starterCodeJson, setStarterCodeJson] = useState('{"python": "# Write your solution\\n", "java": "import java.util.*;\\npublic class Main {\\n    public static void main(String[] args) {\\n        Scanner sc = new Scanner(System.in);\\n        // Write your solution here\\n    }\\n}"}');
   const [tags, setTags] = useState('');
   const [creating, setCreating] = useState(false);
   const [generating, setGenerating] = useState(false);

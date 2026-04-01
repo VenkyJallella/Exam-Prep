@@ -20,7 +20,11 @@ cd "$APP_DIR"
 # 1. Install system dependencies
 echo "[1/10] Installing dependencies..."
 sudo apt update -y
-sudo apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx redis-server
+sudo apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx redis-server default-jdk
+
+# Verify Java installed (needed for coding practice)
+echo "Java version: $(java -version 2>&1 | head -1)"
+echo "Javac version: $(javac -version 2>&1)"
 
 # 2. Start Redis if not running
 echo "[2/10] Ensuring Redis is running..."
@@ -162,6 +166,9 @@ server {
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
+
+    # Hide server version from SEO/security scanners
+    server_tokens off;
 
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;

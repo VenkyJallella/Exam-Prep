@@ -318,7 +318,10 @@ def _normalize_output(text: str) -> str:
     return '\n'.join(line.rstrip() for line in lines)
 
 
-def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool) -> dict:
+SUPPORTED_LANGUAGES = {"python", "python3", "java"}
+
+
+def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool, language: str = "python") -> dict:
     """Run a single test case synchronously (called in thread pool)."""
     import subprocess
     import tempfile
@@ -326,9 +329,20 @@ def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: i
     import time
     import sys
 
-    python_cmd = sys.executable
     is_custom = (expected == "__CUSTOM__")
 
+    if language in ("python", "python3"):
+        return _run_python_test(code, test_input, expected, time_limit_ms, is_sample, is_custom)
+    elif language == "java":
+        return _run_java_test(code, test_input, expected, time_limit_ms, is_sample, is_custom)
+    else:
+        return {"passed": False, "time_ms": 0, "output": f"Unsupported language: {language}", "expected": expected if not is_custom else "", "is_sample": is_sample}
+
+
+def _run_python_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool, is_custom: bool) -> dict:
+    import subprocess, tempfile, os, time, sys
+
+    python_cmd = sys.executable
     temp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -338,38 +352,24 @@ def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: i
         start = time.perf_counter()
         proc = subprocess.run(
             [python_cmd, "-u", "-B", temp_path],
-            input=test_input,
-            capture_output=True,
-            text=True,
+            input=test_input, capture_output=True, text=True,
             timeout=time_limit_ms / 1000 + 1,
         )
         elapsed_ms = int((time.perf_counter() - start) * 1000)
 
         if proc.returncode != 0:
             error_output = proc.stderr.strip()
-            # Clean up sandbox traceback noise
             if "temp" in error_output or "tmp" in error_output:
                 lines = error_output.split('\n')
                 error_output = '\n'.join(l for l in lines if 'NamedTemporaryFile' not in l and '/tmp/' not in l and '\\Temp\\' not in l)
-            return {
-                "passed": False, "time_ms": elapsed_ms,
-                "output": error_output[:1000], "expected": expected if not is_custom else "",
-                "is_sample": is_sample,
-            }
+            return {"passed": False, "time_ms": elapsed_ms, "output": error_output[:1000], "expected": expected if not is_custom else "", "is_sample": is_sample}
 
         actual = _normalize_output(proc.stdout)
-
         if is_custom:
             return {"passed": True, "time_ms": elapsed_ms, "output": actual[:2000], "expected": "", "is_sample": True}
 
-        normalized_expected = _normalize_output(expected)
-        passed = actual == normalized_expected
-
-        return {
-            "passed": passed, "time_ms": elapsed_ms,
-            "output": actual[:1000], "expected": expected,
-            "is_sample": is_sample,
-        }
+        passed = actual == _normalize_output(expected)
+        return {"passed": passed, "time_ms": elapsed_ms, "output": actual[:1000], "expected": expected, "is_sample": is_sample}
 
     except subprocess.TimeoutExpired:
         return {"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected if not is_custom else "", "is_sample": is_sample}
@@ -377,10 +377,66 @@ def _run_single_test(code: str, test_input: str, expected: str, time_limit_ms: i
         return {"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected if not is_custom else "", "is_sample": is_sample}
     finally:
         if temp_path:
-            try:
-                os.unlink(temp_path)
-            except OSError:
-                pass
+            try: os.unlink(temp_path)
+            except OSError: pass
+
+
+def _run_java_test(code: str, test_input: str, expected: str, time_limit_ms: int, is_sample: bool, is_custom: bool) -> dict:
+    import subprocess, tempfile, os, time, re as re_mod, shutil
+
+    # Extract public class name from code (e.g., "public class Main")
+    match = re_mod.search(r'public\s+class\s+(\w+)', code)
+    class_name = match.group(1) if match else "Main"
+
+    temp_dir = None
+    try:
+        temp_dir = tempfile.mkdtemp(prefix="examprep_java_")
+        java_file = os.path.join(temp_dir, f"{class_name}.java")
+
+        with open(java_file, "w") as f:
+            f.write(code)
+
+        # Compile
+        compile_proc = subprocess.run(
+            ["javac", java_file],
+            capture_output=True, text=True, timeout=15,
+        )
+        if compile_proc.returncode != 0:
+            error = compile_proc.stderr.strip()
+            # Clean up temp paths from error messages
+            error = error.replace(temp_dir + os.sep, "").replace(temp_dir, "")
+            return {"passed": False, "time_ms": 0, "output": f"Compilation Error:\n{error[:1000]}", "expected": expected if not is_custom else "", "is_sample": is_sample}
+
+        # Run
+        start = time.perf_counter()
+        run_proc = subprocess.run(
+            ["java", "-cp", temp_dir, "-Xmx256m", "-Xss8m", class_name],
+            input=test_input, capture_output=True, text=True,
+            timeout=time_limit_ms / 1000 + 2,
+        )
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+
+        if run_proc.returncode != 0:
+            error_output = run_proc.stderr.strip().replace(temp_dir + os.sep, "").replace(temp_dir, "")
+            return {"passed": False, "time_ms": elapsed_ms, "output": error_output[:1000], "expected": expected if not is_custom else "", "is_sample": is_sample}
+
+        actual = _normalize_output(run_proc.stdout)
+        if is_custom:
+            return {"passed": True, "time_ms": elapsed_ms, "output": actual[:2000], "expected": "", "is_sample": True}
+
+        passed = actual == _normalize_output(expected)
+        return {"passed": passed, "time_ms": elapsed_ms, "output": actual[:1000], "expected": expected, "is_sample": is_sample}
+
+    except subprocess.TimeoutExpired:
+        return {"passed": False, "time_ms": time_limit_ms, "output": "Time Limit Exceeded", "expected": expected if not is_custom else "", "is_sample": is_sample}
+    except FileNotFoundError:
+        return {"passed": False, "time_ms": 0, "output": "Java is not installed on the server. Please contact support.", "expected": expected if not is_custom else "", "is_sample": is_sample}
+    except Exception as e:
+        return {"passed": False, "time_ms": 0, "output": str(e)[:500], "expected": expected if not is_custom else "", "is_sample": is_sample}
+    finally:
+        if temp_dir:
+            try: shutil.rmtree(temp_dir, ignore_errors=True)
+            except OSError: pass
 
 
 async def _execute_code(
@@ -393,8 +449,8 @@ async def _execute_code(
     import asyncio
     from functools import partial
 
-    if language not in ("python", "python3"):
-        return [], "compilation_error", f"Language '{language}' is not supported yet. Currently only Python is available."
+    if language not in SUPPORTED_LANGUAGES:
+        return [], "compilation_error", f"Language '{language}' is not supported. Supported: Python, Java."
 
     if not test_cases:
         return [], "wrong_answer", "No test cases available for this problem."
@@ -415,7 +471,7 @@ async def _execute_code(
 
         result = await loop.run_in_executor(
             None,
-            partial(_run_single_test, code, test_input, expected, time_limit_ms, is_sample),
+            partial(_run_single_test, code, test_input, expected, time_limit_ms, is_sample, language),
         )
         results.append(result)
         if not result["passed"]:

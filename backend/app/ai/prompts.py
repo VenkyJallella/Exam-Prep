@@ -128,11 +128,12 @@ CODING_GENERATION = """You are a senior software engineer creating coding proble
 
 Generate {count} coding problems. Difficulty: {difficulty}. Topic: {topic}
 
-CRITICAL: This is a STDIN/STDOUT based judge. User code reads from input() and prints to stdout.
+CRITICAL: This is a STDIN/STDOUT based judge. User code reads from stdin and prints to stdout.
 - Test case "input" = raw text fed to stdin (NOT function arguments like LeetCode)
 - Test case "expected_output" = exact text printed to stdout
-- Starter code must use input() to read and print() to output
-- NO class-based solutions. Just standalone Python scripts.
+- Provide starter_code and solutions for BOTH Python and Java.
+- Python: use input() to read and print() to output. NO class-based solutions — standalone scripts.
+- Java: use Scanner for stdin and System.out.println for output. The public class MUST be named "Main".
 - DO NOT generate common/overused problems like Two Sum, Reverse String, FizzBuzz, Fibonacci, Palindrome Check — generate UNIQUE problems that haven't been seen before.
 - Each problem title MUST be unique and descriptive.
 
@@ -158,10 +159,12 @@ Return a JSON array:
       {{"input": "3 3\\n6", "expected_output": "0 1", "is_sample": false}}
     ],
     "starter_code": {{
-      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\n\\n# Write your solution here\\n"
+      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\n\\n# Write your solution here\\n",
+      "java": "import java.util.*;\\npublic class Main {{\\n    public static void main(String[] args) {{\\n        Scanner sc = new Scanner(System.in);\\n        // Write your solution here\\n    }}\\n}}"
     }},
     "solutions": {{
-      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\nseen = {{}}\\nfor i, n in enumerate(nums):\\n    if target - n in seen:\\n        print(seen[target-n], i)\\n        break\\n    seen[n] = i"
+      "python": "nums = list(map(int, input().split()))\\ntarget = int(input())\\nseen = {{}}\\nfor i, n in enumerate(nums):\\n    if target - n in seen:\\n        print(seen[target-n], i)\\n        break\\n    seen[n] = i",
+      "java": "import java.util.*;\\npublic class Main {{\\n    public static void main(String[] args) {{\\n        Scanner sc = new Scanner(System.in);\\n        String[] parts = sc.nextLine().split(\" \");\\n        int[] nums = new int[parts.length];\\n        for (int i = 0; i < parts.length; i++) nums[i] = Integer.parseInt(parts[i]);\\n        int target = sc.nextInt();\\n        Map<Integer,Integer> seen = new HashMap<>();\\n        for (int i = 0; i < nums.length; i++) {{\\n            if (seen.containsKey(target - nums[i])) {{\\n                System.out.println(seen.get(target - nums[i]) + \" \" + i);\\n                return;\\n            }}\\n            seen.put(nums[i], i);\\n        }}\\n    }}\\n}}"
     }},
     "tags": ["Array", "Hash Table"],
     "companies": ["Google", "Amazon"]
@@ -175,9 +178,12 @@ RULES FOR TEST CASES:
 2. "expected_output" must be PLAIN TEXT printed to stdout
    GOOD: "0 1"
    BAD: "[0, 1]"
-3. Starter code MUST use input() and print()
+3. Python starter code MUST use input() and print()
    GOOD: "nums = list(map(int, input().split()))\\nprint(result)"
    BAD: "class Solution:\\n    def solve(self, nums):"
+3b. Java starter code MUST use Scanner and System.out.println, class MUST be named "Main"
+   GOOD: "import java.util.*;\\npublic class Main { public static void main(String[] args) { Scanner sc = new Scanner(System.in); ... }}"
+   BAD: "public class Solution { ... }"
 4. For arrays: input as space-separated on one line, output as space-separated
 5. For single values: one value per line
 6. For strings: one string per line
