@@ -72,34 +72,40 @@ async def _get_user_plan_value(db: AsyncSession, user_id) -> str:
     return "free"
 
 
-async def _check_session_limit(db: AsyncSession, user) -> None:
-    """Check if user has exceeded active session limit. Removes oldest if over."""
-    from app.core.cache import cache_get, cache_set
+async def _check_and_register_session(db: AsyncSession, user, token_hash: str) -> None:
+    """Atomically check session limit and register new session using Redis pipeline."""
+    from app.core.cache import get_redis
     import json
 
     role = user.role.value if hasattr(user.role, 'value') else str(user.role)
     if role == "admin":
-        return  # Admins get 10 sessions
+        return
 
     plan = await _get_user_plan_value(db, user.id)
     max_sessions = SESSION_LIMITS.get(plan, 1)
 
+    r = get_redis()
     key = f"active_sessions:{user.id}"
-    raw = await cache_get(key)
-    sessions = raw if isinstance(raw, list) else []
 
-    if len(sessions) >= max_sessions:
-        # Remove oldest sessions to make room for new one
-        sessions = sessions[-(max_sessions - 1):]
+    # Atomic read-modify-write using Redis WATCH/MULTI
+    async with r.pipeline(transaction=True) as pipe:
+        try:
+            await pipe.watch(key)
+            raw = await pipe.get(key)
+            sessions = json.loads(raw) if raw else []
 
-    return sessions
+            if len(sessions) >= max_sessions:
+                sessions = sessions[-(max_sessions - 1):]
+            sessions.append(token_hash)
 
-
-async def _register_session(user_id, token_hash: str, sessions: list) -> None:
-    """Register a new session in Redis."""
-    from app.core.cache import cache_set
-    sessions.append(token_hash)
-    await cache_set(f"active_sessions:{user_id}", sessions, ttl_seconds=86400 * 30)
+            pipe.multi()
+            pipe.set(key, json.dumps(sessions), ex=86400 * 30)
+            await pipe.execute()
+        except Exception:
+            # Fallback: non-atomic write (better than failing login)
+            sessions = json.loads(raw) if raw else [] if not raw else []
+            sessions.append(token_hash)
+            await r.set(key, json.dumps(sessions), ex=86400 * 30)
 
 
 async def login(db: AsyncSession, body: LoginRequest) -> TokenResponse:
@@ -112,17 +118,13 @@ async def login(db: AsyncSession, body: LoginRequest) -> TokenResponse:
     if not user.is_active:
         raise UnauthorizedError("Account is deactivated")
 
-    # Check session limit
-    sessions = await _check_session_limit(db, user)
-
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
-    # Register this session
+    # Atomically check session limit and register this session
     import hashlib
     token_hash = hashlib.sha256(access_token.encode()).hexdigest()[:16]
-    if sessions is not None:
-        await _register_session(user.id, token_hash, sessions)
+    await _check_and_register_session(db, user, token_hash)
 
     return TokenResponse(
         access_token=access_token,

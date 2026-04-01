@@ -3,7 +3,6 @@ import re
 import logging
 import hashlib
 import asyncio
-import time
 from functools import partial
 from google import genai
 from app.config import settings
@@ -12,7 +11,6 @@ from app.core.cache import cache_get, cache_set
 logger = logging.getLogger("examprep.ai")
 
 _client: genai.Client | None = None
-_rate_limit_until: float = 0  # timestamp when rate limit expires
 
 
 def get_gemini_client() -> genai.Client:
@@ -50,13 +48,14 @@ async def generate_completion(
     timeout: float = 35.0,
 ) -> str:
     """Generate a completion from Gemini with caching, timeout, and rate limit handling."""
-    global _rate_limit_until
     model = model or settings.GEMINI_MODEL
 
-    # Check if we're rate limited
-    if time.time() < _rate_limit_until:
-        wait = int(_rate_limit_until - time.time())
-        raise ValueError(f"Gemini API rate limited. Retry in {wait}s.")
+    # Check if we're rate limited (shared across workers via Redis)
+    from app.core.cache import get_redis
+    r = get_redis()
+    rate_ttl = await r.ttl("gemini_rate_limit")
+    if rate_ttl > 0:
+        raise ValueError(f"Gemini API rate limited. Retry in {rate_ttl}s.")
 
     # Check cache
     if use_cache:
@@ -82,9 +81,9 @@ async def generate_completion(
         raise ValueError(f"Gemini API timed out (model: {model})")
     except Exception as e:
         error_str = str(e).lower()
-        # Handle rate limits
+        # Handle rate limits (shared across all workers via Redis)
         if "429" in error_str or "rate" in error_str or "quota" in error_str or "resource_exhausted" in error_str:
-            _rate_limit_until = time.time() + 60  # Back off 60 seconds
+            await r.set("gemini_rate_limit", "1", ex=60)
             logger.warning("Gemini rate limited. Backing off 60s. Error: %s", e)
             raise ValueError(f"Gemini API rate limited. Please try again in 60 seconds.")
         raise

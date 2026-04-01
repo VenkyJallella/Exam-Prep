@@ -113,7 +113,7 @@ After=network.target postgresql.service redis-server.service
 [Service]
 User=root
 WorkingDirectory=$APP_DIR/backend
-ExecStart=$APP_DIR/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080 --workers 2
+ExecStart=$APP_DIR/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080 --workers 4
 Restart=always
 RestartSec=5
 Environment=PYTHONPATH=$APP_DIR/backend

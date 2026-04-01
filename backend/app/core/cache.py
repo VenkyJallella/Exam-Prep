@@ -8,7 +8,13 @@ _redis: redis.Redis | None = None
 
 async def init_redis() -> redis.Redis:
     global _redis
-    _redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    _redis = redis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        max_connections=30,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+    )
     return _redis
 
 
