@@ -73,6 +73,15 @@ async def my_coding_stats(
             "created_at": s.created_at.isoformat(),
         })
 
+    # Get all solved problem slugs
+    solved_result = await db.execute(
+        select(CodingQuestion.slug)
+        .join(CodingSubmission, CodingSubmission.question_id == CodingQuestion.id)
+        .where(CodingSubmission.user_id == user.id, CodingSubmission.status == "accepted")
+        .distinct()
+    )
+    solved_slugs = [row[0] for row in solved_result.all()]
+
     return {
         "status": "success",
         "data": {
@@ -81,6 +90,7 @@ async def my_coding_stats(
             "problems_solved": problems_solved,
             "acceptance_rate": round((problems_solved / problems_attempted * 100), 1) if problems_attempted > 0 else 0,
             "difficulty": difficulty_stats,
+            "solved_slugs": solved_slugs,
             "recent_submissions": recent_list,
         },
     }

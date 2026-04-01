@@ -20,6 +20,8 @@ export default function CodingPage() {
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [loading, setLoading] = useState(true);
+  const [solvedSet, setSolvedSet] = useState<Set<string>>(new Set());
+  const [stats, setStats] = useState<{ problems_solved: number; problems_attempted: number; total_submissions: number } | null>(null);
 
   const fetchProblems = async () => {
     setLoading(true);
@@ -33,6 +35,14 @@ export default function CodingPage() {
     } catch { /* silent */ }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    apiClient.get('/coding/my-stats').then(res => {
+      const data = res.data.data;
+      setStats(data);
+      setSolvedSet(new Set(data.solved_slugs || []));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => { fetchProblems(); }, [page, difficulty]);
 
@@ -48,9 +58,18 @@ export default function CodingPage() {
     <>
       <Helmet><title>Coding Practice - ExamPrep</title></Helmet>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Coding Practice</h1>
-          <p className="mt-1 text-sm text-gray-500">Solve coding problems to sharpen your programming skills</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Coding Practice</h1>
+            <p className="mt-1 text-sm text-gray-500">Solve coding problems to sharpen your programming skills</p>
+          </div>
+          {stats && (
+            <div className="flex gap-4 text-center">
+              <div><p className="text-lg font-bold text-green-600">{stats.problems_solved}</p><p className="text-xs text-gray-400">Solved</p></div>
+              <div><p className="text-lg font-bold text-gray-900 dark:text-white">{stats.problems_attempted}</p><p className="text-xs text-gray-400">Attempted</p></div>
+              <div><p className="text-lg font-bold text-purple-600">{stats.total_submissions}</p><p className="text-xs text-gray-400">Submissions</p></div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -69,7 +88,7 @@ export default function CodingPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
               <tr>
-                <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">#</th>
+                <th className="w-10 px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Status</th>
                 <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Title</th>
                 <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Difficulty</th>
                 <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Acceptance</th>
@@ -80,9 +99,15 @@ export default function CodingPage() {
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500">Loading...</td></tr>
               ) : problems.length === 0 ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500">No coding problems yet. Admin can add them from the panel.</td></tr>
-              ) : problems.map((p, i) => (
+              ) : problems.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                  <td className="px-4 py-3 text-gray-500">{(page - 1) * 20 + i + 1}</td>
+                  <td className="px-4 py-3 text-center">
+                    {solvedSet.has(p.slug) ? (
+                      <svg className="mx-auto h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    ) : (
+                      <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Link to={`/coding/${p.slug}`} className="font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400">
                       {p.title}
