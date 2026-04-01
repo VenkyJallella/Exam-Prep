@@ -168,6 +168,7 @@ async def generate_blog_post(
                 temperature=0.85,
                 max_tokens=12000,
                 use_cache=False,
+                timeout=90.0,
             )
 
             blog_data = _parse_blog_json(result)

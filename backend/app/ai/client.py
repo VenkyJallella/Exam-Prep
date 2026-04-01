@@ -47,6 +47,7 @@ async def generate_completion(
     temperature: float = 0.7,
     max_tokens: int = 4000,
     use_cache: bool = True,
+    timeout: float = 35.0,
 ) -> str:
     """Generate a completion from Gemini with caching, timeout, and rate limit handling."""
     global _rate_limit_until
@@ -67,7 +68,7 @@ async def generate_completion(
 
     client = get_gemini_client()
 
-    # Run in thread pool with 35s timeout
+    # Run in thread pool with configurable timeout
     loop = asyncio.get_event_loop()
     try:
         result = await asyncio.wait_for(
@@ -75,7 +76,7 @@ async def generate_completion(
                 None,
                 partial(_sync_generate, client, model, prompt, temperature, max_tokens),
             ),
-            timeout=35.0,
+            timeout=timeout,
         )
     except asyncio.TimeoutError:
         raise ValueError(f"Gemini API timed out (model: {model})")
