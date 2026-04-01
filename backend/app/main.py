@@ -120,6 +120,22 @@ def create_app() -> FastAPI:
     from app.core.rate_limit import RateLimitMiddleware
     app.add_middleware(RateLimitMiddleware)
 
+    # Security headers — hide server version, add basic protections
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request as StarletteRequest
+
+    class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: StarletteRequest, call_next):
+            response = await call_next(request)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            # Remove server version header if present
+            response.headers.pop("server", None)
+            return response
+
+    app.add_middleware(SecurityHeadersMiddleware)
+
     # Exception handlers
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
