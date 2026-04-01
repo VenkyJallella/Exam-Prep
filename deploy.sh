@@ -122,9 +122,19 @@ echo "Waiting for backend to start..."
 sleep 3
 curl -s http://127.0.0.1:8080/health || echo "Backend not ready yet, check: sudo journalctl -u examprep -f"
 
-# 9. Configure Nginx
+# 9. Configure Nginx (skip if examprep.conf already exists with SSL)
 echo "[9/10] Configuring Nginx..."
-sudo tee /etc/nginx/sites-available/examprep > /dev/null << 'NGINX'
+if [ -f /etc/nginx/sites-available/examprep.conf ]; then
+    echo "Nginx config examprep.conf already exists (with SSL + SSR). Skipping creation."
+    # Remove duplicate plain-HTTP config if it exists (causes conflicts)
+    if [ -f /etc/nginx/sites-enabled/examprep ] && [ -f /etc/nginx/sites-enabled/examprep.conf ]; then
+        echo "Removing duplicate /etc/nginx/sites-enabled/examprep to avoid conflicts..."
+        sudo rm -f /etc/nginx/sites-enabled/examprep
+    fi
+    sudo nginx -t && sudo systemctl reload nginx
+else
+    echo "No existing Nginx config found. Creating fresh config..."
+    sudo tee /etc/nginx/sites-available/examprep.conf > /dev/null << 'NGINX'
 server {
     listen 80;
     server_name zencodio.com www.zencodio.com;
@@ -167,7 +177,6 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Security headers (SEO + security scanners)
     server_tokens off;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
@@ -180,12 +189,13 @@ server {
 }
 NGINX
 
-sudo ln -sf /etc/nginx/sites-available/examprep /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+    sudo ln -sf /etc/nginx/sites-available/examprep.conf /etc/nginx/sites-enabled/
+    sudo nginx -t && sudo systemctl reload nginx
 
-# 10. SSL Certificate
-echo "[10/10] Getting SSL certificate..."
-sudo certbot --nginx -d zencodio.com -d www.zencodio.com --non-interactive --agree-tos --email admin@zencodio.com || echo "SSL setup failed — run manually: sudo certbot --nginx -d zencodio.com"
+    # 10. SSL Certificate
+    echo "[10/10] Getting SSL certificate..."
+    sudo certbot --nginx -d zencodio.com -d www.zencodio.com --non-interactive --agree-tos --email admin@zencodio.com || echo "SSL setup failed — run manually: sudo certbot --nginx -d zencodio.com"
+fi
 
 echo ""
 echo "=========================================="
