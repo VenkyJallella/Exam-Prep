@@ -18,7 +18,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
   const [streak, setStreak] = useState(0);
 
   useEffect(() => {
-    apiClient.get('/gamification/stats').then(r => {
+    apiClient.get('/gamification/me').then(r => {
       setStreak(r.data.data?.current_streak || 0);
     }).catch(() => {});
   }, []);
