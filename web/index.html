@@ -179,10 +179,8 @@
     </script>
   </head>
   <body class="antialiased">
-    <style>/* Hide pre-rendered SEO content from users — crawlers without JS see it via noscript override */
-    #root > header, #root > main, #root > footer { display: none; }</style>
     <div id="root">
-      <!-- Pre-rendered content for SEO crawlers — hidden from users, visible to bots -->
+      <!-- Pre-rendered SEO content — visible to crawlers, removed instantly by React -->
       <header>
         <nav>
           <a href="/" aria-label="ExamPrep Home">ExamPrep</a>
@@ -247,11 +245,11 @@
     </div>
     <noscript>
       <style>
-        #root > header, #root > main, #root > footer { display: block !important; }
         #root main { max-width: 800px; margin: 0 auto; padding: 20px; font-family: Inter, sans-serif; }
         #root a { color: #4f46e5; }
       </style>
     </noscript>
+    <script>document.getElementById('root').innerHTML='';</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
