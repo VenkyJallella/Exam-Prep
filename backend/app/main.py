@@ -212,6 +212,18 @@ def create_app() -> FastAPI:
                         body_html += "</ul>"
                     body_html += f'<p><a href="{base}/register">Start practicing for {exam.name} free on ExamPrep</a></p>'
 
+            elif path.startswith("/try/"):
+                exam_slug = path.split("/try/")[1]
+                exam = (await db.execute(
+                    select(Exam).where(Exam.slug == exam_slug, Exam.is_active == True)
+                )).scalar_one_or_none()
+                if exam:
+                    title = f"Try {exam.name} Free — Practice Questions | ExamPrep"
+                    description = f"Try {exam.name} exam questions for free. No signup required. Practice and see how you score."
+                    body_html = f"<h1>Try {exam.name} Questions Free</h1>"
+                    body_html += f"<p>Practice {exam.name} questions without signing up. Test your knowledge with 5 sample questions.</p>"
+                    body_html += f'<p><a href="{base}/register">Sign up free for unlimited {exam.name} practice</a></p>'
+
             elif path in ("/about", "/pricing", "/terms", "/privacy", "/contact", "/disclaimer", "/dmca"):
                 page_slug = path.lstrip("/")
                 from app.models.page_content import PageContent

@@ -26,6 +26,12 @@ export default function TryFreePage() {
 
   useEffect(() => {
     if (!slug) return;
+    // Coding problems need the in-browser editor — can't do MCQ trial
+    if (slug === 'coding') {
+      setExamName('Coding & Placements');
+      setLoading(false);
+      return;
+    }
     apiClient.get(`/exams/try-free/${slug}`)
       .then(res => {
         setExamName(res.data.data.exam);
@@ -59,11 +65,27 @@ export default function TryFreePage() {
 
   if (loading) return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" /></div>;
 
-  if (questions.length === 0) return (
+  if (slug === 'coding' || questions.length === 0) return (
     <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">No Questions Available</h1>
-      <p className="mt-2 text-gray-500">Questions for this exam are being generated. Check back soon!</p>
-      <Link to="/" className="btn-primary mt-6 inline-block px-6 py-3">Back to Home</Link>
+      <Helmet><title>{slug === 'coding' ? 'Coding Practice' : examName} - Try Free | ExamPrep</title></Helmet>
+      {slug === 'coding' ? (
+        <>
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-100 text-4xl">💻</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Coding Practice</h1>
+          <p className="mt-3 text-gray-500">Our coding practice uses an in-browser code editor with real test case execution — just like LeetCode.</p>
+          <p className="mt-2 text-gray-500">Sign up free to access 30+ coding problems across Arrays, DP, Trees, Graphs, and more.</p>
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <Link to="/register" className="btn-primary px-8 py-3">Sign Up Free — Start Coding</Link>
+            <Link to="/exams/coding" className="text-sm font-medium text-primary-600 hover:underline">Learn more →</Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">No Questions Available</h1>
+          <p className="mt-2 text-gray-500">Questions for this exam are being generated. Check back soon!</p>
+          <Link to="/" className="btn-primary mt-6 inline-block px-6 py-3">Back to Home</Link>
+        </>
+      )}
     </div>
   );
 
