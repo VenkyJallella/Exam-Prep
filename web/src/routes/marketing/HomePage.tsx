@@ -97,11 +97,11 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title>ExamPrep - Free AI-Powered Competitive Exam Preparation | UPSC, JEE, NEET, SSC</title>
-        <meta name="description" content="India's #1 free AI-powered exam preparation platform. Practice UPSC, JEE, NEET, SSC CGL, Banking, GATE, CAT with AI-generated questions, mock tests, daily quizzes, adaptive learning & detailed performance analytics. Start free today." />
-        <meta name="keywords" content="exam preparation online, UPSC preparation 2026, JEE Main mock test free, NEET practice questions, SSC CGL preparation online, Banking exam preparation, GATE CS mock test, CAT preparation free, competitive exam India, online test series free, AI exam preparation, free mock test online, daily quiz app, study planner app, previous year question papers, online coaching India, question bank free, best exam preparation app, UPSC mock test, JEE Advanced practice, NEET 2026 preparation, SSC exam preparation, IBPS PO preparation" />
-        <meta property="og:title" content="ExamPrep - Free AI-Powered Exam Preparation for UPSC, JEE, NEET, SSC" />
-        <meta property="og:description" content="Practice UPSC, JEE, NEET, SSC, Banking exams with AI-generated questions, adaptive learning, mock tests & analytics. Free to start. Trusted by aspirants across India." />
+        <title>ExamPrep - Free Online Mock Tests 2026 | UPSC, JEE, NEET, SSC Practice Questions</title>
+        <meta name="description" content="Free exam preparation for UPSC 2026, JEE Main 2026, NEET 2026, SSC CGL, Banking. 5000+ AI practice questions, full mock tests, daily quiz, coding problems. Try 5 questions free without signup. India's best free exam prep app." />
+        <meta name="keywords" content="free mock test online 2026, UPSC preparation 2026 free, JEE Main mock test 2026, NEET practice questions 2026, SSC CGL online test free, IBPS PO mock test 2026, GATE CS preparation free, CAT mock test free, best free exam app India, competitive exam preparation free, online test series India, AI question generator, previous year papers with solutions, daily GK quiz, coding practice free, LeetCode India, study planner, exam preparation website free, government exam preparation online, IAS IPS preparation, IIT JEE coaching free, NEET coaching free, bank exam preparation, MBA entrance exam, data structures algorithms, adaptive learning, mistake book, performance analytics, exam strategy, toppers strategy" />
+        <meta property="og:title" content="ExamPrep - Free Mock Tests 2026 | UPSC, JEE, NEET, SSC, Banking" />
+        <meta property="og:description" content="5000+ free AI practice questions. UPSC, JEE, NEET, SSC, Banking mock tests. Try 5 questions free — no signup. Daily quiz, coding practice, AI tutor." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://zencodio.com" />
         <meta property="og:image" content="https://zencodio.com/og-image.png" />

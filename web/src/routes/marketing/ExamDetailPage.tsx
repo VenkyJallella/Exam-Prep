@@ -193,11 +193,13 @@ export default function ExamDetailPage() {
   return (
     <>
       <Helmet>
-        <title>{exam.name} Preparation - ExamPrep | AI-Powered Practice</title>
-        <meta name="description" content={`Prepare for ${exam.name} with AI-generated questions, mock tests, and adaptive learning. ${exam.questionsAvailable} questions available.`} />
-        <meta property="og:title" content={`${exam.name} Preparation - ExamPrep | AI-Powered Practice`} />
-        <meta property="og:description" content={`Prepare for ${exam.name} with AI-generated questions, mock tests, and adaptive learning. ${exam.questionsAvailable} questions available.`} />
+        <title>{exam.name} Preparation 2026 Free | Mock Tests, Practice Questions | ExamPrep</title>
+        <meta name="description" content={`Free ${exam.name} preparation 2026. ${exam.questionsAvailable} AI practice questions, full mock tests, previous year papers, daily quiz. Try 5 questions free without signup. ${exam.description}`} />
+        <meta name="keywords" content={`${exam.name} preparation 2026, ${exam.name} mock test free, ${exam.name} practice questions, ${exam.name} previous year papers, ${exam.name} online test series, ${exam.name} syllabus 2026, best ${exam.name} preparation app`} />
+        <meta property="og:title" content={`${exam.name} Preparation 2026 — Free Mock Tests & Practice | ExamPrep`} />
+        <meta property="og:description" content={`Free ${exam.name} prep with ${exam.questionsAvailable} AI questions. Mock tests, PYQs, daily quiz. Try free — no signup.`} />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href={`https://zencodio.com/exams/${exam.slug}`} />
       </Helmet>
 
       {/* Hero */}
