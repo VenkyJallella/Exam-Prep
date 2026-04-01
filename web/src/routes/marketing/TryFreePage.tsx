@@ -23,10 +23,19 @@ export default function TryFreePage() {
   const [score, setScore] = useState(0);
   const [totalAnswered, setTotalAnswered] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [alreadyTried, setAlreadyTried] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
-    // Coding problems need the in-browser editor — can't do MCQ trial
+
+    // Check if already attempted
+    const triedKey = `examprep_tried_${slug}`;
+    if (localStorage.getItem(triedKey)) {
+      setAlreadyTried(true);
+      setLoading(false);
+      return;
+    }
+
     if (slug === 'coding') {
       setExamName('Coding & Placements');
       setLoading(false);
@@ -60,8 +69,25 @@ export default function TryFreePage() {
       setAnswered(false);
     } else {
       setFinished(true);
+      // Mark as tried in localStorage
+      if (slug) localStorage.setItem(`examprep_tried_${slug}`, 'true');
     }
   };
+
+  if (alreadyTried) return (
+    <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+      <Helmet><title>Try Free — Already Attempted | ExamPrep</title></Helmet>
+      <div className="card">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 text-3xl">✅</div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">You've Already Tried This!</h1>
+        <p className="mt-3 text-gray-500">You've used your free trial for this exam. Sign up to unlock unlimited practice with AI-powered questions, mock tests, and more.</p>
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Link to="/register" className="btn-primary px-8 py-3">Sign Up Free — Unlimited Access</Link>
+          <Link to="/" className="text-sm font-medium text-primary-600 hover:underline">Explore other exams</Link>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" /></div>;
 
