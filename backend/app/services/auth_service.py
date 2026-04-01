@@ -54,6 +54,54 @@ async def register(db: AsyncSession, body: RegisterRequest) -> User:
     return user
 
 
+SESSION_LIMITS = {"free": 1, "pro": 2, "premium": 4, "admin": 10}
+
+
+async def _get_user_plan_value(db: AsyncSession, user_id) -> str:
+    """Get plan as string without importing subscription module."""
+    from app.models.payment import Subscription
+    sub = (await db.execute(
+        select(Subscription).where(Subscription.user_id == user_id, Subscription.is_active == True)
+        .order_by(Subscription.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    if sub and sub.expires_at:
+        from datetime import datetime, timezone
+        if sub.expires_at < datetime.now(timezone.utc):
+            return "free"
+        return sub.plan.value if hasattr(sub.plan, 'value') else str(sub.plan)
+    return "free"
+
+
+async def _check_session_limit(db: AsyncSession, user) -> None:
+    """Check if user has exceeded active session limit. Removes oldest if over."""
+    from app.core.cache import cache_get, cache_set
+    import json
+
+    role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+    if role == "admin":
+        return  # Admins get 10 sessions
+
+    plan = await _get_user_plan_value(db, user.id)
+    max_sessions = SESSION_LIMITS.get(plan, 1)
+
+    key = f"active_sessions:{user.id}"
+    raw = await cache_get(key)
+    sessions = raw if isinstance(raw, list) else []
+
+    if len(sessions) >= max_sessions:
+        # Remove oldest sessions to make room for new one
+        sessions = sessions[-(max_sessions - 1):]
+
+    return sessions
+
+
+async def _register_session(user_id, token_hash: str, sessions: list) -> None:
+    """Register a new session in Redis."""
+    from app.core.cache import cache_set
+    sessions.append(token_hash)
+    await cache_set(f"active_sessions:{user_id}", sessions, ttl_seconds=86400 * 30)
+
+
 async def login(db: AsyncSession, body: LoginRequest) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
@@ -64,8 +112,17 @@ async def login(db: AsyncSession, body: LoginRequest) -> TokenResponse:
     if not user.is_active:
         raise UnauthorizedError("Account is deactivated")
 
+    # Check session limit
+    sessions = await _check_session_limit(db, user)
+
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
+
+    # Register this session
+    import hashlib
+    token_hash = hashlib.sha256(access_token.encode()).hexdigest()[:16]
+    if sessions is not None:
+        await _register_session(user.id, token_hash, sessions)
 
     return TokenResponse(
         access_token=access_token,

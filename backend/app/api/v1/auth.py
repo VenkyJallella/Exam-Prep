@@ -118,4 +118,17 @@ async def logout(
     token: str = Depends(oauth2_scheme),
 ):
     await blacklist_token(token)
+
+    # Remove session from active sessions
+    try:
+        import hashlib
+        from app.core.cache import cache_get, cache_set
+        token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
+        raw = await cache_get(f"active_sessions:{user.id}")
+        sessions = raw if isinstance(raw, list) else []
+        sessions = [s for s in sessions if s != token_hash]
+        await cache_set(f"active_sessions:{user.id}", sessions, ttl_seconds=86400 * 30)
+    except Exception:
+        pass
+
     return APIResponse(data={"message": "Logged out successfully"})

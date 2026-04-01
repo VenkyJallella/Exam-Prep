@@ -84,6 +84,20 @@ async def get_current_user(
     if not user or not user.is_active:
         raise UnauthorizedError("User not found or inactive")
 
+    # Check if this session is still active (not kicked by newer login)
+    import hashlib
+    token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
+    try:
+        from app.core.cache import cache_get
+        raw = await cache_get(f"active_sessions:{user_id}")
+        sessions = raw if isinstance(raw, list) else None
+        if sessions is not None and token_hash not in sessions:
+            raise UnauthorizedError("Session expired. Please login again — you may have logged in from another device.")
+    except UnauthorizedError:
+        raise
+    except Exception:
+        pass  # Redis error — allow access
+
     return user
 
 
