@@ -105,7 +105,7 @@ After=network.target postgresql.service redis-server.service
 [Service]
 User=root
 WorkingDirectory=$APP_DIR/backend
-ExecStart=$APP_DIR/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+ExecStart=$APP_DIR/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080 --workers 2
 Restart=always
 RestartSec=5
 Environment=PYTHONPATH=$APP_DIR/backend
@@ -120,7 +120,7 @@ sudo systemctl restart examprep
 
 echo "Waiting for backend to start..."
 sleep 3
-curl -s http://127.0.0.1:8000/health || echo "Backend not ready yet, check: sudo journalctl -u examprep -f"
+curl -s http://127.0.0.1:8080/health || echo "Backend not ready yet, check: sudo journalctl -u examprep -f"
 
 # 9. Configure Nginx
 echo "[9/10] Configuring Nginx..."
@@ -139,7 +139,7 @@ server {
 
     # Backend API
     location /api/ {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -148,15 +148,15 @@ server {
     }
 
     location /health {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8080;
     }
 
     location /sitemap.xml {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8080;
     }
 
     location /ws/ {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
