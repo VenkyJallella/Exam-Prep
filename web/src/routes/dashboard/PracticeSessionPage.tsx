@@ -17,10 +17,31 @@ export default function PracticeSessionPage() {
   const { session, questions, currentIndex, answers, setSession, setAnswer, nextQuestion, prevQuestion, reset } = usePracticeStore();
   const timer = useTimer(0, false);
 
-  // Reset store on unmount only
+  // Auto-complete session on page leave / tab close
   useEffect(() => {
-    return () => { reset(); };
-  }, []);
+    const autoComplete = () => {
+      if (sessionId && !result) {
+        const token = localStorage.getItem('access_token');
+        const url = `/api/v1/practice/sessions/${sessionId}/complete`;
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token || ''}`, 'Content-Type': 'application/json' },
+          body: '{}',
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('beforeunload', autoComplete);
+    return () => {
+      window.removeEventListener('beforeunload', autoComplete);
+      // Also auto-complete when navigating away within the SPA
+      if (sessionId && !result) {
+        practiceAPI.completeSession(sessionId).catch(() => {});
+      }
+      reset();
+    };
+  }, [sessionId, result]);
 
   // Load session
   useEffect(() => {

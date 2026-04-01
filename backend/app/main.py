@@ -75,6 +75,29 @@ async def _pool_refill_loop():
         except Exception as e:
             logger.error("Coding refill error: %s", e)
 
+        # --- Cleanup stale practice sessions (in_progress > 2 hours) ---
+        try:
+            async with AsyncSessionLocal() as db:
+                from app.models.practice import PracticeSession, SessionStatus
+                from datetime import datetime, timedelta, timezone
+
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+                stale = (await db.execute(
+                    select(PracticeSession).where(
+                        PracticeSession.status == SessionStatus.IN_PROGRESS,
+                        PracticeSession.created_at < cutoff,
+                    )
+                )).scalars().all()
+
+                if stale:
+                    for s in stale:
+                        s.status = SessionStatus.COMPLETED
+                        s.skipped_count = s.total_questions - s.correct_count - s.wrong_count
+                    await db.commit()
+                    logger.info("Auto-completed %d stale practice sessions (>2h old)", len(stale))
+        except Exception as e:
+            logger.error("Stale session cleanup error: %s", e)
+
         await asyncio.sleep(REFILL_INTERVAL)
 
 

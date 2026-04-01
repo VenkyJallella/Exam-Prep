@@ -264,6 +264,24 @@ async def complete_session(db: AsyncSession, user_id: UUID, session_id: UUID) ->
     if not session:
         raise NotFoundError("Practice session")
 
+    # Safe to call on already-completed sessions (auto-complete may race)
+    if session.status == SessionStatus.COMPLETED:
+        answered = session.correct_count + session.wrong_count
+        accuracy = (session.correct_count / answered * 100) if answered > 0 else 0.0
+        xp_result = await db.execute(
+            select(func.sum(UserAnswer.xp_earned)).where(UserAnswer.session_id == session_id)
+        )
+        return SessionResult(
+            session=session,
+            total_questions=session.total_questions,
+            correct=session.correct_count,
+            wrong=session.wrong_count,
+            skipped=session.skipped_count,
+            accuracy_pct=round(accuracy, 1),
+            total_time_seconds=session.total_time_seconds,
+            xp_earned=xp_result.scalar() or 0,
+        )
+
     session.status = SessionStatus.COMPLETED
     session.skipped_count = session.total_questions - session.correct_count - session.wrong_count
 
