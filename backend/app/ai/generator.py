@@ -104,15 +104,17 @@ async def generate_questions(
 
 
 def _clean_json_response(result: str) -> dict:
-    """Clean and parse JSON from AI response."""
+    """Clean and parse JSON from AI response — handles blog content with special chars."""
     import json
 
     s = result.strip()
 
     # Remove markdown code blocks
     if s.startswith("```"):
-        s = s.split("\n", 1)[1]
-        s = s.rsplit("```", 1)[0].strip()
+        first_newline = s.index("\n") if "\n" in s else 3
+        s = s[first_newline + 1:]
+        if "```" in s:
+            s = s[:s.rfind("```")].strip()
 
     # Try direct parse
     try:
@@ -120,14 +122,29 @@ def _clean_json_response(result: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # Try to find JSON object in the response
+    # Fix common issues: control characters inside JSON strings
     import re
-    match = re.search(r'\{[\s\S]*\}', s)
+    # Remove control characters except \n \r \t
+    s_cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', s)
+    try:
+        return json.loads(s_cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Try to extract JSON object
+    match = re.search(r'\{[\s\S]*\}', s_cleaned)
     if match:
         try:
             return json.loads(match.group())
         except json.JSONDecodeError:
-            pass
+            # Try fixing unescaped newlines in string values
+            fixed = match.group()
+            # Replace literal newlines inside JSON strings with \n
+            fixed = re.sub(r'(?<=": ")([\s\S]*?)(?="[,\}])', lambda m: m.group().replace('\n', '\\n').replace('\r', ''), fixed)
+            try:
+                return json.loads(fixed)
+            except json.JSONDecodeError:
+                pass
 
     raise ValueError(f"Failed to parse blog JSON. First 300 chars: {s[:300]}")
 
