@@ -75,9 +75,15 @@ async def get_problem_by_id(db: AsyncSession, problem_id: UUID) -> CodingQuestio
 
 async def create_problem(db: AsyncSession, data: dict) -> CodingQuestion:
     slug = _slugify(data["title"])
-    existing = await db.execute(select(CodingQuestion.id).where(CodingQuestion.slug == slug))
+    # Check for duplicate by slug or title
+    existing = await db.execute(
+        select(CodingQuestion.id).where(
+            (CodingQuestion.slug == slug) | (CodingQuestion.title == data["title"])
+        )
+    )
     if existing.scalar_one_or_none():
-        slug = f"{slug}-{str(uuid_mod.uuid4())[:8]}"
+        logger.info("Skipping duplicate coding problem: %s", data["title"])
+        return None
 
     problem = CodingQuestion(
         title=data["title"],
@@ -148,8 +154,9 @@ async def generate_coding_challenges(
             continue
         try:
             problem = await create_problem(db, data)
-            created.append(problem)
-            logger.info("AI generated coding problem: %s", problem.title)
+            if problem:
+                created.append(problem)
+                logger.info("AI generated coding problem: %s", problem.title)
         except Exception as e:
             logger.warning("Failed to save coding problem '%s': %s", data.get("title", "?"), e)
 

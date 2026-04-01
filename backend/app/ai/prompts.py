@@ -13,14 +13,8 @@ DIFFICULTY LEVEL {difficulty} MEANS:
 
 CRITICAL: Every single question MUST be at difficulty level {difficulty}. If level is 4 or 5, questions should require multi-step solving, involve tricky distractors, combine multiple concepts, or need careful analysis. Do NOT produce basic recall questions for high difficulty levels.
 
-Rules:
-- STRICTLY generate questions ONLY from {subject_name} > {topic_name} as per {exam_name} syllabus
-- Do NOT generate questions from any other subject or topic
-- All data, facts, statistics, and references MUST be current as of {current_year}
-- For current affairs topics: use events from {current_year} and recent months
-- For policy/law topics: reference the LATEST amendments and changes as of {current_year}
-- For science topics: include recent discoveries and developments
-- Do NOT reference outdated data, old statistics, or events from years ago as if they are current
+
+
 - MANDATORY: Each question MUST have exactly 4 options with keys "A", "B", "C", "D" — no more, no less, no other keys
 - correct_answer MUST be one of "A", "B", "C", or "D" — never a number or full text
 - Include a clear 2-3 sentence explanation for the correct answer
@@ -139,6 +133,8 @@ CRITICAL: This is a STDIN/STDOUT based judge. User code reads from input() and p
 - Test case "expected_output" = exact text printed to stdout
 - Starter code must use input() to read and print() to output
 - NO class-based solutions. Just standalone Python scripts.
+- DO NOT generate common/overused problems like Two Sum, Reverse String, FizzBuzz, Fibonacci, Palindrome Check — generate UNIQUE problems that haven't been seen before.
+- Each problem title MUST be unique and descriptive.
 
 Difficulty levels:
 - easy: Simple loops, basic data structures. 10-15 min.

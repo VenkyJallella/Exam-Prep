@@ -270,6 +270,9 @@ async def admin_create_problem(
     user: User = Depends(require_role("admin")),
 ):
     problem = await coding_service.create_problem(db, body)
+    if not problem:
+        from app.exceptions import AppException
+        raise AppException(400, "DUPLICATE", "A problem with this title already exists")
     return {"status": "success", "data": {"id": str(problem.id), "slug": problem.slug}}
 
 
