@@ -167,8 +167,11 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Hide server version from SEO/security scanners
+    # Security headers (SEO + security scanners)
     server_tokens off;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;

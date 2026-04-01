@@ -107,29 +107,7 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
 
-    # Middleware — order matters! Last added = outermost (runs first).
-    # CORS must be outermost to handle OPTIONS preflight before other middleware.
-
-    # Security headers (inner — runs after CORS)
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.requests import Request as StarletteRequest
-
-    class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: StarletteRequest, call_next):
-            response = await call_next(request)
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            response.headers["X-Frame-Options"] = "DENY"
-            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-            response.headers.pop("server", None)
-            return response
-
-    app.add_middleware(SecurityHeadersMiddleware)
-
-    from app.core.rate_limit import RateLimitMiddleware
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(RequestLoggingMiddleware)
-
-    # CORS — added last so it's the outermost middleware (handles OPTIONS first)
+    # Middleware (original working order — do not reorder)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -137,6 +115,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(RequestLoggingMiddleware)
+
+    from app.core.rate_limit import RateLimitMiddleware
+    app.add_middleware(RateLimitMiddleware)
 
     # Exception handlers
     app.add_exception_handler(AppException, app_exception_handler)
