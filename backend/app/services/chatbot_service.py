@@ -106,21 +106,20 @@ STRONG AREAS (above 75% accuracy): {', '.join(strong_topics) if strong_topics el
 
     # Add coding stats
     try:
-        from app.models.coding import CodingSubmission, CodingQuestion
-        from sqlalchemy import func, distinct
+        from app.models.coding import CodingSubmission
 
         coding_total = (await db.execute(
             select(func.count()).select_from(CodingSubmission).where(CodingSubmission.user_id == user_id)
         )).scalar() or 0
 
         coding_solved = (await db.execute(
-            select(func.count(distinct(CodingSubmission.question_id))).where(
+            select(func.count(func.distinct(CodingSubmission.question_id))).where(
                 CodingSubmission.user_id == user_id, CodingSubmission.status == "accepted"
             )
         )).scalar() or 0
 
         coding_attempted = (await db.execute(
-            select(func.count(distinct(CodingSubmission.question_id))).where(CodingSubmission.user_id == user_id)
+            select(func.count(func.distinct(CodingSubmission.question_id))).where(CodingSubmission.user_id == user_id)
         )).scalar() or 0
 
         context += f"""
