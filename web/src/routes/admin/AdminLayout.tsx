@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 
 const adminNav = [
@@ -15,6 +16,15 @@ const adminNav = [
 ];
 
 export default function AdminLayout() {
+  useEffect(() => {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="w-56 flex-shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">

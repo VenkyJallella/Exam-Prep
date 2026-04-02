@@ -291,7 +291,14 @@ async def admin_generate_problems(
         from app.exceptions import AppException
         raise AppException(400, "INVALID_DIFFICULTY", "Difficulty must be easy, medium, or hard")
 
-    problems = await coding_service.generate_coding_challenges(db, count=count, difficulty=difficulty, topic=topic)
+    try:
+        problems = await coding_service.generate_coding_challenges(db, count=count, difficulty=difficulty, topic=topic)
+    except Exception as e:
+        import logging
+        logging.getLogger("examprep").error("Coding generation failed: %s", e)
+        from app.exceptions import AppException
+        raise AppException(500, "AI_ERROR", f"AI generation failed: {e}")
+
     return {
         "status": "success",
         "data": {

@@ -9,6 +9,16 @@ import apiClient from '@/lib/api/client';
 export default function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  // Prevent body scroll so sidebar/topbar stay fixed
+  useEffect(() => {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Cache user plan for ad visibility
   useEffect(() => {
     apiClient.get('/payments/usage').then(r => {

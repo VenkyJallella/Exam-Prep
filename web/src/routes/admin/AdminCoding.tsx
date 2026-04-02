@@ -58,7 +58,7 @@ export default function AdminCoding() {
       toast.success(`Generated ${res.data.data.generated} coding problems!`);
       setShowGenerate(false);
       loadProblems();
-    } catch { toast.error('Failed to generate. Check AI configuration.'); }
+    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Failed to generate. Check AI configuration.'); }
     finally { setGenerating(false); }
   };
 
