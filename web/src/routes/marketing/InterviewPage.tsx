@@ -42,6 +42,7 @@ export default function InterviewPage() {
   const [total, setTotal] = useState(0);
   const [selectedCat, setSelectedCat] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [selectedDiff, setSelectedDiff] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -51,8 +52,8 @@ export default function InterviewPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedCat) { setTopics([]); return; }
-    apiClient.get('/interview/topics', { params: { category: selectedCat } }).then(r => setTopics(r.data.data)).catch(() => {});
+    apiClient.get('/interview/topics', { params: selectedCat ? { category: selectedCat } : {} })
+      .then(r => setTopics(r.data.data)).catch(() => {});
   }, [selectedCat]);
 
   useEffect(() => {
@@ -60,11 +61,12 @@ export default function InterviewPage() {
     const params: Record<string, any> = { page, per_page: 20 };
     if (selectedCat) params.category = selectedCat;
     if (selectedTopic) params.topic = selectedTopic;
+    if (selectedDiff) params.difficulty = selectedDiff;
     apiClient.get('/interview/questions', { params }).then(r => {
       setQuestions(r.data.data);
       setTotal(r.data.meta.total);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [selectedCat, selectedTopic, page]);
+  }, [selectedCat, selectedTopic, selectedDiff, page]);
 
   const diffBadge = (d: string) => {
     const c = d === 'easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
@@ -73,7 +75,9 @@ export default function InterviewPage() {
     return <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${c}`}>{d}</span>;
   };
 
+  const totalQuestions = categories.reduce((s, c) => s + c.question_count, 0);
   const totalPages = Math.ceil(total / 20);
+  const activeFilters = [selectedCat && CAT_LABEL[selectedCat], selectedTopic, selectedDiff].filter(Boolean);
 
   return (
     <>
@@ -86,7 +90,7 @@ export default function InterviewPage() {
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
               Interview{' '}
@@ -95,31 +99,39 @@ export default function InterviewPage() {
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
               Master your next interview with expert Q&A. Technical, HR, and domain-specific questions with detailed answers.
             </p>
+            {totalQuestions > 0 && (
+              <p className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">{totalQuestions} questions across {categories.length} categories</p>
+            )}
           </div>
         </div>
       </section>
 
       {/* Categories */}
-      <section className="bg-white py-12 dark:bg-gray-950">
+      <section className="bg-white py-10 dark:bg-gray-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 sm:grid-cols-3">
+          <h2 className="mb-6 text-center text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Choose a category</h2>
+          <div className="grid gap-5 sm:grid-cols-3">
             {(['technical', 'hr_behavioral', 'domain_specific'] as const).map(cat => {
               const info = categories.find(c => c.category === cat);
               const isActive = selectedCat === cat;
               return (
                 <button
                   key={cat}
-                  onClick={() => { setSelectedCat(isActive ? '' : cat); setSelectedTopic(''); setPage(1); setExpandedId(null); }}
-                  className={`rounded-xl border-2 p-6 text-left transition-all ${isActive ? 'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-900/20' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700'}`}
+                  onClick={() => { setSelectedCat(isActive ? '' : cat); setSelectedTopic(''); setSelectedDiff(''); setPage(1); setExpandedId(null); }}
+                  className={`rounded-xl border-2 p-5 text-left transition-all ${isActive ? 'border-primary-500 bg-primary-50 shadow-md dark:border-primary-400 dark:bg-primary-900/20' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700'}`}
                 >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${isActive ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={CAT_ICON[cat]} /></svg>
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isActive ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={CAT_ICON[cat]} /></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white">{CAT_LABEL[cat]}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{CAT_DESC[cat]}</p>
+                    </div>
                   </div>
-                  <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">{CAT_LABEL[cat]}</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{CAT_DESC[cat]}</p>
                   {info && (
-                    <div className="mt-3 flex gap-4 text-sm">
-                      <span className="font-medium text-primary-600 dark:text-primary-400">{info.topic_count} topics</span>
+                    <div className="mt-3 flex gap-4 border-t border-gray-100 pt-3 text-xs dark:border-gray-800">
+                      <span className="font-semibold text-primary-600 dark:text-primary-400">{info.topic_count} topics</span>
                       <span className="text-gray-500">{info.question_count} questions</span>
                     </div>
                   )}
@@ -130,26 +142,60 @@ export default function InterviewPage() {
         </div>
       </section>
 
-      {/* Topic chips */}
-      {selectedCat && topics.length > 0 && (
-        <section className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-          <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
-            <button onClick={() => { setSelectedTopic(''); setPage(1); }} className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${!selectedTopic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>All</button>
-            {topics.map(t => (
-              <button key={t.topic} onClick={() => { setSelectedTopic(t.topic); setPage(1); }} className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${selectedTopic === t.topic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>
-                {t.topic} ({t.question_count})
-              </button>
-            ))}
+      {/* Filters bar — always visible */}
+      <section className="sticky top-16 z-30 border-b border-t border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Difficulty filter */}
+            <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-900">
+              {['', 'easy', 'medium', 'hard'].map(d => (
+                <button
+                  key={d}
+                  onClick={() => { setSelectedDiff(d); setPage(1); }}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${selectedDiff === d ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                >
+                  {d === '' ? 'All Levels' : d.charAt(0).toUpperCase() + d.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Active filters + clear */}
+            {activeFilters.length > 0 && (
+              <>
+                <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
+                {activeFilters.map(f => (
+                  <span key={f} className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">{f}</span>
+                ))}
+                <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setSelectedDiff(''); setPage(1); }} className="text-xs font-medium text-gray-500 hover:text-red-600 dark:text-gray-400">Clear all</button>
+              </>
+            )}
+
+            {/* Results count */}
+            <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
+              {loading ? 'Loading...' : `${total} result${total !== 1 ? 's' : ''}`}
+            </span>
           </div>
-        </section>
-      )}
+
+          {/* Topic chips — always show if topics exist */}
+          {topics.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button onClick={() => { setSelectedTopic(''); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${!selectedTopic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>All Topics</button>
+              {topics.map(t => (
+                <button key={t.topic} onClick={() => { setSelectedTopic(t.topic); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${selectedTopic === t.topic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>
+                  {t.topic} <span className="opacity-60">({t.question_count})</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Questions */}
-      <section className="bg-gray-50 py-12 dark:bg-gray-900">
+      <section className="bg-gray-50 py-10 dark:bg-gray-900">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           {loading ? (
             <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <div key={i} className="animate-pulse rounded-xl bg-white p-6 dark:bg-gray-950">
                   <div className="h-5 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
                   <div className="mt-3 h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
@@ -157,68 +203,88 @@ export default function InterviewPage() {
               ))}
             </div>
           ) : questions.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-lg text-gray-500 dark:text-gray-400">
-                {selectedCat ? 'No questions in this category yet. Check back soon!' : 'Select a category above to browse interview questions.'}
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-950">
+              <svg className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+              <p className="mt-4 text-gray-500 dark:text-gray-400">
+                {selectedCat || selectedTopic || selectedDiff ? 'No questions match your filters. Try adjusting them.' : 'No interview questions available yet. Check back soon!'}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {questions.map((q, idx) => {
-                const locked = idx >= FREE_LIMIT;
-                const isExpanded = expandedId === q.id && !locked;
-                return (
-                  <div key={q.id} className={`overflow-hidden rounded-xl border bg-white transition-shadow dark:bg-gray-950 ${locked ? 'border-gray-200 dark:border-gray-800 opacity-60' : isExpanded ? 'border-primary-300 shadow-lg dark:border-primary-700' : 'border-gray-200 hover:shadow-md dark:border-gray-800'}`}>
-                    <button
-                      onClick={() => !locked && setExpandedId(isExpanded ? null : q.id)}
-                      className="flex w-full items-start justify-between p-5 text-left"
-                    >
-                      <div className="flex-1 pr-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-medium text-primary-600 dark:text-primary-400">{q.topic}</span>
-                          {diffBadge(q.difficulty)}
-                          {q.companies?.slice(0, 2).map(c => (
-                            <span key={c} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{c}</span>
-                          ))}
+            <>
+              <div className="space-y-3">
+                {questions.map((q, idx) => {
+                  const locked = idx >= FREE_LIMIT;
+                  const isExpanded = expandedId === q.id && !locked;
+                  return (
+                    <div key={q.id} className={`overflow-hidden rounded-xl border bg-white transition-shadow dark:bg-gray-950 ${locked ? 'border-gray-200 dark:border-gray-800 opacity-50' : isExpanded ? 'border-primary-300 shadow-lg dark:border-primary-700' : 'border-gray-200 hover:shadow-md dark:border-gray-800'}`}>
+                      <button
+                        onClick={() => !locked && setExpandedId(isExpanded ? null : q.id)}
+                        className="flex w-full items-start justify-between p-5 text-left"
+                      >
+                        <div className="flex-1 pr-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="rounded bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">{q.topic}</span>
+                            {diffBadge(q.difficulty)}
+                            {q.companies?.slice(0, 2).map(c => (
+                              <span key={c} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{c}</span>
+                            ))}
+                          </div>
+                          <h3 className="mt-2 text-base font-semibold text-gray-900 dark:text-white sm:text-lg">{q.question}</h3>
                         </div>
-                        <h3 className="mt-2 text-base font-semibold text-gray-900 dark:text-white sm:text-lg">{q.question}</h3>
-                      </div>
-                      {locked ? (
-                        <svg className="mt-2 h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                      ) : (
-                        <svg className={`mt-2 h-5 w-5 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        {locked ? (
+                          <svg className="mt-2 h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        ) : (
+                          <svg className={`mt-2 h-5 w-5 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50 px-5 py-5 dark:border-gray-800 dark:bg-gray-900/50">
+                          <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(q.answer) }} />
+                        </div>
                       )}
-                    </button>
 
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50 px-5 py-4 dark:border-gray-800 dark:bg-gray-900/50">
-                        <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(q.answer) }} />
-                      </div>
-                    )}
+                      {locked && idx === FREE_LIMIT && (
+                        <div className="border-t border-gray-100 bg-gradient-to-b from-white to-primary-50 px-5 py-8 text-center dark:border-gray-800 dark:from-gray-950 dark:to-primary-950/20">
+                          <svg className="mx-auto h-8 w-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          <p className="mt-3 text-base font-semibold text-gray-900 dark:text-white">
+                            Sign up to unlock all {total} questions
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Free account — no credit card required</p>
+                          <Link to="/register" className="btn-primary mt-4 inline-block text-sm">
+                            Sign Up Free
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-                    {locked && idx === FREE_LIMIT && (
-                      <div className="border-t border-gray-100 bg-gradient-to-b from-white to-gray-50 px-5 py-6 text-center dark:border-gray-800 dark:from-gray-950 dark:to-gray-900">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Login to read all {total} interview questions
-                        </p>
-                        <Link to="/register" className="btn-primary mt-3 inline-block text-sm">
-                          Sign Up Free
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-10 flex items-center justify-center gap-2">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary text-sm disabled:opacity-50">Previous</button>
-              <span className="text-sm text-gray-600 dark:text-gray-400">Page {page} of {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-secondary text-sm disabled:opacity-50">Next</button>
-            </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-1">
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let p: number;
+                    if (totalPages <= 5) p = i + 1;
+                    else if (page <= 3) p = i + 1;
+                    else if (page >= totalPages - 2) p = totalPages - 4 + i;
+                    else p = page - 2 + i;
+                    return (
+                      <button key={p} onClick={() => setPage(p)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${page === p ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}>
+                        {p}
+                      </button>
+                    );
+                  })}
+                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
