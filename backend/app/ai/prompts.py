@@ -182,8 +182,8 @@ RULES FOR TEST CASES:
    GOOD: "nums = list(map(int, input().split()))\\nprint(result)"
    BAD: "class Solution:\\n    def solve(self, nums):"
 3b. Java starter code MUST use Scanner and System.out.println, class MUST be named "Main"
-   GOOD: "import java.util.*;\\npublic class Main { public static void main(String[] args) { Scanner sc = new Scanner(System.in); ... }}"
-   BAD: "public class Solution { ... }"
+   GOOD: "import java.util.*;\\npublic class Main {{ public static void main(String[] args) {{ Scanner sc = new Scanner(System.in); ... }}}}"
+   BAD: "public class Solution {{ ... }}"
 4. For arrays: input as space-separated on one line, output as space-separated
 5. For single values: one value per line
 6. For strings: one string per line
