@@ -41,6 +41,7 @@ export default function InterviewPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     apiClient.get('/interview').then(r => setCategories(r.data.data)).catch(() => {});
@@ -84,11 +85,11 @@ export default function InterviewPage() {
 
       {/* Hero — compact */}
       <section className="border-b border-gray-200 bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:border-gray-800 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
             Interview <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Preparation</span>
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 sm:mt-2 sm:text-base">
             {totalQuestions > 0 ? `${totalQuestions} questions` : 'Expert Q&A'} across Technical, HR, and Domain-specific topics.
           </p>
         </div>
@@ -96,7 +97,7 @@ export default function InterviewPage() {
 
       {/* Main layout: sidebar + content */}
       <section className="bg-gray-50 dark:bg-gray-900">
-        <div className="mx-auto flex max-w-7xl gap-0 lg:gap-6 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl gap-0 lg:gap-6 px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
 
           {/* Left sidebar — filters */}
           <aside className="hidden w-64 shrink-0 lg:block">
@@ -171,30 +172,88 @@ export default function InterviewPage() {
             </div>
           </aside>
 
-          {/* Mobile filters (shown below hero on small screens) */}
-          <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
-            <select value={selectedCat} onChange={e => { setSelectedCat(e.target.value); setSelectedTopic(''); setPage(1); }} className="input w-auto text-sm">
-              <option value="">All Categories</option>
-              {Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <select value={selectedDiff} onChange={e => { setSelectedDiff(e.target.value); setPage(1); }} className="input w-auto text-sm">
-              <option value="">All Levels</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-            {topics.length > 0 && (
-              <select value={selectedTopic} onChange={e => { setSelectedTopic(e.target.value); setPage(1); }} className="input w-auto text-sm">
-                <option value="">All Topics</option>
-                {topics.map(t => <option key={t.topic} value={t.topic}>{t.topic} ({t.question_count})</option>)}
-              </select>
-            )}
-          </div>
-
           {/* Right — questions */}
           <div className="min-w-0 flex-1">
-            {/* Results bar */}
-            <div className="mb-4 flex items-center justify-between">
+            {/* Mobile filter bar */}
+            <div className="mb-4 lg:hidden">
+              {/* Toggle + active count */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+                  className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                  Filters
+                  {(selectedCat || selectedDiff || selectedTopic) && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-xs text-white">
+                      {[selectedCat, selectedDiff, selectedTopic].filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{total} questions</span>
+              </div>
+
+              {/* Expandable filter panel */}
+              {mobileFiltersOpen && (
+                <div className="mt-3 space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-950">
+                  {/* Category */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Category</h4>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setPage(1); }} className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!selectedCat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>All</button>
+                      {(['technical', 'hr_behavioral', 'domain_specific'] as const).map(cat => {
+                        const info = categories.find(c => c.category === cat);
+                        return (
+                          <button key={cat} onClick={() => { setSelectedCat(selectedCat === cat ? '' : cat); setSelectedTopic(''); setPage(1); }}
+                            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${selectedCat === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
+                          >
+                            {CAT_LABEL[cat]} {info ? `(${info.question_count})` : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Difficulty */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Difficulty</h4>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[{ val: '', label: 'All' }, { val: 'easy', label: 'Easy' }, { val: 'medium', label: 'Medium' }, { val: 'hard', label: 'Hard' }].map(d => (
+                        <button key={d.val} onClick={() => { setSelectedDiff(d.val); setPage(1); }}
+                          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${selectedDiff === d.val ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
+                        >{d.label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Topics */}
+                  {topics.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Topic</h4>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <button onClick={() => { setSelectedTopic(''); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${!selectedTopic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>All</button>
+                        {topics.map(t => (
+                          <button key={t.topic} onClick={() => { setSelectedTopic(t.topic); setPage(1); }}
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${selectedTopic === t.topic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}
+                          >{t.topic} ({t.question_count})</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Clear + Apply */}
+                  <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+                    {(selectedCat || selectedDiff || selectedTopic) && (
+                      <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setSelectedDiff(''); setPage(1); }} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-600 dark:border-gray-700 dark:text-gray-400">Clear</button>
+                    )}
+                    <button onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-lg bg-primary-600 py-2 text-sm font-medium text-white">Apply</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Results bar — desktop */}
+            <div className="mb-4 hidden items-center justify-between lg:flex">
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {loading ? 'Loading...' : `${total} question${total !== 1 ? 's' : ''}`}
                 {selectedCat && <> in <span className="font-medium text-gray-700 dark:text-gray-300">{CAT_LABEL[selectedCat]}</span></>}
@@ -229,7 +288,7 @@ export default function InterviewPage() {
                       <div key={q.id} className={`overflow-hidden rounded-xl border bg-white transition-shadow dark:bg-gray-950 ${locked ? 'border-gray-200 dark:border-gray-800 opacity-50' : isExpanded ? 'border-primary-300 shadow-lg dark:border-primary-700' : 'border-gray-200 hover:shadow-md dark:border-gray-800'}`}>
                         <button
                           onClick={() => !locked && setExpandedId(isExpanded ? null : q.id)}
-                          className="flex w-full items-start justify-between p-5 text-left"
+                          className="flex w-full items-start justify-between p-4 sm:p-5 text-left"
                         >
                           <div className="flex-1 pr-4">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -249,7 +308,7 @@ export default function InterviewPage() {
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t border-gray-100 bg-gray-50 px-5 py-5 dark:border-gray-800 dark:bg-gray-900/50">
+                          <div className="border-t border-gray-100 bg-gray-50 px-4 py-4 sm:px-5 sm:py-5 dark:border-gray-800 dark:bg-gray-900/50">
                             <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(q.answer) }} />
                           </div>
                         )}
