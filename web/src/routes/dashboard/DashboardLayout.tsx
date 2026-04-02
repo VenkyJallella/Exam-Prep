@@ -9,16 +9,6 @@ import apiClient from '@/lib/api/client';
 export default function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Prevent body scroll so sidebar/topbar stay fixed
-  useEffect(() => {
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-    };
-  }, []);
-
   // Cache user plan for ad visibility
   useEffect(() => {
     apiClient.get('/payments/usage').then(r => {
@@ -27,7 +17,7 @@ export default function DashboardLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="fixed inset-0 flex overflow-hidden">
       <Sidebar />
       <MobileNav isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">

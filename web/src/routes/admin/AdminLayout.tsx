@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 
 const adminNav = [
@@ -16,17 +15,8 @@ const adminNav = [
 ];
 
 export default function AdminLayout() {
-  useEffect(() => {
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-    };
-  }, []);
-
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="fixed inset-0 flex overflow-hidden">
       <aside className="w-56 flex-shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
         <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-4 dark:border-gray-800">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-bold text-white">A</div>
