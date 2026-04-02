@@ -154,6 +154,11 @@ async def refresh_tokens(db: AsyncSession, body: RefreshRequest) -> TokenRespons
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    # Register new access token in active_sessions (same as login)
+    import hashlib
+    token_hash = hashlib.sha256(access_token.encode()).hexdigest()[:16]
+    await _check_and_register_session(db, user, token_hash)
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
