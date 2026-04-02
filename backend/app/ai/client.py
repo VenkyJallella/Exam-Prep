@@ -20,16 +20,19 @@ def get_gemini_client() -> genai.Client:
     return _client
 
 
-def _sync_generate(client: genai.Client, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+def _sync_generate(client: genai.Client, model: str, prompt: str, temperature: float, max_tokens: int, thinking_budget: int | None = None) -> str:
     """Synchronous Gemini call — runs in a thread pool."""
     try:
+        config_kwargs: dict = {
+            "temperature": temperature,
+            "max_output_tokens": max_tokens,
+        }
+        if thinking_budget is not None:
+            config_kwargs["thinking_config"] = genai.types.ThinkingConfig(thinking_budget=thinking_budget)
         response = client.models.generate_content(
             model=model,
             contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-            ),
+            config=genai.types.GenerateContentConfig(**config_kwargs),
         )
         text = response.text
         if not text:
@@ -46,6 +49,7 @@ async def generate_completion(
     max_tokens: int = 4000,
     use_cache: bool = True,
     timeout: float = 35.0,
+    thinking_budget: int | None = None,
 ) -> str:
     """Generate a completion from Gemini with caching, timeout, and rate limit handling."""
     model = model or settings.GEMINI_MODEL
@@ -73,7 +77,7 @@ async def generate_completion(
         result = await asyncio.wait_for(
             loop.run_in_executor(
                 None,
-                partial(_sync_generate, client, model, prompt, temperature, max_tokens),
+                partial(_sync_generate, client, model, prompt, temperature, max_tokens, thinking_budget),
             ),
             timeout=timeout,
         )

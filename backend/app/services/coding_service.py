@@ -124,7 +124,7 @@ async def generate_coding_challenges(
     raw = None
     for model in models:
         try:
-            raw = await generate_completion(prompt, model=model, temperature=0.8, max_tokens=12000, use_cache=False, timeout=120.0)
+            raw = await generate_completion(prompt, model=model, temperature=0.8, max_tokens=16000, use_cache=False, timeout=120.0, thinking_budget=0)
             break
         except Exception as e:
             logger.warning("Coding generation failed with %s: %s", model, e)
