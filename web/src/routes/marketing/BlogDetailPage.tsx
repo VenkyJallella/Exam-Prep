@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
 import AdBanner from '../../components/ui/AdBanner';
 
@@ -53,6 +53,8 @@ function renderMarkdown(md: string): string {
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const blogBase = location.pathname.startsWith('/dashboard') ? '/dashboard/blog' : '/blog';
   const [post, setPost] = useState<BlogPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -90,7 +92,7 @@ export default function BlogDetailPage() {
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           This article may have been removed or the link is incorrect.
         </p>
-        <Link to="/blog" className="btn-primary mt-6 inline-block text-sm">
+        <Link to={blogBase} className="btn-primary mt-6 inline-block text-sm">
           Back to Blog
         </Link>
       </div>
@@ -136,7 +138,7 @@ export default function BlogDetailPage() {
         <header className="bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
           <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
             <Link
-              to="/blog"
+              to={blogBase}
               className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -169,7 +171,7 @@ export default function BlogDetailPage() {
               {post.tags.map((tag) => (
                 <Link
                   key={tag}
-                  to={`/blog?tag=${encodeURIComponent(tag)}`}
+                  to={`${blogBase}?tag=${encodeURIComponent(tag)}`}
                   className="rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400"
                 >
                   {tag}

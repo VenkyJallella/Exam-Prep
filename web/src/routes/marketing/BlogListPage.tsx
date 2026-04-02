@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
 import AdBanner from '../../components/ui/AdBanner';
 
@@ -17,6 +17,8 @@ interface BlogPost {
 }
 
 export default function BlogListPage() {
+  const location = useLocation();
+  const blogBase = location.pathname.startsWith('/dashboard') ? '/dashboard/blog' : '/blog';
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -163,7 +165,7 @@ export default function BlogListPage() {
               {posts.map((post) => (
                 <Link
                   key={post.id}
-                  to={`/blog/${post.slug}`}
+                  to={`${blogBase}/${post.slug}`}
                   className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-lg dark:border-gray-800 dark:bg-gray-950"
                 >
                   {post.featured_image_url && (
