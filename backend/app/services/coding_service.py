@@ -136,12 +136,37 @@ async def generate_coding_challenges(
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
+    # Try direct parse first
+    problems_data = None
     try:
         problems_data = json.loads(text)
     except json.JSONDecodeError:
-        match = re.search(r'\[[\s\S]*\]', text)
-        if match:
-            problems_data = json.loads(match.group())
+        pass
+
+    # Fallback: extract top-level JSON objects by bracket matching
+    if problems_data is None:
+        logger.warning("Direct JSON parse failed, extracting objects by bracket matching")
+        objects = []
+        bracket_count = 0
+        start = None
+        for i, c in enumerate(text):
+            if c == '{':
+                if bracket_count == 0:
+                    start = i
+                bracket_count += 1
+            elif c == '}':
+                bracket_count -= 1
+                if bracket_count == 0 and start is not None:
+                    try:
+                        obj = json.loads(text[start:i + 1])
+                        if obj.get("title") and obj.get("description"):
+                            objects.append(obj)
+                    except json.JSONDecodeError:
+                        pass
+                    start = None
+        if objects:
+            logger.info("Extracted %d coding problems via bracket matching", len(objects))
+            problems_data = objects
         else:
             raise ValueError("Failed to parse AI coding response")
 
