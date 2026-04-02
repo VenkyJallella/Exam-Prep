@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
+import AdBanner from '../../components/ui/AdBanner';
 
 interface BlogPostDetail {
   id: string;
@@ -195,6 +196,11 @@ export default function BlogDetailPage() {
             className="prose-custom"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
           />
+
+          {/* Ad after blog content */}
+          <div className="my-8">
+            <AdBanner publicOnly format="horizontal" />
+          </div>
         </div>
 
         {/* CTA */}

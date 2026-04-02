@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
+import AdBanner from '../../components/ui/AdBanner';
 
 interface ExamInfo {
   name: string;
@@ -313,6 +314,9 @@ export default function ExamDetailPage() {
           </Link>
         </div>
       </section>
+
+      {/* Ad at bottom of exam page */}
+      <div className="mx-auto max-w-4xl px-4 py-6"><AdBanner publicOnly format="horizontal" /></div>
     </>
   );
 }

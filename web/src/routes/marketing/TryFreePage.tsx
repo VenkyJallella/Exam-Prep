@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
+import AdBanner from '../../components/ui/AdBanner';
 
 interface Question {
   id: string;
@@ -237,6 +238,9 @@ export default function TryFreePage() {
             Sign up free →
           </Link>
         </div>
+
+        {/* Ad on try-free page */}
+        <div className="mt-6"><AdBanner publicOnly format="horizontal" /></div>
       </div>
     </>
   );

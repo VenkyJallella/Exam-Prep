@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import MobileNav from '@/components/layout/MobileNav';
 import ChatBot from '@/components/ui/ChatBot';
+import apiClient from '@/lib/api/client';
 
 export default function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Cache user plan for ad visibility
+  useEffect(() => {
+    apiClient.get('/payments/usage').then(r => {
+      localStorage.setItem('examprep_plan', r.data.data.plan || 'free');
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden">

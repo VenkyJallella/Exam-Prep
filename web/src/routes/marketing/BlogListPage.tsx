@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
+import AdBanner from '../../components/ui/AdBanner';
 
 interface BlogPost {
   id: string;
@@ -201,6 +202,9 @@ export default function BlogListPage() {
               ))}
             </div>
           )}
+
+          {/* Ad between posts and SEO content */}
+          <div className="my-8"><AdBanner publicOnly format="horizontal" /></div>
 
           {/* SEO static content — always visible for Google crawlers */}
           <div className="mt-12 mx-auto max-w-3xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">
