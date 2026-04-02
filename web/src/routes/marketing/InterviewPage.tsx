@@ -8,11 +8,6 @@ interface CatSummary { category: string; topic_count: number; question_count: nu
 interface TopicInfo { category: string; topic: string; question_count: number; }
 
 const CAT_LABEL: Record<string, string> = { technical: 'Technical', hr_behavioral: 'HR & Behavioral', domain_specific: 'Domain Specific' };
-const CAT_DESC: Record<string, string> = {
-  technical: 'Java, Python, React, SQL, System Design, DSA and more',
-  hr_behavioral: 'HR rounds, behavioral questions, leadership, teamwork',
-  domain_specific: 'Data Science, Cloud, DevOps, Banking & Finance',
-};
 const CAT_ICON: Record<string, string> = {
   technical: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
   hr_behavioral: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
@@ -77,7 +72,6 @@ export default function InterviewPage() {
 
   const totalQuestions = categories.reduce((s, c) => s + c.question_count, 0);
   const totalPages = Math.ceil(total / 20);
-  const activeFilters = [selectedCat && CAT_LABEL[selectedCat], selectedTopic, selectedDiff].filter(Boolean);
 
   return (
     <>
@@ -88,204 +82,215 @@ export default function InterviewPage() {
         <meta property="og:description" content="Master your next interview with expert Q&A for Technical, HR, and Domain-specific topics." />
       </Helmet>
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
-              Interview{' '}
-              <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Preparation</span>
-            </h1>
-            <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-              Master your next interview with expert Q&A. Technical, HR, and domain-specific questions with detailed answers.
-            </p>
-            {totalQuestions > 0 && (
-              <p className="mt-2 text-sm font-medium text-primary-600 dark:text-primary-400">{totalQuestions} questions across {categories.length} categories</p>
-            )}
-          </div>
+      {/* Hero — compact */}
+      <section className="border-b border-gray-200 bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:border-gray-800 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+            Interview <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Preparation</span>
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            {totalQuestions > 0 ? `${totalQuestions} questions` : 'Expert Q&A'} across Technical, HR, and Domain-specific topics.
+          </p>
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="bg-white py-10 dark:bg-gray-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-6 text-center text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Choose a category</h2>
-          <div className="grid gap-5 sm:grid-cols-3">
-            {(['technical', 'hr_behavioral', 'domain_specific'] as const).map(cat => {
-              const info = categories.find(c => c.category === cat);
-              const isActive = selectedCat === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => { setSelectedCat(isActive ? '' : cat); setSelectedTopic(''); setSelectedDiff(''); setPage(1); setExpandedId(null); }}
-                  className={`rounded-xl border-2 p-5 text-left transition-all ${isActive ? 'border-primary-500 bg-primary-50 shadow-md dark:border-primary-400 dark:bg-primary-900/20' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isActive ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={CAT_ICON[cat]} /></svg>
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-gray-900 dark:text-white">{CAT_LABEL[cat]}</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{CAT_DESC[cat]}</p>
-                    </div>
-                  </div>
-                  {info && (
-                    <div className="mt-3 flex gap-4 border-t border-gray-100 pt-3 text-xs dark:border-gray-800">
-                      <span className="font-semibold text-primary-600 dark:text-primary-400">{info.topic_count} topics</span>
-                      <span className="text-gray-500">{info.question_count} questions</span>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* Main layout: sidebar + content */}
+      <section className="bg-gray-50 dark:bg-gray-900">
+        <div className="mx-auto flex max-w-7xl gap-0 lg:gap-6 px-4 py-8 sm:px-6 lg:px-8">
 
-      {/* Filters bar — always visible */}
-      <section className="sticky top-16 z-30 border-b border-t border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-950/95">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Difficulty filter */}
-            <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-900">
-              {['', 'easy', 'medium', 'hard'].map(d => (
-                <button
-                  key={d}
-                  onClick={() => { setSelectedDiff(d); setPage(1); }}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${selectedDiff === d ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                >
-                  {d === '' ? 'All Levels' : d.charAt(0).toUpperCase() + d.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            {/* Active filters + clear */}
-            {activeFilters.length > 0 && (
-              <>
-                <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
-                {activeFilters.map(f => (
-                  <span key={f} className="rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">{f}</span>
-                ))}
-                <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setSelectedDiff(''); setPage(1); }} className="text-xs font-medium text-gray-500 hover:text-red-600 dark:text-gray-400">Clear all</button>
-              </>
-            )}
-
-            {/* Results count */}
-            <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
-              {loading ? 'Loading...' : `${total} result${total !== 1 ? 's' : ''}`}
-            </span>
-          </div>
-
-          {/* Topic chips — always show if topics exist */}
-          {topics.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <button onClick={() => { setSelectedTopic(''); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${!selectedTopic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>All Topics</button>
-              {topics.map(t => (
-                <button key={t.topic} onClick={() => { setSelectedTopic(t.topic); setPage(1); }} className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${selectedTopic === t.topic ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'}`}>
-                  {t.topic} <span className="opacity-60">({t.question_count})</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Questions */}
-      <section className="bg-gray-50 py-10 dark:bg-gray-900">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          {loading ? (
-            <div className="space-y-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="animate-pulse rounded-xl bg-white p-6 dark:bg-gray-950">
-                  <div className="h-5 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
-                  <div className="mt-3 h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
-                </div>
-              ))}
-            </div>
-          ) : questions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-950">
-              <svg className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-              <p className="mt-4 text-gray-500 dark:text-gray-400">
-                {selectedCat || selectedTopic || selectedDiff ? 'No questions match your filters. Try adjusting them.' : 'No interview questions available yet. Check back soon!'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {questions.map((q, idx) => {
-                  const locked = idx >= FREE_LIMIT;
-                  const isExpanded = expandedId === q.id && !locked;
-                  return (
-                    <div key={q.id} className={`overflow-hidden rounded-xl border bg-white transition-shadow dark:bg-gray-950 ${locked ? 'border-gray-200 dark:border-gray-800 opacity-50' : isExpanded ? 'border-primary-300 shadow-lg dark:border-primary-700' : 'border-gray-200 hover:shadow-md dark:border-gray-800'}`}>
-                      <button
-                        onClick={() => !locked && setExpandedId(isExpanded ? null : q.id)}
-                        className="flex w-full items-start justify-between p-5 text-left"
-                      >
-                        <div className="flex-1 pr-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="rounded bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">{q.topic}</span>
-                            {diffBadge(q.difficulty)}
-                            {q.companies?.slice(0, 2).map(c => (
-                              <span key={c} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{c}</span>
-                            ))}
-                          </div>
-                          <h3 className="mt-2 text-base font-semibold text-gray-900 dark:text-white sm:text-lg">{q.question}</h3>
-                        </div>
-                        {locked ? (
-                          <svg className="mt-2 h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        ) : (
-                          <svg className={`mt-2 h-5 w-5 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                        )}
-                      </button>
-
-                      {isExpanded && (
-                        <div className="border-t border-gray-100 bg-gray-50 px-5 py-5 dark:border-gray-800 dark:bg-gray-900/50">
-                          <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(q.answer) }} />
-                        </div>
-                      )}
-
-                      {locked && idx === FREE_LIMIT && (
-                        <div className="border-t border-gray-100 bg-gradient-to-b from-white to-primary-50 px-5 py-8 text-center dark:border-gray-800 dark:from-gray-950 dark:to-primary-950/20">
-                          <svg className="mx-auto h-8 w-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                          <p className="mt-3 text-base font-semibold text-gray-900 dark:text-white">
-                            Sign up to unlock all {total} questions
-                          </p>
-                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Free account — no credit card required</p>
-                          <Link to="/register" className="btn-primary mt-4 inline-block text-sm">
-                            Sign Up Free
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-1">
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          {/* Left sidebar — filters */}
+          <aside className="hidden w-64 shrink-0 lg:block">
+            <div className="sticky top-20 space-y-5">
+              {/* Categories */}
+              <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Category</h3>
+                <div className="mt-3 space-y-1">
+                  <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setPage(1); }} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${!selectedCat ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}>
+                    All Categories
+                    <span className="ml-auto text-xs text-gray-400">{totalQuestions}</span>
                   </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let p: number;
-                    if (totalPages <= 5) p = i + 1;
-                    else if (page <= 3) p = i + 1;
-                    else if (page >= totalPages - 2) p = totalPages - 4 + i;
-                    else p = page - 2 + i;
+                  {(['technical', 'hr_behavioral', 'domain_specific'] as const).map(cat => {
+                    const info = categories.find(c => c.category === cat);
+                    const isActive = selectedCat === cat;
                     return (
-                      <button key={p} onClick={() => setPage(p)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${page === p ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}>
-                        {p}
+                      <button
+                        key={cat}
+                        onClick={() => { setSelectedCat(isActive ? '' : cat); setSelectedTopic(''); setPage(1); setExpandedId(null); }}
+                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}
+                      >
+                        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d={CAT_ICON[cat]} /></svg>
+                        {CAT_LABEL[cat]}
+                        {info && <span className="ml-auto text-xs text-gray-400">{info.question_count}</span>}
                       </button>
                     );
                   })}
-                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  </button>
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Difficulty</h3>
+                <div className="mt-3 space-y-1">
+                  {[{ val: '', label: 'All Levels' }, { val: 'easy', label: 'Easy' }, { val: 'medium', label: 'Medium' }, { val: 'hard', label: 'Hard' }].map(d => (
+                    <button key={d.val} onClick={() => { setSelectedDiff(d.val); setPage(1); }}
+                      className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${selectedDiff === d.val ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}
+                    >
+                      {d.val && <span className={`mr-2 h-2 w-2 rounded-full ${d.val === 'easy' ? 'bg-green-500' : d.val === 'hard' ? 'bg-red-500' : 'bg-yellow-500'}`} />}
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Topics */}
+              {topics.length > 0 && (
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Topics</h3>
+                  <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+                    <button onClick={() => { setSelectedTopic(''); setPage(1); }} className={`flex w-full items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${!selectedTopic ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}>
+                      All Topics
+                    </button>
+                    {topics.map(t => (
+                      <button key={t.topic} onClick={() => { setSelectedTopic(t.topic); setPage(1); }}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${selectedTopic === t.topic ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}`}
+                      >
+                        <span className="truncate">{t.topic}</span>
+                        <span className="ml-1 shrink-0 text-xs text-gray-400">{t.question_count}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-            </>
-          )}
+
+              {/* Clear filters */}
+              {(selectedCat || selectedTopic || selectedDiff) && (
+                <button onClick={() => { setSelectedCat(''); setSelectedTopic(''); setSelectedDiff(''); setPage(1); }} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          </aside>
+
+          {/* Mobile filters (shown below hero on small screens) */}
+          <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
+            <select value={selectedCat} onChange={e => { setSelectedCat(e.target.value); setSelectedTopic(''); setPage(1); }} className="input w-auto text-sm">
+              <option value="">All Categories</option>
+              {Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <select value={selectedDiff} onChange={e => { setSelectedDiff(e.target.value); setPage(1); }} className="input w-auto text-sm">
+              <option value="">All Levels</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+            {topics.length > 0 && (
+              <select value={selectedTopic} onChange={e => { setSelectedTopic(e.target.value); setPage(1); }} className="input w-auto text-sm">
+                <option value="">All Topics</option>
+                {topics.map(t => <option key={t.topic} value={t.topic}>{t.topic} ({t.question_count})</option>)}
+              </select>
+            )}
+          </div>
+
+          {/* Right — questions */}
+          <div className="min-w-0 flex-1">
+            {/* Results bar */}
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {loading ? 'Loading...' : `${total} question${total !== 1 ? 's' : ''}`}
+                {selectedCat && <> in <span className="font-medium text-gray-700 dark:text-gray-300">{CAT_LABEL[selectedCat]}</span></>}
+                {selectedTopic && <> &middot; <span className="font-medium text-gray-700 dark:text-gray-300">{selectedTopic}</span></>}
+              </span>
+              {totalPages > 1 && <span className="text-xs text-gray-400">Page {page}/{totalPages}</span>}
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl bg-white p-6 dark:bg-gray-950">
+                    <div className="h-5 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
+                    <div className="mt-3 h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
+                  </div>
+                ))}
+              </div>
+            ) : questions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-950">
+                <svg className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                <p className="mt-4 text-gray-500 dark:text-gray-400">
+                  {selectedCat || selectedTopic || selectedDiff ? 'No questions match your filters.' : 'No questions available yet. Check back soon!'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {questions.map((q, idx) => {
+                    const locked = idx >= FREE_LIMIT;
+                    const isExpanded = expandedId === q.id && !locked;
+                    return (
+                      <div key={q.id} className={`overflow-hidden rounded-xl border bg-white transition-shadow dark:bg-gray-950 ${locked ? 'border-gray-200 dark:border-gray-800 opacity-50' : isExpanded ? 'border-primary-300 shadow-lg dark:border-primary-700' : 'border-gray-200 hover:shadow-md dark:border-gray-800'}`}>
+                        <button
+                          onClick={() => !locked && setExpandedId(isExpanded ? null : q.id)}
+                          className="flex w-full items-start justify-between p-5 text-left"
+                        >
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="rounded bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">{q.topic}</span>
+                              {diffBadge(q.difficulty)}
+                              {q.companies?.slice(0, 2).map(c => (
+                                <span key={c} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">{c}</span>
+                              ))}
+                            </div>
+                            <h3 className="mt-2 text-base font-semibold text-gray-900 dark:text-white">{q.question}</h3>
+                          </div>
+                          {locked ? (
+                            <svg className="mt-2 h-5 w-5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          ) : (
+                            <svg className={`mt-2 h-5 w-5 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                          )}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="border-t border-gray-100 bg-gray-50 px-5 py-5 dark:border-gray-800 dark:bg-gray-900/50">
+                            <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(q.answer) }} />
+                          </div>
+                        )}
+
+                        {locked && idx === FREE_LIMIT && (
+                          <div className="border-t border-gray-100 bg-gradient-to-b from-white to-primary-50 px-5 py-8 text-center dark:border-gray-800 dark:from-gray-950 dark:to-primary-950/20">
+                            <svg className="mx-auto h-8 w-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            <p className="mt-3 text-base font-semibold text-gray-900 dark:text-white">Sign up to unlock all {total} questions</p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Free account — no credit card required</p>
+                            <Link to="/register" className="btn-primary mt-4 inline-block text-sm">Sign Up Free</Link>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-8 flex items-center justify-center gap-1">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let p: number;
+                      if (totalPages <= 5) p = i + 1;
+                      else if (page <= 3) p = i + 1;
+                      else if (page >= totalPages - 2) p = totalPages - 4 + i;
+                      else p = page - 2 + i;
+                      return (
+                        <button key={p} onClick={() => setPage(p)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${page === p ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800'}`}>{p}</button>
+                      );
+                    })}
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </section>
 
