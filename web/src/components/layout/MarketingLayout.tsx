@@ -29,6 +29,9 @@ export default function MarketingLayout() {
             <Link to="/blog" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
               Blog
             </Link>
+            <Link to="/interview" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+              Interview
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
@@ -79,6 +82,7 @@ export default function MarketingLayout() {
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Resources</h3>
               <ul className="mt-3 space-y-2 text-sm text-gray-500">
                 <li><Link to="/blog" className="hover:text-gray-900 dark:hover:text-white">Blog & Study Tips</Link></li>
+                <li><Link to="/interview" className="hover:text-gray-900 dark:hover:text-white">Interview Prep</Link></li>
                 <li><Link to="/pricing" className="hover:text-gray-900 dark:hover:text-white">Pricing Plans</Link></li>
                 <li><Link to="/about" className="hover:text-gray-900 dark:hover:text-white">About Us</Link></li>
                 <li><Link to="/contact" className="hover:text-gray-900 dark:hover:text-white">Contact Us</Link></li>

@@ -191,3 +191,54 @@ RULES FOR TEST CASES:
 8. For multiple lines output: each value on its own line
 
 Return ONLY the JSON array, no other text."""
+
+
+INTERVIEW_GENERATION = """You are an expert interview coach creating interview questions with detailed answers.
+
+Generate {count} interview questions. Category: {category}. Topic: {topic}
+
+For TECHNICAL questions:
+- Include code examples where relevant using markdown code blocks
+- Explain concepts clearly with real-world analogies
+- Cover both theory and practical application
+
+For HR/BEHAVIORAL questions:
+- Structure answers using the STAR method (Situation, Task, Action, Result)
+- Include sample scenarios
+- Keep answers professional and authentic
+
+For DOMAIN-SPECIFIC questions:
+- Focus on industry knowledge and practical scenarios
+- Include current trends and best practices
+
+FORMAT RULES FOR ANSWERS:
+- Use Markdown formatting in answers
+- Use ## for section headings
+- Use - for bullet points
+- Use **bold** for key terms
+- Use ```language for code blocks (if technical)
+- Keep answers comprehensive but concise (150-300 words each)
+
+Difficulty levels:
+- easy: Entry-level / fresher questions. Basic concepts.
+- medium: Mid-level questions. Requires working experience.
+- hard: Senior-level questions. Deep understanding, system design, architecture.
+
+Return a JSON array ONLY, no other text:
+[
+  {{
+    "question": "What is polymorphism in Java?",
+    "answer": "## Polymorphism in Java\\n\\nPolymorphism means **one interface, multiple implementations**. It allows objects to take different forms.\\n\\n### Types\\n- **Compile-time (Static)**: Method overloading\\n- **Runtime (Dynamic)**: Method overriding\\n\\n### Example\\n```java\\nclass Animal {{\\n    void speak() {{ System.out.println(\\"Generic sound\\"); }}\\n}}\\nclass Dog extends Animal {{\\n    void speak() {{ System.out.println(\\"Bark\\"); }}\\n}}\\n```\\n\\nHere `speak()` behaves differently based on the actual object type at runtime.",
+    "difficulty": "easy",
+    "tags": ["OOP", "Core Java"],
+    "companies": ["TCS", "Infosys", "Wipro"]
+  }}
+]
+
+IMPORTANT:
+- Return ONLY the JSON array, no other text
+- Escape all quotes and backslashes inside JSON strings properly
+- Each answer MUST be in Markdown format
+- Do NOT use LaTeX or math notation
+- Generate unique, practical questions commonly asked in real interviews
+- Do NOT repeat questions that are too basic or generic"""
