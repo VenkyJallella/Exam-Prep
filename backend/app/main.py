@@ -164,7 +164,7 @@ def create_app() -> FastAPI:
         from fastapi.responses import HTMLResponse
         from urllib.parse import urlparse
         from app.database import AsyncSessionLocal
-        from sqlalchemy import select
+        from sqlalchemy import select, func
         from app.models.blog import BlogPost
         from app.models.exam import Exam, Subject
 
@@ -247,6 +247,31 @@ def create_app() -> FastAPI:
                     body_html += f"<p>Practice {exam.name} questions without signing up. Test your knowledge with 5 sample questions.</p>"
                     body_html += f'<p><a href="{base}/register">Sign up free for unlimited {exam.name} practice</a></p>'
 
+            elif path == "/interview":
+                title = "Interview Preparation - Technical & HR Questions with Answers | ExamPrep"
+                description = "Practice top interview questions for Java, Python, React, SQL, System Design, HR and more. Detailed answers with code examples."
+                from app.models.interview import InterviewQuestion
+                cats = (await db.execute(
+                    select(InterviewQuestion.category, func.count(InterviewQuestion.id))
+                    .where(InterviewQuestion.is_active == True)
+                    .group_by(InterviewQuestion.category)
+                )).all()
+                body_html = "<h1>Interview Preparation - Technical & HR Questions</h1>"
+                body_html += "<p>Master your next interview with expert Q&A. Technical, HR, and domain-specific questions with detailed answers.</p>"
+                if cats:
+                    body_html += "<h2>Categories</h2><ul>"
+                    for cat, count in cats:
+                        body_html += f"<li>{cat}: {count} questions</li>"
+                    body_html += "</ul>"
+                # Show sample questions for SEO
+                samples = (await db.execute(
+                    select(InterviewQuestion).where(InterviewQuestion.is_active == True).order_by(InterviewQuestion.created_at.desc()).limit(10)
+                )).scalars().all()
+                if samples:
+                    body_html += "<h2>Sample Interview Questions</h2>"
+                    for q in samples:
+                        body_html += f"<h3>{q.question}</h3><div>{q.answer[:300]}...</div>"
+
             elif path in ("/about", "/pricing", "/terms", "/privacy", "/contact", "/disclaimer", "/dmca"):
                 page_slug = path.lstrip("/")
                 from app.models.page_content import PageContent
@@ -304,6 +329,7 @@ def create_app() -> FastAPI:
             (f"{base_url}/contact", "monthly", "0.6"),
             (f"{base_url}/disclaimer", "monthly", "0.5"),
             (f"{base_url}/dmca", "monthly", "0.4"),
+            (f"{base_url}/interview", "weekly", "0.8"),
         ]
 
         async with AsyncSessionLocal() as db:

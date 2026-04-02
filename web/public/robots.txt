@@ -7,6 +7,7 @@ Allow: /about
 Allow: /pricing
 Allow: /exams/*
 Allow: /try/*
+Allow: /interview
 Allow: /terms
 Allow: /privacy
 Allow: /contact
@@ -18,6 +19,7 @@ Allow: /register
 # Allow public API endpoints for Google to render pages
 Allow: /api/v1/blog/
 Allow: /api/v1/exams/
+Allow: /api/v1/interview/
 Allow: /api/v1/pages/
 Allow: /api/v1/ssr
 
@@ -30,14 +32,16 @@ Disallow: /api/v1/analytics/
 Disallow: /api/v1/notifications/
 Disallow: /api/v1/chatbot/
 Disallow: /api/v1/auth/
+Disallow: /api/v1/interview/admin/
+Disallow: /api/v1/interview/my/
 
 # Block dashboard routes
 Disallow: /dashboard
+Disallow: /practice
 Disallow: /tests/
 Disallow: /analytics
 Disallow: /profile
 Disallow: /admin
-Disallow: /coding
 Disallow: /daily-quiz
 Disallow: /challenges
 Disallow: /mistakes
@@ -47,6 +51,9 @@ Disallow: /export-pdf
 Disallow: /leaderboard
 Disallow: /subscription
 Disallow: /pyq
+Disallow: /interview-prep
+Disallow: /custom-test
+Disallow: /coding/*
 
 # Allow Google AdSense crawler
 User-agent: Mediapartners-Google
@@ -56,7 +63,7 @@ Allow: /
 User-agent: AdsBot-Google
 Allow: /
 
-# Sitemap
+# Sitemap (dynamic, served by backend)
 Sitemap: https://zencodio.com/sitemap.xml
 
 # Host
