@@ -63,8 +63,5 @@ Allow: /
 User-agent: AdsBot-Google
 Allow: /
 
-# Sitemap (dynamic, served by backend)
+# Sitemap
 Sitemap: https://zencodio.com/sitemap.xml
-
-# Host
-Host: https://zencodio.com

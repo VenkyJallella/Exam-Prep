@@ -28,25 +28,54 @@ interface BlogPostDetail {
 function renderMarkdown(md: string): string {
   let html = md
     // Code blocks
-    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto text-sm my-4"><code>$1</code></pre>')
+    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto text-sm my-4 border"><code>$1</code></pre>')
     // Inline code
-    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm">$1</code>')
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>')
+    // Images: ![alt](url)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg my-4 max-w-full h-auto shadow-sm" loading="lazy" />')
+    // H4
+    .replace(/^#### (.+)$/gm, '<h4 class="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-2">$1</h4>')
     // H3
     .replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">$1</h3>')
     // H2
     .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-10 mb-4">$1</h2>')
+    // Blockquotes
+    .replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-primary-500 pl-4 my-4 text-gray-600 dark:text-gray-400 italic">$1</blockquote>')
+    // Horizontal rule
+    .replace(/^---$/gm, '<hr class="my-6 border-gray-200 dark:border-gray-700" />')
     // Bold
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary-600 hover:underline dark:text-primary-400" target="_blank" rel="noopener noreferrer">$1</a>')
+    // Numbered list items
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-gray-700 dark:text-gray-300">$1</li>')
     // Unordered list items
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-gray-700 dark:text-gray-300">$1</li>')
-    // Wrap consecutive <li> in <ul>
-    .replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-1 my-4">$1</ul>')
-    // Paragraphs (lines that aren't already HTML)
-    .replace(/^(?!<[a-z])((?!^\s*$).+)$/gm, '<p class="text-gray-700 leading-relaxed dark:text-gray-300 my-3">$1</p>');
+    // Wrap consecutive <li> in <ul>/<ol>
+    .replace(/((?:<li class="ml-4 list-decimal[^>]*>.*<\/li>\n?)+)/g, '<ol class="space-y-1 my-4 pl-4">$1</ol>')
+    .replace(/((?:<li class="ml-4 list-disc[^>]*>.*<\/li>\n?)+)/g, '<ul class="space-y-1 my-4">$1</ul>');
+
+  // Tables: | col1 | col2 |
+  html = html.replace(/(?:^|\n)((?:\|[^\n]+\|\n)+)/g, (match) => {
+    const rows = match.trim().split('\n').filter(r => r.trim() && !r.match(/^\|[\s\-|]+\|$/));
+    if (rows.length === 0) return match;
+    let table = '<div class="overflow-x-auto my-6"><table class="w-full text-sm border-collapse border border-gray-200 dark:border-gray-700">';
+    rows.forEach((row, i) => {
+      const cells = row.split('|').filter(c => c.trim());
+      const tag = i === 0 ? 'th' : 'td';
+      const cellClass = i === 0
+        ? 'bg-gray-50 dark:bg-gray-800 font-semibold text-gray-900 dark:text-white px-4 py-2 border border-gray-200 dark:border-gray-700'
+        : 'px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300';
+      table += '<tr>' + cells.map(c => `<${tag} class="${cellClass}">${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    table += '</table></div>';
+    return table;
+  });
+
+  // Paragraphs (lines that aren't already HTML)
+  html = html.replace(/^(?!<[a-z/<])((?!^\s*$).+)$/gm, '<p class="text-gray-700 leading-relaxed dark:text-gray-300 my-3">$1</p>');
 
   return html;
 }

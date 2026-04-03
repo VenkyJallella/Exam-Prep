@@ -108,17 +108,11 @@ def _parse_blog_json(raw: str) -> dict:
     """
     s = raw.strip()
 
-    # Step 1: Strip markdown code blocks if present
-    if s.startswith("```"):
-        # Remove first line (```json or ```)
-        newline_pos = s.find("\n")
-        if newline_pos > 0:
-            s = s[newline_pos + 1:]
-        # Remove closing ```
-        last_fence = s.rfind("```")
-        if last_fence > 0:
-            s = s[:last_fence]
-        s = s.strip()
+    # Step 1: Remove ALL code fences aggressively using regex
+    import re as _re
+    s = _re.sub(r'^`{3,}[a-zA-Z]*\s*\n?', '', s)
+    s = _re.sub(r'\n?`{3,}\s*$', '', s)
+    s = s.strip()
 
     # Step 2: Try direct parse
     try:
@@ -126,15 +120,30 @@ def _parse_blog_json(raw: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # Step 3: Find outermost { ... } and parse
-    first_brace = s.find("{")
-    last_brace = s.rfind("}")
-    if first_brace >= 0 and last_brace > first_brace:
-        json_str = s[first_brace:last_brace + 1]
+    # Step 3: Extract JSON between first { and last }
+    first = s.find("{")
+    last = s.rfind("}")
+    if first >= 0 and last > first:
         try:
-            return json.loads(json_str)
+            return json.loads(s[first:last + 1])
         except json.JSONDecodeError:
             pass
+
+    # Step 4: Line-by-line cleanup — remove any remaining fence lines
+    lines = s.split("\n")
+    cleaned = "\n".join(l for l in lines if not l.strip().startswith("`"))
+    cleaned = cleaned.strip()
+    if cleaned:
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            first = cleaned.find("{")
+            last = cleaned.rfind("}")
+            if first >= 0 and last > first:
+                try:
+                    return json.loads(cleaned[first:last + 1])
+                except json.JSONDecodeError:
+                    pass
 
     raise ValueError(f"Failed to parse blog JSON. First 300 chars: {raw[:300]}")
 
