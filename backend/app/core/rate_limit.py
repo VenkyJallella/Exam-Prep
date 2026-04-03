@@ -33,8 +33,11 @@ class RateLimitMiddleware:
 
         path = scope.get("path", "")
 
-        # Skip non-API paths
+        # Skip non-API paths and admin endpoints (admins need no rate limit)
         if path in ("/health", "/docs", "/openapi.json", "/redoc") or not path.startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+        if "/admin/" in path:
             await self.app(scope, receive, send)
             return
 
