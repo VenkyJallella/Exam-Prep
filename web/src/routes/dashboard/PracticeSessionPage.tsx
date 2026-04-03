@@ -51,7 +51,15 @@ export default function PracticeSessionPage() {
     practiceAPI.getSession(sessionId)
       .then((res) => {
         if (cancelled) return;
-        setSession(res.data.data.session, res.data.data.questions);
+        const sessionData = res.data.data.session;
+
+        // If session is already completed, redirect to practice page
+        if (sessionData.status === 'completed' || sessionData.status === 'abandoned') {
+          navigate('/practice', { replace: true });
+          return;
+        }
+
+        setSession(sessionData, res.data.data.questions);
         // Restore timer from localStorage or start fresh
         const timerKey = `examprep_practice_start_${sessionId}`;
         let startTime = localStorage.getItem(timerKey);
@@ -109,6 +117,8 @@ export default function PracticeSessionPage() {
     try {
       const res = await practiceAPI.completeSession(sessionId);
       setResult(res.data.data);
+      // Clean up timer localStorage
+      localStorage.removeItem(`examprep_practice_start_${sessionId}`);
     } catch {
       toast.error('Failed to complete session');
     }
