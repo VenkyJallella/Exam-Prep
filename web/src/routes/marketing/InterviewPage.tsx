@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
+import AdBanner from '../../components/ui/AdBanner';
 
 interface IQ { id: string; question: string; answer: string; category: string; topic: string; difficulty: string; tags: string[]; companies: string[]; }
 interface CatSummary { category: string; topic_count: number; question_count: number; }
@@ -28,7 +29,7 @@ function renderMarkdown(md: string): string {
     .replace(/^(?!<[a-z])((?!^\s*$).+)$/gm, '<p class="text-gray-700 leading-relaxed dark:text-gray-300 my-2">$1</p>');
 }
 
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 999; // All questions visible without login
 
 export default function InterviewPage() {
   const [categories, setCategories] = useState<CatSummary[]>([]);
@@ -77,10 +78,21 @@ export default function InterviewPage() {
   return (
     <>
       <Helmet>
-        <title>Interview Preparation - Technical & HR Questions with Answers | ExamPrep</title>
-        <meta name="description" content="Practice top interview questions for Java, Python, React, SQL, System Design, HR and more. Detailed answers with code examples. Free interview prep." />
-        <meta property="og:title" content="Interview Preparation - Technical & HR Questions | ExamPrep" />
-        <meta property="og:description" content="Master your next interview with expert Q&A for Technical, HR, and Domain-specific topics." />
+        <title>Interview Questions 2026 — Technical, HR & Coding | Free with Answers | ExamPrep</title>
+        <meta name="description" content={`${totalQuestions}+ interview questions with detailed answers. Python, Java, React, SQL, System Design, HR, Behavioral. Company-specific: Google, Amazon, TCS, Infosys. Free — no login required.`} />
+        <meta name="keywords" content="interview questions 2026, technical interview questions, HR interview questions, coding interview preparation, Python interview questions, Java interview questions, React interview questions, SQL interview questions, system design interview, TCS interview questions, Infosys interview questions, Google interview questions, Amazon interview questions, behavioral interview questions, placement interview preparation, campus placement questions, freshers interview questions, experienced interview questions" />
+        <meta property="og:title" content={`${totalQuestions}+ Interview Questions with Answers — Free | ExamPrep`} />
+        <meta property="og:description" content="Technical, HR & Coding interview questions with detailed answers and code examples. Python, Java, React, SQL, System Design. Free — no signup needed." />
+        <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://zencodio.com/interview" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org", "@type": "FAQPage",
+          "mainEntity": questions.slice(0, 5).map(q => ({
+            "@type": "Question",
+            "name": q.question,
+            "acceptedAnswer": { "@type": "Answer", "text": q.answer.substring(0, 300) + "..." }
+          }))
+        })}</script>
       </Helmet>
 
       {/* Hero — compact */}
@@ -352,6 +364,9 @@ export default function InterviewPage() {
           </div>
         </div>
       </section>
+
+      {/* Ad */}
+      <div className="mx-auto max-w-4xl px-4 py-4"><AdBanner publicOnly format="horizontal" /></div>
 
       {/* SEO content */}
       <section className="bg-white py-12 dark:bg-gray-950">

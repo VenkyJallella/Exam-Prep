@@ -235,6 +235,23 @@ def create_app() -> FastAPI:
                         body_html += "</ul>"
                     body_html += f'<p><a href="{base}/register">Start practicing for {exam.name} free on ExamPrep</a></p>'
 
+            elif path == "/interview":
+                title = "Interview Questions 2026 — Technical, HR & Coding | Free with Answers | ExamPrep"
+                description = "170+ interview questions with detailed answers. Python, Java, React, SQL, System Design, HR. Company-specific: Google, Amazon, TCS, Infosys. Free — no login."
+                try:
+                    from app.models.interview import InterviewQuestion
+                    qs = (await db.execute(
+                        select(InterviewQuestion).where(InterviewQuestion.is_active == True).limit(10)
+                    )).scalars().all()
+                    body_html = "<h1>Interview Questions with Answers — Free</h1>"
+                    body_html += "<p>Practice top interview questions for Technical, HR & Behavioral rounds.</p><ul>"
+                    for q in qs:
+                        body_html += f"<li><strong>{q.question}</strong></li>"
+                    body_html += "</ul>"
+                    body_html += f'<p><a href="{base}/interview">Browse all interview questions free</a></p>'
+                except Exception:
+                    body_html = "<h1>Interview Preparation — Free Questions with Answers</h1>"
+
             elif path.startswith("/try/"):
                 exam_slug = path.split("/try/")[1]
                 exam = (await db.execute(
