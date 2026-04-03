@@ -200,6 +200,8 @@ export default function ExamDetailPage() {
         <meta property="og:title" content={`${exam.name} Preparation 2026 — Free Mock Tests & Practice | ExamPrep`} />
         <meta property="og:description" content={`Free ${exam.name} prep with ${exam.questionsAvailable} AI questions. Mock tests, PYQs, daily quiz. Try free — no signup.`} />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://zencodio.com/exams/${exam.slug}`} />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
         <link rel="canonical" href={`https://zencodio.com/exams/${exam.slug}`} />
       </Helmet>
 

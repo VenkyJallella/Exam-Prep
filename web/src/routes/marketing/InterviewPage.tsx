@@ -84,6 +84,8 @@ export default function InterviewPage() {
         <meta property="og:title" content={`${totalQuestions}+ Interview Questions with Answers — Free | ExamPrep`} />
         <meta property="og:description" content="Technical, HR & Coding interview questions with detailed answers and code examples. Python, Java, React, SQL, System Design. Free — no signup needed." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://zencodio.com/interview" />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
         <link rel="canonical" href="https://zencodio.com/interview" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org", "@type": "FAQPage",

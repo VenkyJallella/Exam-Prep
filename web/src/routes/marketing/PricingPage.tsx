@@ -121,6 +121,8 @@ export default function PricingPage() {
         <meta property="og:title" content="Pricing - ExamPrep | Free, Pro & Premium Plans" />
         <meta property="og:description" content="Start free with 10 sessions/day. Upgrade to Pro (₹149/mo) or Premium (₹199/mo) for unlimited practice and AI features." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://zencodio.com/pricing" />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
         <link rel="canonical" href="https://zencodio.com/pricing" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",

@@ -139,6 +139,8 @@ export default function BlogDetailPage() {
         <meta property="og:title" content={post.title} />
         <meta property="og:description" content={post.meta_description} />
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://zencodio.com/blog/${post.slug}`} />
+        <meta property="og:image" content={post.featured_image_url || 'https://zencodio.com/og-image.png'} />
         {post.published_at && (
           <meta property="article:published_time" content={post.published_at} />
         )}

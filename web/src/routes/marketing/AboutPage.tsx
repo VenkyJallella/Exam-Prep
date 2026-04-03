@@ -33,11 +33,14 @@ export default function AboutPage() {
   return (
     <>
       <Helmet>
-        <title>About ExamPrep - AI-Powered Exam Preparation Platform</title>
-        <meta name="description" content="Learn about ExamPrep - AI-powered competitive exam preparation platform for Indian aspirants." />
-        <meta property="og:title" content="About ExamPrep - AI-Powered Exam Preparation Platform" />
-        <meta property="og:description" content="Learn about ExamPrep - AI-powered competitive exam preparation platform for Indian aspirants." />
+        <title>About ExamPrep — AI Exam Preparation Platform</title>
+        <meta name="description" content="ExamPrep is India's AI-powered exam preparation platform. 5000+ questions for UPSC, JEE, NEET, SSC, Banking. Built by educators and engineers." />
+        <link rel="canonical" href="https://zencodio.com/about" />
+        <meta property="og:title" content="About ExamPrep — AI Exam Preparation" />
+        <meta property="og:description" content="India's AI-powered exam prep platform. 5000+ questions, mock tests, coding practice." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://zencodio.com/about" />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
       </Helmet>
 
       {/* Mission */}

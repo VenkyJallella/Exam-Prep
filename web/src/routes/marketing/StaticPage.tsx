@@ -39,7 +39,12 @@ export default function StaticPage() {
     <>
       <Helmet>
         <title>{title} | ExamPrep</title>
-        <meta name="description" content={`${title} - ExamPrep competitive exam preparation platform`} />
+        <meta name="description" content={`${title} for ExamPrep — India's AI-powered competitive exam preparation platform. Read our ${title?.toLowerCase()}.`} />
+        <link rel="canonical" href={`https://zencodio.com/${slug}`} />
+        <meta property="og:title" content={`${title} | ExamPrep`} />
+        <meta property="og:description" content={`${title} for ExamPrep exam preparation platform.`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://zencodio.com/${slug}`} />
       </Helmet>
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <div dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />

@@ -151,6 +151,12 @@ export default function TryFreePage() {
       <Helmet>
         <title>Try {examName} Free — 5 Questions | ExamPrep</title>
         <meta name="description" content={`Try ${examName} exam questions for free. No signup required. Practice 5 questions and see how you score.`} />
+        <link rel="canonical" href={`https://zencodio.com/try/${slug}`} />
+        <meta property="og:title" content={`Try ${examName} Free — Practice Questions`} />
+        <meta property="og:description" content={`Practice ${examName} questions free. No signup needed.`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://zencodio.com/try/${slug}`} />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
       </Helmet>
       <div className="mx-auto max-w-3xl px-4 py-10">
         {/* Header */}

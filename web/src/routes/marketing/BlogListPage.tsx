@@ -71,6 +71,9 @@ export default function BlogListPage() {
           content="Expert tips and strategies for competitive exam preparation in India."
         />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://zencodio.com/blog" />
+        <meta property="og:image" content="https://zencodio.com/og-image.png" />
+        <link rel="canonical" href="https://zencodio.com/blog" />
       </Helmet>
 
       {/* Hero */}
