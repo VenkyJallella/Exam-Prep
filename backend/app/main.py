@@ -325,47 +325,52 @@ def create_app() -> FastAPI:
 
     @app.get("/sitemap.xml")
     async def dynamic_sitemap():
-        """Dynamic sitemap including blog posts."""
+        """Dynamic sitemap with lastmod dates for better Google crawling."""
         from fastapi.responses import Response
         from sqlalchemy import select
         from app.database import AsyncSessionLocal
         from app.models.blog import BlogPost
         from app.models.exam import Exam
+        from datetime import date
 
         base_url = "https://zencodio.com"
+        today = date.today().isoformat()
 
+        # (url, changefreq, priority, lastmod)
         urls = [
-            (f"{base_url}/", "daily", "1.0"),
-            (f"{base_url}/about", "monthly", "0.8"),
-            (f"{base_url}/pricing", "monthly", "0.9"),
-            (f"{base_url}/blog", "daily", "0.9"),
-            (f"{base_url}/login", "monthly", "0.6"),
-            (f"{base_url}/register", "monthly", "0.7"),
-            (f"{base_url}/terms", "monthly", "0.5"),
-            (f"{base_url}/privacy", "monthly", "0.5"),
-            (f"{base_url}/contact", "monthly", "0.6"),
-            (f"{base_url}/disclaimer", "monthly", "0.5"),
-            (f"{base_url}/dmca", "monthly", "0.4"),
-            (f"{base_url}/interview", "weekly", "0.8"),
+            (f"{base_url}/", "daily", "1.0", today),
+            (f"{base_url}/about", "monthly", "0.8", today),
+            (f"{base_url}/pricing", "monthly", "0.9", today),
+            (f"{base_url}/blog", "daily", "0.9", today),
+            (f"{base_url}/interview", "weekly", "0.9", today),
+            (f"{base_url}/register", "monthly", "0.7", today),
+            (f"{base_url}/terms", "monthly", "0.5", today),
+            (f"{base_url}/privacy", "monthly", "0.5", today),
+            (f"{base_url}/contact", "monthly", "0.6", today),
+            (f"{base_url}/disclaimer", "monthly", "0.5", today),
+            (f"{base_url}/dmca", "monthly", "0.4", today),
         ]
 
         async with AsyncSessionLocal() as db:
-            # Add exam pages
+            # Add exam pages + try-free pages
             exams = (await db.execute(select(Exam).where(Exam.is_active == True))).scalars().all()
             for exam in exams:
-                urls.append((f"{base_url}/exams/{exam.slug}", "weekly", "0.9"))
+                urls.append((f"{base_url}/exams/{exam.slug}", "weekly", "0.9", today))
+                urls.append((f"{base_url}/try/{exam.slug}", "weekly", "0.8", today))
 
-            # Add blog posts
+            # Add blog posts with actual publish dates
             blogs = (await db.execute(
                 select(BlogPost).where(BlogPost.is_active == True, BlogPost.status == "published")
+                .order_by(BlogPost.created_at.desc())
             )).scalars().all()
             for blog in blogs:
-                urls.append((f"{base_url}/blog/{blog.slug}", "weekly", "0.7"))
+                lastmod = blog.updated_at.strftime("%Y-%m-%d") if blog.updated_at else blog.created_at.strftime("%Y-%m-%d") if blog.created_at else today
+                urls.append((f"{base_url}/blog/{blog.slug}", "weekly", "0.7", lastmod))
 
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        for loc, freq, priority in urls:
-            xml += f'  <url><loc>{loc}</loc><changefreq>{freq}</changefreq><priority>{priority}</priority></url>\n'
+        for loc, freq, priority, lastmod in urls:
+            xml += f'  <url><loc>{loc}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq><priority>{priority}</priority></url>\n'
         xml += '</urlset>'
 
         return Response(content=xml, media_type="application/xml")
