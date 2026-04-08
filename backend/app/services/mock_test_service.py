@@ -257,28 +257,38 @@ async def _ensure_section_questions(
     db: AsyncSession, exam_id: UUID, section_name: str,
     needed: int, exclude_ids: set[UUID],
 ) -> list[UUID]:
-    """Ensure we have enough questions for a section: pool-first, then generate."""
+    """Ensure we have enough questions for a section: pool-first, then generate on-demand.
+
+    Generates with mixed difficulty (2,3,4) to match real exam feel.
+    """
     topic_ids = await _get_topic_ids_for_section(db, exam_id, section_name)
 
-    # Step 1: Pull from pool
+    # Step 1: Pull from pool (already has difficulty mix from _get_pool_questions)
     pool_ids = await _get_pool_questions(db, exam_id, topic_ids, needed, exclude_ids)
     question_ids = list(pool_ids)
     exclude_ids.update(question_ids)
 
-    # Step 2: If pool is short, generate the rest via AI
+    # Step 2: If pool is short, generate the rest via AI with mixed difficulty
     shortfall = needed - len(question_ids)
     if shortfall > 0:
         logger.info(
             "Section '%s': pool has %d/%d — generating %d on-demand",
             section_name, len(question_ids), needed, shortfall,
         )
-        generated = await _generate_questions_for_topics(
-            db, exam_id, topic_ids, shortfall,
-        )
-        for q in generated:
-            if q.id not in exclude_ids:
-                question_ids.append(q.id)
-                exclude_ids.add(q.id)
+        # Generate with different difficulties for real exam feel
+        difficulties = [2, 3, 3, 4]  # Weighted: more medium, some easy & hard
+        for i, diff in enumerate(difficulties):
+            if shortfall <= 0:
+                break
+            batch = max(1, shortfall // (len(difficulties) - i))
+            generated = await _generate_questions_for_topics(
+                db, exam_id, topic_ids, batch, difficulty=diff,
+            )
+            for q in generated:
+                if q.id not in exclude_ids:
+                    question_ids.append(q.id)
+                    exclude_ids.add(q.id)
+                    shortfall -= 1
 
     return question_ids
 

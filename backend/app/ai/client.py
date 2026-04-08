@@ -48,7 +48,7 @@ async def generate_completion(
     temperature: float = 0.7,
     max_tokens: int = 4000,
     use_cache: bool = True,
-    timeout: float = 35.0,
+    timeout: float = 60.0,
     thinking_budget: int | None = None,
 ) -> str:
     """Generate a completion from Gemini with caching, timeout, and rate limit handling."""
