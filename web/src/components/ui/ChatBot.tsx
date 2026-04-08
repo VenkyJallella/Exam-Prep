@@ -91,7 +91,7 @@ export default function ChatBot() {
       {/* Floating button */}
       {!isOpen && (
         <button onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-lg transition-transform hover:scale-110 active:scale-95">
+          className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-lg transition-transform hover:scale-110 active:scale-95 sm:bottom-6 sm:right-6">
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
@@ -100,7 +100,7 @@ export default function ChatBot() {
 
       {/* Chat window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[380px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:h-[550px]">
+        <div className="fixed bottom-0 right-0 z-50 flex h-[100vh] w-full flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:bottom-6 sm:right-6 sm:h-[550px] sm:w-[380px] sm:rounded-2xl">
           {/* Header */}
           <div className="flex items-center justify-between bg-gradient-to-r from-primary-600 to-purple-600 px-4 py-3">
             <div className="flex items-center gap-2">
