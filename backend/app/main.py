@@ -29,9 +29,10 @@ async def _pool_refill_loop():
     from sqlalchemy import select, func
     from app.models.question import Question
 
-    MAX_TOTAL_QUESTIONS = 5000
+    MAX_TOTAL_QUESTIONS = 8000  # Increased to cover all 8 exams properly
+    MIN_PER_EXAM = 500          # Each exam should have at least 500 questions
     MIN_CODING_PROBLEMS = 30
-    REFILL_INTERVAL = 1800  # 30 minutes
+    REFILL_INTERVAL = 1800      # 30 minutes
 
     await asyncio.sleep(60)
     logger.info("Pool auto-refill started (MCQ max: %d, Coding min: %d)", MAX_TOTAL_QUESTIONS, MIN_CODING_PROBLEMS)
@@ -45,7 +46,24 @@ async def _pool_refill_loop():
                 )).scalar() or 0
 
                 if total >= MAX_TOTAL_QUESTIONS:
-                    pass  # Silently skip — no noisy log every 30 min
+                    # Even at cap, check if any exam is below minimum
+                    from app.models.exam import Exam
+                    exams = (await db.execute(select(Exam).where(Exam.is_active == True))).scalars().all()
+                    needs_refill = False
+                    for exam in exams:
+                        exam_count = (await db.execute(
+                            select(func.count()).select_from(Question).where(Question.exam_id == exam.id, Question.is_active == True)
+                        )).scalar() or 0
+                        if exam_count < MIN_PER_EXAM:
+                            needs_refill = True
+                            logger.info("Exam '%s' has only %d questions (min: %d), forcing refill", exam.name, exam_count, MIN_PER_EXAM)
+                            break
+
+                    if needs_refill:
+                        from app.services.question_pool_service import refill_all_low_pools
+                        result = await refill_all_low_pools(db, max_batches=5)
+                        if result["total_generated"] > 0:
+                            logger.info("MCQ refill (under-served exam): +%d questions", result["total_generated"])
                 else:
                     from app.services.question_pool_service import refill_all_low_pools
                     result = await refill_all_low_pools(db, max_batches=3)
