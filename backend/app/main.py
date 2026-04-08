@@ -38,6 +38,17 @@ async def _pool_refill_loop():
     logger.info("Pool auto-refill started (MCQ max: %d, Coding min: %d)", MAX_TOTAL_QUESTIONS, MIN_CODING_PROBLEMS)
 
     while True:
+        # Acquire lock — only one worker refills at a time
+        try:
+            from app.core.cache import get_redis
+            redis = get_redis()
+            lock = await redis.set("pool_refill_lock", "1", ex=300, nx=True)  # 5 min lock
+            if not lock:
+                await asyncio.sleep(REFILL_INTERVAL)
+                continue
+        except Exception:
+            pass  # Redis down — proceed anyway
+
         # --- MCQ Question Pool ---
         try:
             async with AsyncSessionLocal() as db:

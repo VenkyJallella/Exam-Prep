@@ -148,9 +148,9 @@ async def refill_all_low_pools(db: AsyncSession, max_batches: int = 5) -> dict:
             by_exam[eid].append(pool)
             exam_totals[eid] += pool["current_count"]
 
-    # Sort each exam's pools: empty & higher difficulty first
+    # Sort each exam's pools: empty first, EASIER difficulty first (less likely to timeout)
     for pools in by_exam.values():
-        pools.sort(key=lambda x: (x["current_count"], -x["difficulty"]))
+        pools.sort(key=lambda x: (x["current_count"], x["difficulty"]))
 
     # Sort exams: fewest questions first (GATE CS, CAT get priority over UPSC)
     sorted_exam_ids = sorted(by_exam.keys(), key=lambda eid: exam_totals[eid])
