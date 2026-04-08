@@ -25,9 +25,19 @@ CRITICAL: Every single question MUST be at difficulty level {difficulty}. If lev
 - Use Indian English conventions
 - IMPORTANT: Do NOT use LaTeX notation like $, \\frac, \\alpha etc. Use plain text for math: x^2, sqrt(x), alpha, beta, pi. This is critical for JSON parsing.
 
+CRITICAL RULE FOR PASSAGE/COMPREHENSION QUESTIONS:
+If the topic is Reading Comprehension, Cloze Test, Para Jumbles, Sentence Completion, Error Spotting, or any English language topic that requires a passage or paragraph:
+- You MUST include the FULL passage/paragraph INSIDE the "question_text" field
+- Format: "Read the following passage and answer the question:\\n\\n[FULL PASSAGE TEXT HERE — at least 150 words]\\n\\nQuestion: [actual question]"
+- NEVER reference a passage that is not included in question_text
+- Each question can share the same passage (group 3-5 questions per passage) — repeat the passage in each question_text
+- For Cloze Tests: include the full paragraph with blanks numbered (1), (2), (3) etc.
+- For Para Jumbles: include all sentences labeled P, Q, R, S, T
+- The user MUST be able to answer the question using ONLY what is in question_text
+
 Return valid JSON array:
 [{{
-  "question_text": "...",
+  "question_text": "Read the following passage and answer the question:\\n\\n[passage text here]\\n\\nQuestion: What is the main idea of the passage?",
   "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
   "correct_answer": "A",
   "explanation": "...",

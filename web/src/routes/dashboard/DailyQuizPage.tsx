@@ -247,7 +247,7 @@ export default function DailyQuizPage() {
               <p className="text-sm text-gray-500">Question {currentQ + 1} of {questions.length}</p>
               <span className="text-xs text-gray-400">{'★'.repeat(q.difficulty)}{'☆'.repeat(5 - q.difficulty)}</span>
             </div>
-            <p className="text-lg leading-relaxed text-gray-900 dark:text-white">{q.question_text}</p>
+            <div className="text-lg leading-relaxed text-gray-900 dark:text-white whitespace-pre-wrap">{q.question_text}</div>
             <div className="space-y-2">
               {Object.entries(q.options).map(([key, val]) => {
                 const selected = answers[q.id]?.includes(key);

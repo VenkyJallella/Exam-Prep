@@ -185,7 +185,7 @@ export default function TryFreePage() {
             <span>·</span>
             <span>Difficulty: {'★'.repeat(current.difficulty)}{'☆'.repeat(5 - current.difficulty)}</span>
           </div>
-          <p className="mt-3 text-base font-medium leading-relaxed text-gray-900 dark:text-white">{current.question_text}</p>
+          <div className="mt-3 text-base font-medium leading-relaxed text-gray-900 dark:text-white whitespace-pre-wrap">{current.question_text}</div>
 
           {/* Options */}
           <div className="mt-5 space-y-3">

@@ -255,9 +255,9 @@ export default function TestSessionPage() {
 
               {/* Question text */}
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50">
-                <p className="text-lg leading-relaxed text-gray-900 dark:text-white">
+                <div className="text-lg leading-relaxed text-gray-900 dark:text-white whitespace-pre-wrap">
                   {currentQuestion.question_text}
-                </p>
+                </div>
               </div>
 
               {/* Options */}

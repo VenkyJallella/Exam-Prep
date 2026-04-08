@@ -97,9 +97,9 @@ export default function QuestionCard({
 
       {/* Question text */}
       <div className="card">
-        <p className="text-lg font-medium leading-relaxed text-gray-900 dark:text-white">
+        <div className="text-base leading-relaxed text-gray-900 dark:text-white whitespace-pre-wrap">
           {questionText}
-        </p>
+        </div>
         {imageUrl && (
           <img src={imageUrl} alt="Question illustration" className="mt-3 max-h-64 rounded-lg border border-gray-200 dark:border-gray-700" />
         )}
