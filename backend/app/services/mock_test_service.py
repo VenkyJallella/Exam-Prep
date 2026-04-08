@@ -96,7 +96,13 @@ SECTION_SUBJECT_MAP = {
     "Chemistry": ["Chemistry"],
     "Mathematics": ["Mathematics", "Math"],
     "Biology": ["Biology"],
-    # UPSC
+    # UPSC — section names match subject names
+    "Indian Polity": ["Indian Polity", "Polity"],
+    "History": ["History"],
+    "Geography": ["Geography"],
+    "Economy": ["Economy", "Economics"],
+    "Science & Technology": ["Science", "Technology"],
+    "Environment": ["Environment", "Ecology"],
     "General Studies": ["Indian Polity", "History", "Geography", "Economy", "Science", "Environment"],
     "CSAT": ["Quantitative Aptitude", "General Intelligence", "Reasoning"],
     # SSC
@@ -152,23 +158,57 @@ async def _get_pool_questions(
     db: AsyncSession, exam_id: UUID, topic_ids: list[UUID],
     count: int, exclude_ids: set[UUID],
 ) -> list[UUID]:
-    """Pull random questions from pool for given topics."""
-    query = (
-        select(Question.id)
-        .where(
-            Question.exam_id == exam_id,
-            Question.is_active == True,
-        )
-        .order_by(func.random())
-        .limit(count)
-    )
-    if topic_ids:
-        query = query.where(Question.topic_id.in_(topic_ids))
-    if exclude_ids:
-        query = query.where(Question.id.notin_(exclude_ids))
+    """Pull questions from pool with real exam-like difficulty mix.
 
-    result = await db.execute(query)
-    return list(result.scalars().all())
+    Distribution: 20% easy(1-2), 50% medium(3), 30% hard(4-5)
+    """
+    all_ids: list[UUID] = []
+
+    # Difficulty mix matching real exams
+    mix = [
+        (max(1, int(count * 0.2)), [1, 2]),  # 20% easy
+        (max(1, int(count * 0.5)), [3]),       # 50% medium
+        (max(1, count - int(count * 0.2) - int(count * 0.5)), [4, 5]),  # 30% hard
+    ]
+
+    for batch_count, diff_range in mix:
+        query = (
+            select(Question.id)
+            .where(
+                Question.exam_id == exam_id,
+                Question.is_active == True,
+                Question.difficulty.in_(diff_range),
+            )
+            .order_by(func.random())
+            .limit(batch_count)
+        )
+        if topic_ids:
+            query = query.where(Question.topic_id.in_(topic_ids))
+        current_exclude = exclude_ids | set(all_ids)
+        if current_exclude:
+            query = query.where(Question.id.notin_(current_exclude))
+
+        result = await db.execute(query)
+        all_ids.extend(result.scalars().all())
+
+    # If we didn't get enough from the mix, fill remaining with any difficulty
+    if len(all_ids) < count:
+        remaining = count - len(all_ids)
+        current_exclude = exclude_ids | set(all_ids)
+        query = (
+            select(Question.id)
+            .where(Question.exam_id == exam_id, Question.is_active == True)
+            .order_by(func.random())
+            .limit(remaining)
+        )
+        if topic_ids:
+            query = query.where(Question.topic_id.in_(topic_ids))
+        if current_exclude:
+            query = query.where(Question.id.notin_(current_exclude))
+        result = await db.execute(query)
+        all_ids.extend(result.scalars().all())
+
+    return all_ids
 
 
 async def _generate_questions_for_topics(
