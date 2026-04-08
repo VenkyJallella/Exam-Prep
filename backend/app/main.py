@@ -46,29 +46,37 @@ async def _pool_refill_loop():
                 )).scalar() or 0
 
                 if total >= MAX_TOTAL_QUESTIONS:
-                    # Even at cap, check if any exam is below minimum
+                    # At cap — only refill if any exam is below minimum
                     from app.models.exam import Exam
                     exams = (await db.execute(select(Exam).where(Exam.is_active == True))).scalars().all()
-                    needs_refill = False
                     for exam in exams:
                         exam_count = (await db.execute(
                             select(func.count()).select_from(Question).where(Question.exam_id == exam.id, Question.is_active == True)
                         )).scalar() or 0
                         if exam_count < MIN_PER_EXAM:
-                            needs_refill = True
                             logger.info("Exam '%s' has only %d questions (min: %d), forcing refill", exam.name, exam_count, MIN_PER_EXAM)
+                            from app.services.question_pool_service import refill_all_low_pools
+                            result = await refill_all_low_pools(db, max_batches=5)
+                            if result["total_generated"] > 0:
+                                logger.info("MCQ refill (under-served): +%d questions", result["total_generated"])
                             break
-
-                    if needs_refill:
-                        from app.services.question_pool_service import refill_all_low_pools
-                        result = await refill_all_low_pools(db, max_batches=5)
-                        if result["total_generated"] > 0:
-                            logger.info("MCQ refill (under-served exam): +%d questions", result["total_generated"])
                 else:
+                    # Below cap — aggressive refill based on how empty pool is
                     from app.services.question_pool_service import refill_all_low_pools
-                    result = await refill_all_low_pools(db, max_batches=3)
+                    if total < 500:
+                        # CRITICAL: pool nearly empty — generate aggressively
+                        batches = 15
+                        interval_override = 120  # Check every 2 minutes when critical
+                    elif total < 2000:
+                        batches = 10
+                        interval_override = 300  # Every 5 minutes when low
+                    else:
+                        batches = 5
+                        interval_override = REFILL_INTERVAL  # Normal 30 min
+
+                    result = await refill_all_low_pools(db, max_batches=batches)
                     if result["total_generated"] > 0:
-                        logger.info("MCQ refill: +%d questions (total: %d/%d)", result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS)
+                        logger.info("MCQ refill: +%d questions (total: %d/%d, batches=%d)", result["total_generated"], total + result["total_generated"], MAX_TOTAL_QUESTIONS, batches)
         except Exception as e:
             logger.error("MCQ refill error: %s", e)
 
@@ -116,7 +124,20 @@ async def _pool_refill_loop():
         except Exception as e:
             logger.error("Stale session cleanup error: %s", e)
 
-        await asyncio.sleep(REFILL_INTERVAL)
+        # Dynamic sleep: fast when pool is empty, slow when healthy
+        try:
+            async with AsyncSessionLocal() as db:
+                current_total = (await db.execute(
+                    select(func.count()).select_from(Question).where(Question.is_active == True)
+                )).scalar() or 0
+            if current_total < 500:
+                await asyncio.sleep(120)    # Every 2 min when critical
+            elif current_total < 2000:
+                await asyncio.sleep(300)    # Every 5 min when low
+            else:
+                await asyncio.sleep(REFILL_INTERVAL)  # 30 min when healthy
+        except Exception:
+            await asyncio.sleep(REFILL_INTERVAL)
 
 
 @asynccontextmanager
