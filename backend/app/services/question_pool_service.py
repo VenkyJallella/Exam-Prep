@@ -138,20 +138,26 @@ async def refill_all_low_pools(db: AsyncSession, max_batches: int = 5) -> dict:
         logger.info("All pools are healthy, no refill needed")
         return {"refilled": 0, "total_generated": 0}
 
-    # Group by exam, then round-robin across exams for balanced coverage
+    # Group by exam, then prioritize exams with fewest total questions
     from collections import defaultdict
     by_exam: dict[str, list] = defaultdict(list)
+    exam_totals: dict[str, int] = defaultdict(int)
     for pool in low_pools:
         if pool["exam_id"]:
-            by_exam[str(pool["exam_id"])].append(pool)
+            eid = str(pool["exam_id"])
+            by_exam[eid].append(pool)
+            exam_totals[eid] += pool["current_count"]
 
-    # Sort each exam's pools: empty first, then by least questions
+    # Sort each exam's pools: empty & higher difficulty first
     for pools in by_exam.values():
-        pools.sort(key=lambda x: x["current_count"])
+        pools.sort(key=lambda x: (x["current_count"], -x["difficulty"]))
 
-    # Round-robin: pick one pool from each exam in rotation
+    # Sort exams: fewest questions first (GATE CS, CAT get priority over UPSC)
+    sorted_exam_ids = sorted(by_exam.keys(), key=lambda eid: exam_totals[eid])
+
+    # Round-robin across exams, starting with most starved
     ordered_pools: list[dict] = []
-    exam_lists = list(by_exam.values())
+    exam_lists = [by_exam[eid] for eid in sorted_exam_ids]
     max_len = max(len(v) for v in exam_lists) if exam_lists else 0
     for i in range(max_len):
         for pools in exam_lists:
