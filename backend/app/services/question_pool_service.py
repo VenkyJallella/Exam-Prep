@@ -189,20 +189,36 @@ async def get_pool_questions_for_user(
     count: int,
 ) -> list[Question]:
     """
-    Get questions from the pre-generated pool, excluding ones the user has already seen.
-    This is the FAST path — pure DB query, no AI calls.
+    Get questions from the pre-generated pool.
+    NEVER returns questions outside the user's selected scope.
+    Tiers widen within the subject only — never cross exams.
     """
     from app.services.question_service import _get_recently_seen_ids
 
     seen_ids = await _get_recently_seen_ids(db, user_id, limit=1000)
+    all_exclude = set(seen_ids) if seen_ids else set()
+    questions: list[Question] = []
+    got_ids: set = set()
 
-    query = select(Question).where(Question.is_active == True)
+    def _base_query():
+        q = select(Question).where(Question.is_active == True)
+        if got_ids:
+            q = q.where(Question.id.notin_(got_ids))
+        return q
 
-    # Exclude user's recently seen questions
-    if seen_ids:
-        query = query.where(Question.id.notin_(seen_ids))
+    def _with_difficulty(q):
+        if difficulty:
+            # Filter: only allow ±1 difficulty level
+            q = q.where(Question.difficulty.between(max(1, difficulty - 1), min(5, difficulty + 1)))
+            q = q.order_by(func.abs(Question.difficulty - difficulty), func.random())
+        else:
+            q = q.order_by(func.random())
+        return q
 
-    # Scope: topic > subject > exam
+    # TIER 1: Exact scope — topic + unseen by user
+    query = _base_query()
+    if all_exclude:
+        query = query.where(Question.id.notin_(all_exclude))
     if topic_id:
         query = query.where(Question.topic_id == topic_id)
     elif subject_id:
@@ -210,53 +226,47 @@ async def get_pool_questions_for_user(
         query = query.where(Question.topic_id.in_(topic_ids_q))
     if exam_id:
         query = query.where(Question.exam_id == exam_id)
+    query = _with_difficulty(query).limit(count)
+    for q in (await db.execute(query)).scalars().all():
+        if q.id not in got_ids:
+            questions.append(q)
+            got_ids.add(q.id)
 
-    # Difficulty matching
-    if difficulty:
-        query = query.order_by(
-            func.abs(Question.difficulty - difficulty),
-            Question.difficulty.desc(),
-            func.random(),
-        )
-    else:
-        query = query.order_by(func.random())
+    # TIER 2: Same SUBJECT (allow seen questions) — never cross subjects
+    if len(questions) < count and (subject_id or topic_id):
+        remaining = count - len(questions)
+        query = _base_query()
+        if subject_id:
+            topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
+            query = query.where(Question.topic_id.in_(topic_ids_q))
+        elif topic_id:
+            # Get sibling topics in same subject
+            from app.models.exam import Topic as TopicModel
+            topic_row = (await db.execute(select(TopicModel.subject_id).where(TopicModel.id == topic_id))).scalar_one_or_none()
+            if topic_row:
+                sibling_ids = select(Topic.id).where(Topic.subject_id == topic_row)
+                query = query.where(Question.topic_id.in_(sibling_ids))
+        if exam_id:
+            query = query.where(Question.exam_id == exam_id)
+        query = _with_difficulty(query).limit(remaining)
+        for q in (await db.execute(query)).scalars().all():
+            if q.id not in got_ids:
+                questions.append(q)
+                got_ids.add(q.id)
 
-    query = query.limit(count)
-    result = await db.execute(query)
-    questions = list(result.scalars().all())
-
-    got_ids = {q.id for q in questions}
-
-    # Tier 2: Widen to full exam (ignore seen — allow repeats from other topics)
+    # TIER 3: Same EXAM only (never cross exams) — relax difficulty
     if len(questions) < count and exam_id:
         remaining = count - len(questions)
-        wider = select(Question).where(
-            Question.is_active == True,
-            Question.exam_id == exam_id,
-            Question.id.notin_(got_ids) if got_ids else True,
-        )
-        if difficulty:
-            wider = wider.order_by(func.abs(Question.difficulty - difficulty), func.random())
-        else:
-            wider = wider.order_by(func.random())
-        wider = wider.limit(remaining)
-        extra = (await db.execute(wider)).scalars().all()
-        for q in extra:
+        query = _base_query()
+        query = query.where(Question.exam_id == exam_id)
+        if subject_id:
+            topic_ids_q = select(Topic.id).where(Topic.subject_id == subject_id)
+            query = query.where(Question.topic_id.in_(topic_ids_q))
+        query = query.order_by(func.random()).limit(remaining)
+        for q in (await db.execute(query)).scalars().all():
             if q.id not in got_ids:
                 questions.append(q)
                 got_ids.add(q.id)
 
-    # Tier 3: Pull from ANY exam if still short
-    if len(questions) < count:
-        remaining = count - len(questions)
-        any_q = select(Question).where(
-            Question.is_active == True,
-            Question.id.notin_(got_ids) if got_ids else True,
-        ).order_by(func.random()).limit(remaining)
-        extra = (await db.execute(any_q)).scalars().all()
-        for q in extra:
-            if q.id not in got_ids:
-                questions.append(q)
-                got_ids.add(q.id)
-
+    # NEVER pull from other exams — return what we have
     return questions

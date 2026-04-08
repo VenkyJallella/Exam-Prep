@@ -107,29 +107,23 @@ async def get_adaptive_questions(
             used_ids.add(q.id)
         questions.extend(fill)
 
-    # Still short? Pull from entire exam ignoring scope
+    # Still short? Pull from same subject within exam (never cross subjects/exams)
     remaining = count - len(questions)
     if remaining > 0 and exam_id:
         stmt = select(Question).where(
             Question.is_active == True,
             Question.exam_id == exam_id,
         )
+        # Stay within scope
+        if scope_topic_ids:
+            stmt = stmt.where(Question.topic_id.in_(scope_topic_ids))
         if used_ids:
             stmt = stmt.where(Question.id.notin_(used_ids))
         stmt = stmt.order_by(func.random()).limit(remaining)
         extra = (await db.execute(stmt)).scalars().all()
         questions.extend(extra)
 
-    # Last resort: any exam
-    remaining = count - len(questions)
-    if remaining > 0:
-        all_ids = {q.id for q in questions}
-        stmt = select(Question).where(Question.is_active == True)
-        if all_ids:
-            stmt = stmt.where(Question.id.notin_(all_ids))
-        stmt = stmt.order_by(func.random()).limit(remaining)
-        extra = (await db.execute(stmt)).scalars().all()
-        questions.extend(extra)
+    # NEVER pull from other exams — return what we have
 
     random.shuffle(questions)
     return questions[:count]
