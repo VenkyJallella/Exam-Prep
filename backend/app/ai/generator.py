@@ -38,6 +38,20 @@ async def generate_questions(
 
     model = settings.GEMINI_MODEL
 
+    # Fetch existing questions for this topic to avoid duplicates
+    from sqlalchemy import func as sqlfunc
+    existing_qs = (await db.execute(
+        select(Question.question_text)
+        .where(Question.topic_id == topic_id, Question.is_active == True, Question.difficulty == difficulty)
+        .order_by(sqlfunc.random())
+        .limit(20)
+    )).scalars().all()
+
+    avoid_text = ""
+    if existing_qs:
+        avoid_list = "\n".join(f"- {q[:100]}" for q in existing_qs)
+        avoid_text = f"\n\nAVOID DUPLICATES — these questions already exist for this topic. Generate COMPLETELY DIFFERENT questions:\n{avoid_list}\n"
+
     from datetime import date
     today = date.today()
     prompt = QUESTION_GENERATION.format(
@@ -50,10 +64,10 @@ async def generate_questions(
         difficulty_description=DIFFICULTY_DESCRIPTIONS.get(difficulty, DIFFICULTY_DESCRIPTIONS[3]),
         current_date=today.strftime("%d %B %Y"),
         current_year=today.year,
-    )
+    ) + avoid_text
 
-    logger.info("Generating %d questions for %s > %s > %s (difficulty=%d)",
-                count, exam.name, subject.name, topic.name, difficulty)
+    logger.info("Generating %d questions for %s > %s > %s (difficulty=%d, existing=%d)",
+                count, exam.name, subject.name, topic.name, difficulty, len(existing_qs))
 
     raw_questions = await generate_questions_json(prompt, model=model)
 
