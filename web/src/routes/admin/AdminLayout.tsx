@@ -19,12 +19,12 @@ const adminNav = [
 export default function AdminLayout() {
   return (
     <div className="fixed inset-0 flex overflow-hidden">
-      <aside className="w-56 flex-shrink-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-        <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-4 dark:border-gray-800">
+      <aside className="flex w-56 flex-shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+        <div className="flex h-16 flex-shrink-0 items-center gap-2 border-b border-gray-200 px-4 dark:border-gray-800">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-bold text-white">A</div>
           <span className="text-lg font-bold text-gray-900 dark:text-white">Admin</span>
         </div>
-        <nav className="space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {adminNav.map((item) => (
             <NavLink
               key={item.to}
