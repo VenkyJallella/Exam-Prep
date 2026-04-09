@@ -75,6 +75,34 @@ function renderMarkdown(md: string): string {
     return table;
   });
 
+  // FAQ pattern: **Q1: ...** **A1: ...** or **Q: ...** **A: ...**
+  // Split Q&A into separate styled blocks
+  html = html.replace(/<strong>(Q\d*[\.:]\s*)(.*?)<\/strong>\s*(.*?)\s*(?=<strong>(?:Q\d*[\.:])|\s*$)/gs, (_, qLabel, question, answer) => {
+    // Clean answer: remove **A1:** or **A:** prefix
+    let cleanAnswer = answer.replace(/<strong>A\d*[\.:]\s*(.*?)<\/strong>/g, '$1');
+    return `<div class="my-4 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
+        <p class="font-semibold text-gray-900 dark:text-white">${qLabel}${question}</p>
+      </div>
+      <div class="px-4 py-3 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">${cleanAnswer}</div>
+    </div>`;
+  });
+
+  // Also handle simpler FAQ: lines starting with Q: or Q1:
+  html = html.replace(/<p[^>]*><strong>(Q\d*[\.:]\s*.*?)<\/strong>(.*?)<\/p>/g,
+    '<div class="my-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4"><p class="font-semibold text-gray-900 dark:text-white">$1</p><p class="mt-2 text-sm text-gray-600 dark:text-gray-400">$2</p></div>'
+  );
+
+  // Key Takeaways / Summary boxes (common in AI blogs)
+  html = html.replace(/<h[23][^>]*>(Key Takeaways|Quick Summary|Summary|TL;DR|Highlights)<\/h[23]>/gi,
+    '<h3 class="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3 flex items-center gap-2"><span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/30 text-sm">✓</span> $1</h3>'
+  );
+
+  // Pro tips / Important notes
+  html = html.replace(/<strong>(Pro Tip|Important|Note|Remember|Warning)[\.:]\s*<\/strong>/gi,
+    '<span class="inline-flex items-center gap-1 rounded bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 mr-1">💡 $1:</span>'
+  );
+
   // Paragraphs (lines that aren't already HTML)
   html = html.replace(/^(?!<[a-z/<])((?!^\s*$).+)$/gm, '<p class="text-gray-700 leading-relaxed dark:text-gray-300 my-3">$1</p>');
 
