@@ -356,6 +356,9 @@ def create_app() -> FastAPI:
                         title = f"{default['title']} | ExamPrep"
                         body_html = f"<h1>{default['title']}</h1><div>{default['content']}</div>"
 
+        page_url = f"{base}{path}"
+        og_image = f"{base}/og-image.png"
+
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -363,7 +366,19 @@ def create_app() -> FastAPI:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title>
 <meta name="description" content="{description}">
-<link rel="canonical" href="{base}{path}">
+<link rel="canonical" href="{page_url}">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{page_url}">
+<meta property="og:image" content="{og_image}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="ExamPrep">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{description}">
+<meta name="twitter:image" content="{og_image}">
 </head>
 <body>
 {body_html}
