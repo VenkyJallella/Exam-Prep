@@ -12,6 +12,7 @@ const adminNav = [
   { to: '/admin/interview', label: 'Interview' },
   { to: '/admin/analytics', label: 'Analytics' },
   { to: '/admin/pages', label: 'Pages' },
+  { to: '/admin/email', label: 'Email Campaign' },
   { to: '/admin/settings', label: 'Settings' },
 ];
 

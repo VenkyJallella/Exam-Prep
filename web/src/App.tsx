@@ -55,6 +55,7 @@ const AdminAnalytics = lazy(() => import('./routes/admin/AdminAnalytics'));
 const AdminCoding = lazy(() => import('./routes/admin/AdminCoding'));
 const AdminPages = lazy(() => import('./routes/admin/AdminPages'));
 const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
+const AdminEmail = lazy(() => import('./routes/admin/AdminEmail'));
 
 const CodingPage = lazy(() => import('./routes/dashboard/CodingPage'));
 const CodingProblemPage = lazy(() => import('./routes/dashboard/CodingProblemPage'));
@@ -159,6 +160,7 @@ export default function App() {
               <Route path="/admin/coding" element={<AdminCoding />} />
               <Route path="/admin/interview" element={<AdminInterview />} />
               <Route path="/admin/pages" element={<AdminPages />} />
+              <Route path="/admin/email" element={<AdminEmail />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
           </Route>
