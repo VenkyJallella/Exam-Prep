@@ -227,8 +227,8 @@ async def send_campaign(
         from app.exceptions import AppException
         raise AppException(400, "EMPTY_BODY", "Email body is required")
 
-    # Get target users
-    query = select(User).where(User.is_active == True, User.email_verified == True)
+    # Get target users (all active users with valid email)
+    query = select(User).where(User.is_active == True, User.email.isnot(None))
     users = (await db.execute(query)).scalars().all()
 
     # Filter by target
