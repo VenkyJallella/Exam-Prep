@@ -148,9 +148,24 @@ async def refill_all_low_pools(db: AsyncSession, max_batches: int = 5) -> dict:
             by_exam[eid].append(pool)
             exam_totals[eid] += pool["current_count"]
 
-    # Sort each exam's pools: empty first, EASIER difficulty first (less likely to timeout)
-    for pools in by_exam.values():
-        pools.sort(key=lambda x: (x["current_count"], x["difficulty"]))
+    # Interleave difficulties evenly across batches
+    # Group by difficulty, then round-robin: pick one from each difficulty level
+    for eid in list(by_exam.keys()):
+        pools = by_exam[eid]
+        by_diff: dict[int, list] = {d: [] for d in range(1, 6)}
+        for p in pools:
+            by_diff[p["difficulty"]].append(p)
+        # Sort each difficulty group: emptiest first
+        for d in by_diff:
+            by_diff[d].sort(key=lambda x: x["current_count"])
+        # Interleave: take one from each difficulty in rotation
+        interleaved = []
+        max_per_diff = max(len(v) for v in by_diff.values()) if by_diff else 0
+        for i in range(max_per_diff):
+            for d in [3, 2, 4, 1, 5]:  # Medium first, then spread out
+                if i < len(by_diff[d]):
+                    interleaved.append(by_diff[d][i])
+        by_exam[eid] = interleaved
 
     # Sort exams: fewest questions first (GATE CS, CAT get priority over UPSC)
     sorted_exam_ids = sorted(by_exam.keys(), key=lambda eid: exam_totals[eid])
