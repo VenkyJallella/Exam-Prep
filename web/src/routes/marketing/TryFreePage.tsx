@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
 import AdBanner from '../../components/ui/AdBanner';
+import ShareButtons from '../../components/ui/ShareButtons';
 
 interface Question {
   id: string;
@@ -139,6 +140,9 @@ export default function TryFreePage() {
           <Link to={`/exams/${slug}`} className="text-sm font-medium text-primary-600 hover:underline">
             Learn more about {examName}
           </Link>
+        </div>
+        <div className="mt-4">
+          <ShareButtons title={`I scored ${score}/${totalAnswered} on ${examName}! Try it free`} url={`https://zencodio.com/try/${slug}`} />
         </div>
       </div>
     </div>

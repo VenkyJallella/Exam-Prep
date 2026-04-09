@@ -1,6 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
 import AdBanner from '../../components/ui/AdBanner';
+import ShareButtons from '../../components/ui/ShareButtons';
 
 interface ExamInfo {
   name: string;
@@ -317,8 +318,11 @@ export default function ExamDetailPage() {
         </div>
       </section>
 
-      {/* Ad at bottom of exam page */}
-      <div className="mx-auto max-w-4xl px-4 py-6"><AdBanner publicOnly format="horizontal" /></div>
+      {/* Share + Ad */}
+      <div className="mx-auto max-w-4xl px-4 py-6">
+        <ShareButtons title={`${exam.name} Preparation 2026`} url={`https://zencodio.com/exams/${exam.slug}`} />
+        <div className="mt-4"><AdBanner publicOnly format="horizontal" /></div>
+      </div>
     </>
   );
 }

@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
 import AdBanner from '../../components/ui/AdBanner';
+import ShareButtons from '../../components/ui/ShareButtons';
 
 interface BlogPostDetail {
   id: string;
@@ -229,6 +230,11 @@ export default function BlogDetailPage() {
             className="prose-custom"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
           />
+
+          {/* Share buttons */}
+          <div className="my-6 flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-800">
+            <ShareButtons title={post.title} url={`https://zencodio.com/blog/${post.slug}`} description={post.meta_description} />
+          </div>
 
           {/* Ad after blog content */}
           <div className="my-8">
