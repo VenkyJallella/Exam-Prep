@@ -16,6 +16,7 @@ const tiers = [
       '10 practice sessions/day',
       '50 questions per session',
       'All coding problems',
+      'AI Code Hints (10/day)',
       'Daily Quiz with leaderboard',
       '30-day analytics',
       'Mistake book (50 questions)',
@@ -36,6 +37,7 @@ const tiers = [
       '50 questions per session',
       'AI question generation',
       'AI explanations',
+      'AI Code Hints (20/day)',
       'All mock tests',
       '90-day analytics',
       'Unlimited mistake tracking',
@@ -54,6 +56,7 @@ const tiers = [
     highlighted: false,
     features: [
       'Everything in Pro',
+      'Unlimited AI Code Hints',
       'Topper comparison',
       'PDF question export',
       '1-year analytics history',
@@ -72,6 +75,7 @@ const comparisonFeatures = [
   { name: 'Adaptive learning', free: false, pro: true, premium: true },
   { name: 'Mock tests', free: 'Limited', pro: 'All', premium: 'All + Custom' },
   { name: 'AI explanations', free: 'Standard', pro: 'Priority', premium: 'Priority' },
+  { name: 'AI Code Hints', free: '10/day', pro: '20/day', premium: 'Unlimited' },
   { name: 'Study planner', free: false, pro: false, premium: true },
   { name: '1-on-1 mentoring', free: false, pro: false, premium: true },
   { name: 'Offline access', free: false, pro: false, premium: true },
@@ -116,7 +120,7 @@ export default function PricingPage() {
     <>
       <Helmet>
         <title>Pricing - ExamPrep | Free Mock Tests, Pro ₹149/mo, Premium ₹199/mo</title>
-        <meta name="description" content="ExamPrep plans: Free — 10 sessions/day, daily quiz, coding. Pro ₹149/mo — unlimited AI practice, 90-day analytics. Premium ₹199/mo — everything + PDF export. Compare plans." />
+        <meta name="description" content="ExamPrep plans: Free — 10 sessions/day, daily quiz, coding, 10 AI code hints/day. Pro ₹149/mo — unlimited AI practice, 20 hints/day, 90-day analytics. Premium ₹199/mo — unlimited hints + PDF export. Compare plans." />
         <meta name="keywords" content="ExamPrep pricing, free exam preparation app, cheap online test series, affordable mock test India, UPSC preparation cost, JEE coaching price comparison, best value exam app, free vs paid exam preparation" />
         <meta property="og:title" content="Pricing - ExamPrep | Free, Pro & Premium Plans" />
         <meta property="og:description" content="Start free with 10 sessions/day. Upgrade to Pro (₹149/mo) or Premium (₹199/mo) for unlimited practice and AI features." />

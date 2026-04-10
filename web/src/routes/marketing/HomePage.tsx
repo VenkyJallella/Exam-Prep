@@ -19,6 +19,7 @@ const features = [
   { title: 'Adaptive Learning', desc: 'Get harder questions when you are doing well, easier when you need practice. Your personal difficulty curve.', icon: '📈' },
   { title: 'Daily Quiz', desc: '20 fresh questions every day with a 20-minute timer. Compete on the daily leaderboard.', icon: '⚡' },
   { title: 'Coding Practice', desc: 'LeetCode-style problems with an in-browser code editor. Run test cases and track submissions.', icon: '💻' },
+  { title: 'AI Code Hints', desc: 'Stuck on a coding problem? Get an AI-generated approach with steps and complexity — no code spoilers, just guidance.', icon: '💡' },
   { title: 'AI Chatbot Tutor', desc: 'Ask "How is my performance?" and get data-driven answers. Your personal AI tutor with full access to your stats.', icon: '💬' },
   { title: 'Mistake Book', desc: 'Auto-tracks every wrong answer. Flashcard review mode. Never repeat the same mistake twice.', icon: '📓' },
   { title: 'Study Planner', desc: 'AI generates a weekly schedule based on your exam date and daily hours. Track progress with milestones.', icon: '📅' },
@@ -98,10 +99,10 @@ export default function HomePage() {
     <>
       <Helmet>
         <title>ExamPrep - Free Online Mock Tests 2026 | UPSC, JEE, NEET, SSC Practice Questions</title>
-        <meta name="description" content="Free exam preparation for UPSC 2026, JEE Main 2026, NEET 2026, SSC CGL, Banking. 5000+ AI practice questions, full mock tests, daily quiz, coding problems. Try 5 questions free without signup. India's best free exam prep app." />
+        <meta name="description" content="Free exam preparation for UPSC 2026, JEE Main 2026, NEET 2026, SSC CGL, Banking. 5000+ AI practice questions, full mock tests, daily quiz, coding problems with AI code hints. Try 5 questions free without signup. India's best free exam prep app." />
         <meta name="keywords" content="free mock test online 2026, UPSC preparation 2026 free, JEE Main mock test 2026, NEET practice questions 2026, SSC CGL online test free, IBPS PO mock test 2026, GATE CS preparation free, CAT mock test free, best free exam app India, competitive exam preparation free, online test series India, AI question generator, previous year papers with solutions, daily GK quiz, coding practice free, LeetCode India, study planner, exam preparation website free, government exam preparation online, IAS IPS preparation, IIT JEE coaching free, NEET coaching free, bank exam preparation, MBA entrance exam, data structures algorithms, adaptive learning, mistake book, performance analytics, exam strategy, toppers strategy" />
         <meta property="og:title" content="ExamPrep - Free Mock Tests 2026 | UPSC, JEE, NEET, SSC, Banking" />
-        <meta property="og:description" content="5000+ free AI practice questions. UPSC, JEE, NEET, SSC, Banking mock tests. Try 5 questions free — no signup. Daily quiz, coding practice, AI tutor." />
+        <meta property="og:description" content="5000+ free AI practice questions. UPSC, JEE, NEET, SSC, Banking mock tests. Try 5 questions free — no signup. Daily quiz, coding practice with AI code hints, AI tutor." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://zencodio.com" />
         <meta property="og:image" content="https://zencodio.com/og-image.png" />
@@ -115,6 +116,7 @@ export default function HomePage() {
             {"@type": "Question", "name": "Can I take full-length mock tests on ExamPrep?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! ExamPrep offers full-length timed mock tests that follow the exact pattern of real exams — JEE (75 questions, 3 hours), UPSC Prelims (90 questions, 2 hours), NEET (180 questions, 200 minutes), and more. Negative marking and section-wise scoring are included."}},
             {"@type": "Question", "name": "Does ExamPrep have previous year question papers?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, ExamPrep includes previous year question (PYQ) papers for all supported exams. You can practice year-wise or topic-wise with detailed solutions and explanations."}},
             {"@type": "Question", "name": "How is ExamPrep different from other exam apps?", "acceptedAnswer": {"@type": "Answer", "text": "ExamPrep is powered by AI that generates unlimited exam-level questions — you never run out of practice material. It features adaptive learning, a personal AI tutor, mistake book with flashcard review, coding practice with in-browser editor, and comprehensive analytics. All starting free."}},
+            {"@type": "Question", "name": "Does ExamPrep help with coding interview problems?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. ExamPrep includes LeetCode-style coding problems with an in-browser code editor supporting Python and Java, automated test case evaluation, and an AI Code Hint helper that explains the approach, algorithm, steps, and time/space complexity for any problem — without spoiling the code. Free users get 10 hints/day, Pro users get 20/day, Premium users get unlimited hints."}},
           ]
         })}</script>
         <script type="application/ld+json">{JSON.stringify({
@@ -322,7 +324,7 @@ export default function HomePage() {
             </p>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white pt-2">Features That Set Us Apart</h3>
             <p>
-              <strong>Daily Quiz:</strong> 20 fresh questions every day with a 20-minute timer. Compete on the leaderboard and build consistency with streak tracking. <strong>Mistake Book:</strong> Every wrong answer is automatically logged with the correct explanation, available in flashcard review mode. <strong>AI Chatbot Tutor:</strong> Ask questions like "How is my performance in Organic Chemistry?" and get data-driven answers from an AI that has full access to your analytics. <strong>Study Planner:</strong> AI generates a personalized weekly schedule based on your target exam date, daily available hours, and weak areas.
+              <strong>Daily Quiz:</strong> 20 fresh questions every day with a 20-minute timer. Compete on the leaderboard and build consistency with streak tracking. <strong>Mistake Book:</strong> Every wrong answer is automatically logged with the correct explanation, available in flashcard review mode. <strong>AI Chatbot Tutor:</strong> Ask questions like "How is my performance in Organic Chemistry?" and get data-driven answers from an AI that has full access to your analytics. <strong>Study Planner:</strong> AI generates a personalized weekly schedule based on your target exam date, daily available hours, and weak areas. <strong>AI Code Hints:</strong> Stuck on a coding problem? Get an AI-generated approach with algorithm, step-by-step thinking, and time/space complexity — without spoiling the code so you still learn by implementing it yourself.
             </p>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white pt-2">Start Free, Upgrade When Ready</h3>
             <p>
