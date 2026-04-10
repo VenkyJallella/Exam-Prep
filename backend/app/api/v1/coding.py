@@ -284,7 +284,7 @@ async def get_ai_hint(
     limit = HINT_LIMITS.get(plan.value if hasattr(plan, 'value') else plan, 10)
     await check_daily_limit(user.id, "coding_hints", limit)
 
-    # Generate hint with AI
+    # Generate hint with AI (v2 — bumped to invalidate old truncated cached responses)
     prompt = f"""You are a senior software engineer mentoring a student on a coding problem.
 
 Problem: {problem.title}
@@ -320,8 +320,9 @@ Format:
             prompt,
             model=settings.GEMINI_MODEL,
             temperature=0.7,
-            max_tokens=500,
+            max_tokens=2000,
             use_cache=True,
+            thinking_budget=0,
         )
 
         await increment_daily_usage(user.id, "coding_hints")

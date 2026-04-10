@@ -363,8 +363,22 @@ export default function CodingProblemPage() {
               )}
               {!hintLoading && hintData && (
                 <>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                    {hintData.hint}
+                  <div className="space-y-2 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    {hintData.hint.split('\n').map((line, i) => {
+                      if (!line.trim()) return <div key={i} className="h-1" />;
+                      // Render **bold** segments
+                      const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                      return (
+                        <p key={i} className="whitespace-pre-wrap">
+                          {parts.map((part, j) => {
+                            if (part.startsWith('**') && part.endsWith('**')) {
+                              return <strong key={j} className="font-semibold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
+                            }
+                            return <span key={j}>{part}</span>;
+                          })}
+                        </p>
+                      );
+                    })}
                   </div>
                   <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
                     ⚠️ This is a hint only — no code provided. Try implementing it yourself!
