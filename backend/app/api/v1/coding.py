@@ -263,6 +263,89 @@ async def get_submissions(
     }
 
 
+HINT_LIMITS = {"free": 10, "pro": 20, "premium": 999}
+
+
+@router.post("/{slug}/hint")
+async def get_ai_hint(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get AI-generated approach/hint for a coding problem. No code — only strategy."""
+    from app.core.subscription import get_user_plan, check_daily_limit, increment_daily_usage
+    from app.ai.client import generate_completion
+    from app.config import settings
+
+    problem = await coding_service.get_problem(db, slug)
+
+    # Check plan limits
+    plan = await get_user_plan(db, user.id)
+    limit = HINT_LIMITS.get(plan.value if hasattr(plan, 'value') else plan, 10)
+    await check_daily_limit(user.id, "coding_hints", limit)
+
+    # Generate hint with AI
+    prompt = f"""You are a senior software engineer mentoring a student on a coding problem.
+
+Problem: {problem.title}
+Description: {problem.description[:500]}
+Difficulty: {problem.difficulty.value if hasattr(problem.difficulty, 'value') else problem.difficulty}
+Tags: {', '.join(problem.tags or [])}
+
+Give a HINT to help the student solve this problem. Rules:
+1. Explain the APPROACH and ALGORITHM to use (e.g., "Use a hash map", "This is a sliding window problem")
+2. Give step-by-step thinking process (3-5 steps)
+3. Mention time and space complexity of the optimal solution
+4. Give 1-2 subtle hints if the approach is tricky
+5. NEVER write any code — not even pseudocode
+6. NEVER give the direct answer
+7. Encourage the student to implement it themselves
+8. Keep it concise — under 200 words
+9. Use simple language a beginner can understand
+
+Format:
+**Approach:** [algorithm/data structure name]
+
+**Steps:**
+1. [step 1]
+2. [step 2]
+3. [step 3]
+
+**Complexity:** Time: O(...), Space: O(...)
+
+**Hint:** [1-2 subtle hints]"""
+
+    try:
+        response = await generate_completion(
+            prompt,
+            model=settings.GEMINI_MODEL,
+            temperature=0.7,
+            max_tokens=500,
+            use_cache=True,
+        )
+
+        await increment_daily_usage(user.id, "coding_hints")
+
+        # Get remaining hints
+        from app.core.subscription import get_daily_usage
+        used = await get_daily_usage(user.id, "coding_hints")
+
+        return {
+            "status": "success",
+            "data": {
+                "hint": response.strip(),
+                "used": used,
+                "limit": limit,
+                "remaining": max(0, limit - used),
+            },
+        }
+    except Exception as e:
+        if "DAILY_LIMIT" in str(e) or "429" in str(e):
+            raise
+        from app.exceptions import AppException
+        raise AppException(500, "AI_ERROR", "Failed to generate hint. Try again.")
+
+
 @router.post("/admin/create")
 async def admin_create_problem(
     body: dict = Body(...),

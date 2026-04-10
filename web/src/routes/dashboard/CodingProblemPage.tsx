@@ -43,6 +43,9 @@ export default function CodingProblemPage() {
   const [activeTab, setActiveTab] = useState<'testcases' | 'result' | 'custom'>('testcases');
   const [customInput, setCustomInput] = useState('');
   const [customOutput, setCustomOutput] = useState('');
+  const [hintOpen, setHintOpen] = useState(false);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintData, setHintData] = useState<{ hint: string; used: number; limit: number; remaining: number } | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -81,6 +84,27 @@ export default function CodingProblemPage() {
       setCustomOutput(res.data.data.output || res.data.data.error_message || 'No output');
     } catch { toast.error('Run failed'); }
     finally { setRunning(false); }
+  };
+
+  const handleGetHint = async () => {
+    if (!slug) return;
+    setHintOpen(true);
+    if (hintData) return; // already loaded for this session
+    setHintLoading(true);
+    try {
+      const res = await apiClient.post(`/coding/${slug}/hint`);
+      setHintData(res.data.data);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === 'string' && detail.includes('DAILY_LIMIT')) {
+        toast.error('Daily hint limit reached. Upgrade for more.');
+      } else {
+        toast.error('Failed to get hint. Try again.');
+      }
+      setHintOpen(false);
+    } finally {
+      setHintLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -186,6 +210,15 @@ export default function CodingProblemPage() {
               </select>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleGetHint}
+                disabled={running || submitting || hintLoading}
+                title="Get an AI hint (no code, just approach)"
+                className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+              >
+                <span>💡</span>
+                <span>{hintLoading ? 'Thinking...' : 'AI Hint'}</span>
+              </button>
               <button onClick={handleRun} disabled={running || submitting}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
                 {running ? 'Running...' : 'Run'}
@@ -309,6 +342,52 @@ export default function CodingProblemPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Hint Modal */}
+      {hintOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setHintOpen(false)}>
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-gray-900" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-800">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💡</span>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">AI Hint — {problem.title}</h2>
+              </div>
+              <button onClick={() => setHintOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+            </div>
+            <div className="p-5">
+              {hintLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-primary-600" />
+                  Generating hint...
+                </div>
+              )}
+              {!hintLoading && hintData && (
+                <>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                    {hintData.hint}
+                  </div>
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    ⚠️ This is a hint only — no code provided. Try implementing it yourself!
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                    <span>
+                      {hintData.limit >= 999
+                        ? 'Unlimited hints (Premium)'
+                        : `${hintData.remaining}/${hintData.limit} hints left today`}
+                    </span>
+                    <button
+                      onClick={() => setHintOpen(false)}
+                      className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
