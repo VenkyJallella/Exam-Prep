@@ -283,6 +283,26 @@ async def purge_jobs_by_source(db: AsyncSession, sources: list[str]) -> int:
     return count
 
 
+async def reset_stale_expired_jobs(db: AsyncSession) -> int:
+    """Re-activate AI-generated jobs that were marked expired due to stale AI deadlines.
+
+    Sets their apply_deadline to NULL and status back to active. Useful after fixing the
+    AI prompt — old data shouldn't stay buried.
+    """
+    rows = await db.execute(
+        select(Job).where(Job.source == "gemini", Job.status == "expired")
+    )
+    count = 0
+    for job in rows.scalars().all():
+        job.status = "active"
+        job.apply_deadline = None
+        count += 1
+    if count:
+        await db.commit()
+        logger.info("Revived %d stale-expired AI jobs", count)
+    return count
+
+
 async def expire_old_jobs(db: AsyncSession) -> int:
     """Mark jobs whose deadline has passed as expired. Returns count."""
     today = date.today()
@@ -398,40 +418,50 @@ def _parse_jobs_json(raw: str) -> list[dict]:
 
 GOVT_INGEST_PROMPT = """You are a recruitment data extractor for Indian government jobs. ALL output must be in ENGLISH only.
 
-List {count} currently-relevant Indian government job notifications. Include both:
-- Currently-open notifications (apply_deadline in the future)
-- Recurring annual exams expected to release notifications soon (use the typical month, salary band, vacancy count)
+TODAY'S DATE IS {today}. You are operating in {year}.
 
-Cover diverse categories: SSC CGL, SSC CHSL, SSC MTS, IBPS PO, IBPS Clerk, IBPS RRB, SBI PO, SBI Clerk,
-RBI Grade B, RBI Assistant, UPSC CSE, UPSC NDA, UPSC CDS, UPSC ESE, RRB NTPC, RRB Group D, RRB JE, RRB ALP,
-ISRO Scientist, DRDO, BARC, NTPC, ONGC, IOCL, BHEL, GAIL, State PSC exams (UPPSC, BPSC, MPPSC, RPSC, TNPSC, etc.),
-CTET, KVS, NVS, Bank PO/Clerk, LIC AAO, LIC ADO, India Post GDS, Indian Army, Indian Navy, Indian Air Force,
-CAPF (BSF, CISF, CRPF, ITBP, SSB), and Delhi Police / state police constable.
+Generate {count} Indian government job notifications. For each one, the apply_deadline MUST be either:
+  (a) A FUTURE date strictly after {today} (at least 14 days in the future), OR
+  (b) null (for recurring annual exams whose next notification cycle is not yet announced)
+
+Do NOT use deadlines from {prev_year} or earlier — those are stale and unusable. If you don't know
+the current cycle's deadline, set apply_deadline to null and use the typical recurring posted_date pattern.
+
+Cover diverse categories. Pick from real recurring Indian govt exams:
+SSC CGL, SSC CHSL, SSC MTS, SSC GD Constable, IBPS PO, IBPS Clerk, IBPS RRB, IBPS SO, SBI PO, SBI Clerk,
+RBI Grade B, RBI Assistant, UPSC CSE, UPSC NDA, UPSC CDS, UPSC ESE, UPSC IFS, RRB NTPC, RRB Group D, RRB JE,
+RRB ALP, RRB Technician, ISRO Scientist, DRDO, BARC, NTPC, ONGC, IOCL, BHEL, GAIL, NPCIL, HPCL,
+State PSC exams (UPPSC, BPSC, MPPSC, RPSC, TNPSC, KPSC, APPSC, JKPSC, HPSC, etc.),
+CTET, UPTET, KVS, NVS, DSSSB, Bank PO/Clerk, LIC AAO, LIC ADO, India Post GDS, Indian Army Agniveer,
+Indian Navy SSR/AA, Indian Air Force AFCAT, CAPF AC, BSF, CISF, CRPF, ITBP, SSB, Delhi Police constable,
+state police constable/SI exams, Anganwadi, Forest Guard, PWD JE.
 
 CRITICAL: Output ONLY a valid JSON array. NO markdown fences, NO commentary, NO explanation before or after.
 Start with [ and end with ]. Every value MUST be in English.
 
 Schema for each item:
 {{
-  "title": "Notification title in English (e.g., 'SSC CGL 2026 Notification - 14000 Vacancies')",
+  "title": "Notification title in English (e.g., 'SSC CGL {year} Notification - 14000 Vacancies')",
   "category": "one of: ssc, upsc, banking, railway, psu, defense, teaching, police, state-govt, govt-exam",
-  "company": "Recruiting body name in English",
+  "company": "Recruiting body name in English (e.g., Staff Selection Commission)",
   "short_description": "1-2 sentence English summary, no markdown",
-  "description": "5-8 sentence English description covering eligibility, posts, salary, exam pattern. Plain text only.",
+  "description": "5-8 sentence English description covering eligibility, posts, salary, exam pattern, selection process. Plain text only.",
   "eligibility": "Education + age requirements in plain English",
   "vacancies": 14000,
   "salary_text": "Rs 35400 - Rs 112400",
   "location": "All India",
-  "apply_url": "https://ssc.nic.in/...",
-  "apply_deadline": "2026-05-15",
-  "posted_date": "2026-04-10",
+  "apply_url": "https://ssc.nic.in/",
+  "apply_deadline": null,
+  "posted_date": "{today}",
   "tags": ["ssc", "cgl", "graduate", "central-govt"]
 }}
 
 Rules:
-- Only real notifications. Use real official URLs (ssc.nic.in, upsc.gov.in, ibps.in, sbi.co.in, rrbcdg.gov.in, drdo.gov.in, isro.gov.in, etc.)
-- Use plain "Rs" instead of the rupee symbol to avoid encoding issues
-- Dates in YYYY-MM-DD format only
+- Only real recurring Indian govt notifications
+- Use real official URLs: ssc.nic.in, upsc.gov.in, ibps.in, sbi.co.in, rrbcdg.gov.in, drdo.gov.in, isro.gov.in, indiapost.gov.in, joinindianarmy.nic.in, joinindiannavy.gov.in, careerindianairforce.cdac.in, etc.
+- Use plain "Rs" instead of the rupee symbol
+- Dates in YYYY-MM-DD format ONLY. apply_deadline must be > {today} or null. NEVER use {prev_year} or earlier dates.
+- posted_date should be {today} or recent (within last 30 days)
 - Return at least {count} entries
 - Output JSON array ONLY"""
 
@@ -441,7 +471,13 @@ async def ingest_govt_via_ai(db: AsyncSession, count: int = 25) -> int:
     from app.ai.client import generate_completion
     from app.config import settings
 
-    prompt = GOVT_INGEST_PROMPT.format(count=count)
+    today = date.today()
+    prompt = GOVT_INGEST_PROMPT.format(
+        count=count,
+        today=today.isoformat(),
+        year=today.year,
+        prev_year=today.year - 1,
+    )
     try:
         raw = await generate_completion(
             prompt,
@@ -458,10 +494,23 @@ async def ingest_govt_via_ai(db: AsyncSession, count: int = 25) -> int:
         return 0
 
     inserted = 0
+    skipped_stale = 0
     for item in items:
         try:
             if not item.get("title") or not item.get("apply_url"):
                 continue
+
+            # Skip items with stale deadlines (Gemini's training data is older than today)
+            deadline = _parse_date(item.get("apply_deadline"))
+            if deadline and deadline <= today:
+                skipped_stale += 1
+                # Drop the deadline rather than skipping the whole job — recurring exams
+                # are still useful even if the AI guessed a stale date.
+                item["apply_deadline"] = None
+
+            # Always force posted_date to today so they appear fresh
+            item["posted_date"] = today.isoformat()
+
             # Dedupe by source_id from title hash
             import hashlib
             title_hash = hashlib.md5(item["title"].lower().encode()).hexdigest()[:16]
@@ -495,7 +544,7 @@ async def ingest_govt_via_ai(db: AsyncSession, count: int = 25) -> int:
             logger.warning("Govt AI job skipped: %s", e)
             continue
 
-    logger.info("Govt AI: inserted %d jobs", inserted)
+    logger.info("Govt AI: inserted %d jobs (cleared %d stale deadlines)", inserted, skipped_stale)
     return inserted
 
 

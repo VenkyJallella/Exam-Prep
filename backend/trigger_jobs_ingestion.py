@@ -35,6 +35,10 @@ async def main():
                 purged = await job_service.purge_jobs_by_source(db, ["arbeitnow"])
                 print(f"  Removed {purged} jobs.")
                 print()
+                print("→ Reviving AI-generated jobs wrongly marked expired due to stale AI dates...")
+                revived = await job_service.reset_stale_expired_jobs(db)
+                print(f"  Revived {revived} jobs (deadlines cleared).")
+                print()
 
             print("→ Running full ingestion (RemoteOK English remote + Gemini Indian govt)...")
             summary = await job_service.run_full_ingestion(db)
