@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, exams, questions, practice, tests, analytics, gamification, mistakes, admin, study_planner, websocket, payments, blog, coding, daily_quiz, notifications, discussions, challenges, chatbot, pages, interview, email_campaigns
+from app.api.v1 import auth, users, exams, questions, practice, tests, analytics, gamification, mistakes, admin, study_planner, websocket, payments, blog, coding, daily_quiz, notifications, discussions, challenges, chatbot, pages, interview, email_campaigns, jobs
 
 api_router = APIRouter()
 
@@ -24,5 +24,6 @@ api_router.include_router(challenges.router, prefix="/challenges", tags=["Challe
 api_router.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 api_router.include_router(pages.router, prefix="/pages", tags=["Pages"])
 api_router.include_router(interview.router, prefix="/interview", tags=["Interview Prep"])
+api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 api_router.include_router(email_campaigns.router, prefix="/admin/email", tags=["Email Campaigns"])
 api_router.include_router(websocket.router, tags=["WebSocket"])

@@ -1,0 +1,515 @@
+"""Job postings service — listing, ingestion, AI enrichment."""
+import logging
+import re
+from datetime import datetime, date, timezone
+from typing import Any
+from uuid import UUID
+
+import httpx
+from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.job import Job
+from app.exceptions import AppException
+
+logger = logging.getLogger("examprep.jobs")
+
+
+# ── Categories ─────────────────────────────────────────────────────
+
+CATEGORIES = [
+    "govt-exam",
+    "tech",
+    "banking",
+    "ssc",
+    "upsc",
+    "railway",
+    "defense",
+    "psu",
+    "teaching",
+    "police",
+    "state-govt",
+]
+
+
+# ── Helpers ────────────────────────────────────────────────────────
+
+
+def _slugify(text: str) -> str:
+    slug = text.lower().strip()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-")[:340]
+
+
+async def _unique_slug(db: AsyncSession, base_slug: str) -> str:
+    slug = base_slug
+    counter = 1
+    while True:
+        result = await db.execute(select(Job.id).where(Job.slug == slug))
+        if result.scalar_one_or_none() is None:
+            return slug
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+
+def _parse_date(value: Any) -> date | None:
+    """Best-effort parse of dates from various formats."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, date):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc).date()
+        except (ValueError, OSError):
+            return None
+    if isinstance(value, str):
+        for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"):
+            try:
+                return datetime.strptime(value[:19], fmt).date()
+            except ValueError:
+                continue
+    return None
+
+
+# ── Public listing ─────────────────────────────────────────────────
+
+
+async def list_active(
+    db: AsyncSession,
+    page: int = 1,
+    per_page: int = 20,
+    category: str | None = None,
+    search: str | None = None,
+    is_remote: bool | None = None,
+) -> tuple[list[Job], int]:
+    """List active job postings."""
+    base = select(Job).where(
+        Job.status == "active",
+        Job.is_active == True,
+    )
+    count_q = select(func.count()).select_from(Job).where(
+        Job.status == "active",
+        Job.is_active == True,
+    )
+
+    if category:
+        base = base.where(Job.category == category)
+        count_q = count_q.where(Job.category == category)
+
+    if is_remote is not None:
+        base = base.where(Job.is_remote == is_remote)
+        count_q = count_q.where(Job.is_remote == is_remote)
+
+    if search:
+        like = f"%{search}%"
+        cond = or_(Job.title.ilike(like), Job.short_description.ilike(like), Job.company.ilike(like))
+        base = base.where(cond)
+        count_q = count_q.where(cond)
+
+    total = (await db.execute(count_q)).scalar() or 0
+
+    jobs = (
+        await db.execute(
+            base.order_by(desc(Job.is_featured), desc(Job.posted_date), desc(Job.created_at))
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).scalars().all()
+
+    return list(jobs), total
+
+
+async def get_by_slug(db: AsyncSession, slug: str, increment_views: bool = True) -> Job:
+    result = await db.execute(
+        select(Job).where(
+            Job.slug == slug,
+            Job.is_active == True,
+        )
+    )
+    job = result.scalar_one_or_none()
+    if not job:
+        raise AppException(404, "JOB_NOT_FOUND", "Job posting not found")
+    if increment_views:
+        job.view_count += 1
+        await db.commit()
+        await db.refresh(job)
+    return job
+
+
+async def get_categories_with_counts(db: AsyncSession) -> list[dict]:
+    """Return list of categories with active job counts."""
+    rows = await db.execute(
+        select(Job.category, func.count(Job.id))
+        .where(Job.status == "active", Job.is_active == True)
+        .group_by(Job.category)
+    )
+    return [{"category": cat, "count": cnt} for cat, cnt in rows.all()]
+
+
+async def increment_click(db: AsyncSession, slug: str) -> None:
+    """Track when a user clicks the apply link."""
+    job = await get_by_slug(db, slug, increment_views=False)
+    job.click_count += 1
+    await db.commit()
+
+
+# ── Admin CRUD ─────────────────────────────────────────────────────
+
+
+async def list_all(
+    db: AsyncSession,
+    page: int = 1,
+    per_page: int = 20,
+    status: str | None = None,
+    category: str | None = None,
+    search: str | None = None,
+) -> tuple[list[Job], int]:
+    base = select(Job).where(Job.is_active == True)
+    count_q = select(func.count()).select_from(Job).where(Job.is_active == True)
+
+    if status:
+        base = base.where(Job.status == status)
+        count_q = count_q.where(Job.status == status)
+    if category:
+        base = base.where(Job.category == category)
+        count_q = count_q.where(Job.category == category)
+    if search:
+        like = f"%{search}%"
+        base = base.where(Job.title.ilike(like))
+        count_q = count_q.where(Job.title.ilike(like))
+
+    total = (await db.execute(count_q)).scalar() or 0
+
+    jobs = (
+        await db.execute(
+            base.order_by(desc(Job.created_at))
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+    ).scalars().all()
+    return list(jobs), total
+
+
+async def get_by_id(db: AsyncSession, job_id: UUID) -> Job:
+    result = await db.execute(select(Job).where(Job.id == job_id, Job.is_active == True))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise AppException(404, "JOB_NOT_FOUND", "Job not found")
+    return job
+
+
+async def create_job(db: AsyncSession, data: dict) -> Job:
+    """Create a job. Dedupes by source_id if present."""
+    source_id = data.get("source_id")
+    if source_id:
+        existing = await db.execute(select(Job).where(Job.source_id == source_id))
+        if existing.scalar_one_or_none():
+            return existing.scalar_one()  # type: ignore
+
+    title = data["title"][:300]
+    slug = await _unique_slug(db, _slugify(title))
+
+    job = Job(
+        title=title,
+        slug=slug,
+        company=(data.get("company") or None),
+        category=data["category"],
+        short_description=(data.get("short_description") or data.get("description", ""))[:500],
+        description=data["description"],
+        eligibility=data.get("eligibility"),
+        salary_min=data.get("salary_min"),
+        salary_max=data.get("salary_max"),
+        salary_text=(data.get("salary_text") or None),
+        location=(data.get("location") or None),
+        is_remote=bool(data.get("is_remote", False)),
+        apply_url=data["apply_url"],
+        apply_deadline=_parse_date(data.get("apply_deadline")),
+        posted_date=_parse_date(data.get("posted_date")) or date.today(),
+        vacancies=data.get("vacancies"),
+        source=data.get("source", "manual"),
+        source_id=source_id,
+        tags=data.get("tags"),
+        related_exam_id=data.get("related_exam_id"),
+        status=data.get("status", "active"),
+        is_featured=bool(data.get("is_featured", False)),
+        is_ai_generated=bool(data.get("is_ai_generated", False)),
+        meta_description=(data.get("meta_description") or data.get("short_description", ""))[:160],
+        meta_keywords=data.get("meta_keywords"),
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+    return job
+
+
+async def update_job(db: AsyncSession, job_id: UUID, data: dict) -> Job:
+    job = await get_by_id(db, job_id)
+    for field in (
+        "title", "company", "category", "short_description", "description", "eligibility",
+        "salary_min", "salary_max", "salary_text", "location", "is_remote",
+        "apply_url", "vacancies", "source", "tags",
+        "status", "is_featured", "meta_description", "meta_keywords",
+    ):
+        if field in data:
+            setattr(job, field, data[field])
+    if "apply_deadline" in data:
+        job.apply_deadline = _parse_date(data["apply_deadline"])
+    if "posted_date" in data:
+        job.posted_date = _parse_date(data["posted_date"])
+    await db.commit()
+    await db.refresh(job)
+    return job
+
+
+async def delete_job(db: AsyncSession, job_id: UUID) -> None:
+    job = await get_by_id(db, job_id)
+    job.is_active = False
+    await db.commit()
+
+
+async def expire_old_jobs(db: AsyncSession) -> int:
+    """Mark jobs whose deadline has passed as expired. Returns count."""
+    today = date.today()
+    rows = await db.execute(
+        select(Job).where(
+            Job.status == "active",
+            Job.apply_deadline.is_not(None),
+            Job.apply_deadline < today,
+        )
+    )
+    count = 0
+    for job in rows.scalars().all():
+        job.status = "expired"
+        count += 1
+    if count:
+        await db.commit()
+        logger.info("Expired %d jobs past deadline", count)
+    return count
+
+
+# ── Ingestion: free public APIs ────────────────────────────────────
+
+
+async def ingest_remoteok(db: AsyncSession, limit: int = 50) -> int:
+    """Pull jobs from RemoteOK free JSON API. Returns # inserted."""
+    headers = {"User-Agent": "ExamPrep-Jobs-Bot/1.0 (+https://zencodio.com)"}
+    inserted = 0
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.get("https://remoteok.com/api", headers=headers)
+            r.raise_for_status()
+            payload = r.json()
+            # First entry is metadata; skip it
+            jobs_raw = [j for j in payload if isinstance(j, dict) and j.get("id")]
+    except Exception as e:
+        logger.warning("RemoteOK ingestion failed: %s", e)
+        return 0
+
+    for j in jobs_raw[:limit]:
+        try:
+            position = j.get("position", "")
+            company = j.get("company", "")
+            if not position:
+                continue
+            # Dedupe by source_id
+            source_id = f"remoteok:{j.get('id')}"
+            existing = await db.execute(select(Job.id).where(Job.source_id == source_id))
+            if existing.scalar_one_or_none():
+                continue
+
+            tags = j.get("tags", []) or []
+            description = (j.get("description") or "")[:5000]
+            short = re.sub(r"<[^>]+>", "", description)[:480]
+
+            await create_job(db, {
+                "title": position,
+                "company": company,
+                "category": "tech",
+                "short_description": short,
+                "description": description,
+                "location": j.get("location") or "Remote",
+                "is_remote": True,
+                "salary_min": j.get("salary_min") or None,
+                "salary_max": j.get("salary_max") or None,
+                "apply_url": j.get("apply_url") or j.get("url"),
+                "posted_date": _parse_date(j.get("date")),
+                "source": "remoteok",
+                "source_id": source_id,
+                "tags": tags[:10],
+                "meta_description": short[:160],
+            })
+            inserted += 1
+        except Exception as e:
+            logger.warning("RemoteOK job skipped: %s", e)
+            continue
+
+    logger.info("RemoteOK: inserted %d jobs", inserted)
+    return inserted
+
+
+async def ingest_arbeitnow(db: AsyncSession, limit: int = 50) -> int:
+    """Pull jobs from Arbeitnow free JSON API."""
+    inserted = 0
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.get("https://www.arbeitnow.com/api/job-board-api")
+            r.raise_for_status()
+            payload = r.json()
+            jobs_raw = payload.get("data", [])
+    except Exception as e:
+        logger.warning("Arbeitnow ingestion failed: %s", e)
+        return 0
+
+    for j in jobs_raw[:limit]:
+        try:
+            title = j.get("title", "")
+            if not title:
+                continue
+            slug_id = j.get("slug", "")
+            source_id = f"arbeitnow:{slug_id}"
+            existing = await db.execute(select(Job.id).where(Job.source_id == source_id))
+            if existing.scalar_one_or_none():
+                continue
+
+            description = (j.get("description") or "")[:5000]
+            short = re.sub(r"<[^>]+>", "", description)[:480]
+
+            await create_job(db, {
+                "title": title,
+                "company": j.get("company_name"),
+                "category": "tech",
+                "short_description": short,
+                "description": description,
+                "location": j.get("location") or "Remote",
+                "is_remote": bool(j.get("remote")),
+                "apply_url": j.get("url"),
+                "posted_date": _parse_date(j.get("created_at")),
+                "source": "arbeitnow",
+                "source_id": source_id,
+                "tags": (j.get("tags") or [])[:10],
+                "meta_description": short[:160],
+            })
+            inserted += 1
+        except Exception as e:
+            logger.warning("Arbeitnow job skipped: %s", e)
+            continue
+
+    logger.info("Arbeitnow: inserted %d jobs", inserted)
+    return inserted
+
+
+# ── Ingestion: Indian govt jobs via Gemini ─────────────────────────
+
+
+GOVT_INGEST_PROMPT = """You are a recruitment data extractor for Indian government jobs.
+
+List the {count} most important currently-open Indian government job notifications as of today.
+Focus on major exams: SSC CGL, SSC CHSL, IBPS PO, IBPS Clerk, SBI PO, RBI Grade B, UPSC CSE, UPSC NDA,
+RRB NTPC, RRB Group D, RRB JE, ISRO Scientist, DRDO, BARC, State PSC exams (UPPSC, BPSC, MPPSC, etc.),
+CTET, KVS, NVS, Bank PO/Clerk, LIC AAO, and similar.
+
+Return ONLY a JSON array (no markdown, no commentary). Each item must have:
+{{
+  "title": "exact notification title (e.g., 'SSC CGL 2026 Notification — 14000+ Vacancies')",
+  "category": "ssc | upsc | banking | railway | psu | defense | teaching | police | state-govt | govt-exam",
+  "company": "name of recruiting body (e.g., 'Staff Selection Commission')",
+  "short_description": "1-2 sentence summary, no markdown",
+  "description": "5-8 sentence detailed description with eligibility, posts, salary, exam pattern. Plain text, no markdown.",
+  "eligibility": "education + age requirements as plain text",
+  "vacancies": 14000,
+  "salary_text": "₹35,400 - ₹1,12,400",
+  "location": "All India / specific state if applicable",
+  "apply_url": "official application URL (e.g., https://ssc.nic.in/...)",
+  "apply_deadline": "YYYY-MM-DD if known, else null",
+  "posted_date": "YYYY-MM-DD",
+  "tags": ["ssc", "cgl", "graduate", "central-govt"]
+}}
+
+Rules:
+- Only include real, currently-active or recently-announced notifications
+- Use real official URLs (ssc.nic.in, upsc.gov.in, ibps.in, sbi.co.in, rrbcdg.gov.in, etc.)
+- Be accurate with dates and vacancy counts
+- Skip any notification you're uncertain about
+- Return at least {count} items if you can"""
+
+
+async def ingest_govt_via_ai(db: AsyncSession, count: int = 20) -> int:
+    """Use Gemini to fetch current major Indian govt job notifications."""
+    from app.ai.client import generate_completion, _parse_json_robust
+    from app.config import settings
+
+    prompt = GOVT_INGEST_PROMPT.format(count=count)
+    try:
+        raw = await generate_completion(
+            prompt,
+            model=settings.GEMINI_MODEL,
+            temperature=0.4,
+            max_tokens=8000,
+            use_cache=False,
+            thinking_budget=0,
+        )
+        items = _parse_json_robust(raw)
+    except Exception as e:
+        logger.warning("Govt AI ingestion failed: %s", e)
+        return 0
+
+    inserted = 0
+    for item in items:
+        try:
+            if not item.get("title") or not item.get("apply_url"):
+                continue
+            # Dedupe by source_id from title hash
+            import hashlib
+            title_hash = hashlib.md5(item["title"].lower().encode()).hexdigest()[:16]
+            source_id = f"gemini:{title_hash}"
+            existing = await db.execute(select(Job.id).where(Job.source_id == source_id))
+            if existing.scalar_one_or_none():
+                continue
+
+            await create_job(db, {
+                "title": item["title"],
+                "company": item.get("company"),
+                "category": item.get("category", "govt-exam"),
+                "short_description": item.get("short_description", "")[:500],
+                "description": item.get("description", item.get("short_description", "")),
+                "eligibility": item.get("eligibility"),
+                "salary_text": item.get("salary_text"),
+                "location": item.get("location") or "All India",
+                "is_remote": False,
+                "vacancies": item.get("vacancies"),
+                "apply_url": item["apply_url"],
+                "apply_deadline": _parse_date(item.get("apply_deadline")),
+                "posted_date": _parse_date(item.get("posted_date")),
+                "source": "gemini",
+                "source_id": source_id,
+                "tags": item.get("tags", [])[:10],
+                "is_ai_generated": True,
+                "meta_description": item.get("short_description", "")[:160],
+            })
+            inserted += 1
+        except Exception as e:
+            logger.warning("Govt AI job skipped: %s", e)
+            continue
+
+    logger.info("Govt AI: inserted %d jobs", inserted)
+    return inserted
+
+
+async def run_full_ingestion(db: AsyncSession) -> dict:
+    """Run all ingestion sources. Returns summary."""
+    expired = await expire_old_jobs(db)
+    remoteok = await ingest_remoteok(db)
+    arbeitnow = await ingest_arbeitnow(db)
+    govt = await ingest_govt_via_ai(db)
+    return {
+        "expired": expired,
+        "remoteok": remoteok,
+        "arbeitnow": arbeitnow,
+        "govt_ai": govt,
+        "total_inserted": remoteok + arbeitnow + govt,
+    }

@@ -46,6 +46,8 @@ const AdminUsers = lazy(() => import('./routes/admin/AdminUsers'));
 
 const BlogListPage = lazy(() => import('./routes/marketing/BlogListPage'));
 const BlogDetailPage = lazy(() => import('./routes/marketing/BlogDetailPage'));
+const JobsPage = lazy(() => import('./routes/marketing/JobsPage'));
+const JobDetailPage = lazy(() => import('./routes/marketing/JobDetailPage'));
 
 const AdminBlogs = lazy(() => import('./routes/admin/AdminBlogs'));
 const AdminBlogDetail = lazy(() => import('./routes/admin/AdminBlogDetail'));
@@ -104,6 +106,8 @@ export default function App() {
           <Route path="/page/:slug" element={<StaticPage />} />
           <Route path="/blog" element={<BlogListPage />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
+          <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/jobs/:slug" element={<JobDetailPage />} />
           <Route path="/try/:slug" element={<TryFreePage />} />
           <Route path="/interview" element={<InterviewPage />} />
         </Route>
