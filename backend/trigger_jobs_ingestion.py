@@ -2,7 +2,8 @@
 
 Usage on the VPS:
     cd /opt/Exam-Prep/backend
-    venv/bin/python trigger_jobs_ingestion.py
+    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py            # ingest only
+    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py --purge    # purge bad data first, then ingest
 
 (Replace `venv/bin/python` with whichever Python your venv uses.)
 """
@@ -21,13 +22,21 @@ async def main():
     from app.core.cache import init_redis, close_redis
     from app.services import job_service
 
+    purge = "--purge" in sys.argv
+
     print("→ Initializing DB + Redis...")
     await init_db()
     await init_redis()
 
     try:
         async with get_session() as db:
-            print("→ Running full ingestion (RemoteOK + Arbeitnow + Gemini govt)...")
+            if purge:
+                print("→ Purging non-Indian / German job sources (arbeitnow)...")
+                purged = await job_service.purge_jobs_by_source(db, ["arbeitnow"])
+                print(f"  Removed {purged} jobs.")
+                print()
+
+            print("→ Running full ingestion (RemoteOK English remote + Gemini Indian govt)...")
             summary = await job_service.run_full_ingestion(db)
             print()
             print("─" * 50)

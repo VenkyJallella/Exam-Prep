@@ -1,4 +1,5 @@
 """Job postings service — listing, ingestion, AI enrichment."""
+import json
 import logging
 import re
 from datetime import datetime, date, timezone
@@ -272,6 +273,16 @@ async def delete_job(db: AsyncSession, job_id: UUID) -> None:
     await db.commit()
 
 
+async def purge_jobs_by_source(db: AsyncSession, sources: list[str]) -> int:
+    """Hard-delete all jobs from the given source(s). Used for cleanup."""
+    from sqlalchemy import delete
+    result = await db.execute(delete(Job).where(Job.source.in_(sources)))
+    await db.commit()
+    count = result.rowcount or 0
+    logger.info("Purged %d jobs from sources %s", count, sources)
+    return count
+
+
 async def expire_old_jobs(db: AsyncSession) -> int:
     """Mark jobs whose deadline has passed as expired. Returns count."""
     today = date.today()
@@ -352,95 +363,82 @@ async def ingest_remoteok(db: AsyncSession, limit: int = 50) -> int:
     return inserted
 
 
-async def ingest_arbeitnow(db: AsyncSession, limit: int = 50) -> int:
-    """Pull jobs from Arbeitnow free JSON API."""
-    inserted = 0
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.get("https://www.arbeitnow.com/api/job-board-api")
-            r.raise_for_status()
-            payload = r.json()
-            jobs_raw = payload.get("data", [])
-    except Exception as e:
-        logger.warning("Arbeitnow ingestion failed: %s", e)
-        return 0
-
-    for j in jobs_raw[:limit]:
-        try:
-            title = j.get("title", "")
-            if not title:
-                continue
-            slug_id = j.get("slug", "")
-            source_id = f"arbeitnow:{slug_id}"
-            existing = await db.execute(select(Job.id).where(Job.source_id == source_id))
-            if existing.scalar_one_or_none():
-                continue
-
-            description = (j.get("description") or "")[:5000]
-            short = re.sub(r"<[^>]+>", "", description)[:480]
-
-            await create_job(db, {
-                "title": title,
-                "company": j.get("company_name"),
-                "category": "tech",
-                "short_description": short,
-                "description": description,
-                "location": j.get("location") or "Remote",
-                "is_remote": bool(j.get("remote")),
-                "apply_url": j.get("url"),
-                "posted_date": _parse_date(j.get("created_at")),
-                "source": "arbeitnow",
-                "source_id": source_id,
-                "tags": (j.get("tags") or [])[:10],
-                "meta_description": short[:160],
-            })
-            inserted += 1
-        except Exception as e:
-            logger.warning("Arbeitnow job skipped: %s", e)
-            continue
-
-    logger.info("Arbeitnow: inserted %d jobs", inserted)
-    return inserted
-
-
 # ── Ingestion: Indian govt jobs via Gemini ─────────────────────────
 
 
-GOVT_INGEST_PROMPT = """You are a recruitment data extractor for Indian government jobs.
+def _parse_jobs_json(raw: str) -> list[dict]:
+    """Extract a JSON array from a Gemini response, tolerating markdown fences and extra text."""
+    s = raw.strip()
+    # Strip markdown code fences
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?\s*", "", s)
+        s = re.sub(r"\s*```\s*$", "", s)
+    # Try direct parse
+    try:
+        data = json.loads(s)
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return [data]
+    except json.JSONDecodeError:
+        pass
+    # Find first [...] array in the text
+    start = s.find("[")
+    end = s.rfind("]")
+    if start >= 0 and end > start:
+        try:
+            data = json.loads(s[start : end + 1])
+            if isinstance(data, list):
+                return data
+        except json.JSONDecodeError:
+            pass
+    logger.warning("Could not parse jobs JSON. First 300 chars: %s", raw[:300])
+    return []
 
-List the {count} most important currently-open Indian government job notifications as of today.
-Focus on major exams: SSC CGL, SSC CHSL, IBPS PO, IBPS Clerk, SBI PO, RBI Grade B, UPSC CSE, UPSC NDA,
-RRB NTPC, RRB Group D, RRB JE, ISRO Scientist, DRDO, BARC, State PSC exams (UPPSC, BPSC, MPPSC, etc.),
-CTET, KVS, NVS, Bank PO/Clerk, LIC AAO, and similar.
 
-Return ONLY a JSON array (no markdown, no commentary). Each item must have:
+GOVT_INGEST_PROMPT = """You are a recruitment data extractor for Indian government jobs. ALL output must be in ENGLISH only.
+
+List {count} currently-relevant Indian government job notifications. Include both:
+- Currently-open notifications (apply_deadline in the future)
+- Recurring annual exams expected to release notifications soon (use the typical month, salary band, vacancy count)
+
+Cover diverse categories: SSC CGL, SSC CHSL, SSC MTS, IBPS PO, IBPS Clerk, IBPS RRB, SBI PO, SBI Clerk,
+RBI Grade B, RBI Assistant, UPSC CSE, UPSC NDA, UPSC CDS, UPSC ESE, RRB NTPC, RRB Group D, RRB JE, RRB ALP,
+ISRO Scientist, DRDO, BARC, NTPC, ONGC, IOCL, BHEL, GAIL, State PSC exams (UPPSC, BPSC, MPPSC, RPSC, TNPSC, etc.),
+CTET, KVS, NVS, Bank PO/Clerk, LIC AAO, LIC ADO, India Post GDS, Indian Army, Indian Navy, Indian Air Force,
+CAPF (BSF, CISF, CRPF, ITBP, SSB), and Delhi Police / state police constable.
+
+CRITICAL: Output ONLY a valid JSON array. NO markdown fences, NO commentary, NO explanation before or after.
+Start with [ and end with ]. Every value MUST be in English.
+
+Schema for each item:
 {{
-  "title": "exact notification title (e.g., 'SSC CGL 2026 Notification — 14000+ Vacancies')",
-  "category": "ssc | upsc | banking | railway | psu | defense | teaching | police | state-govt | govt-exam",
-  "company": "name of recruiting body (e.g., 'Staff Selection Commission')",
-  "short_description": "1-2 sentence summary, no markdown",
-  "description": "5-8 sentence detailed description with eligibility, posts, salary, exam pattern. Plain text, no markdown.",
-  "eligibility": "education + age requirements as plain text",
+  "title": "Notification title in English (e.g., 'SSC CGL 2026 Notification - 14000 Vacancies')",
+  "category": "one of: ssc, upsc, banking, railway, psu, defense, teaching, police, state-govt, govt-exam",
+  "company": "Recruiting body name in English",
+  "short_description": "1-2 sentence English summary, no markdown",
+  "description": "5-8 sentence English description covering eligibility, posts, salary, exam pattern. Plain text only.",
+  "eligibility": "Education + age requirements in plain English",
   "vacancies": 14000,
-  "salary_text": "₹35,400 - ₹1,12,400",
-  "location": "All India / specific state if applicable",
-  "apply_url": "official application URL (e.g., https://ssc.nic.in/...)",
-  "apply_deadline": "YYYY-MM-DD if known, else null",
-  "posted_date": "YYYY-MM-DD",
+  "salary_text": "Rs 35400 - Rs 112400",
+  "location": "All India",
+  "apply_url": "https://ssc.nic.in/...",
+  "apply_deadline": "2026-05-15",
+  "posted_date": "2026-04-10",
   "tags": ["ssc", "cgl", "graduate", "central-govt"]
 }}
 
 Rules:
-- Only include real, currently-active or recently-announced notifications
-- Use real official URLs (ssc.nic.in, upsc.gov.in, ibps.in, sbi.co.in, rrbcdg.gov.in, etc.)
-- Be accurate with dates and vacancy counts
-- Skip any notification you're uncertain about
-- Return at least {count} items if you can"""
+- Only real notifications. Use real official URLs (ssc.nic.in, upsc.gov.in, ibps.in, sbi.co.in, rrbcdg.gov.in, drdo.gov.in, isro.gov.in, etc.)
+- Use plain "Rs" instead of the rupee symbol to avoid encoding issues
+- Dates in YYYY-MM-DD format only
+- Return at least {count} entries
+- Output JSON array ONLY"""
 
 
-async def ingest_govt_via_ai(db: AsyncSession, count: int = 20) -> int:
+async def ingest_govt_via_ai(db: AsyncSession, count: int = 25) -> int:
     """Use Gemini to fetch current major Indian govt job notifications."""
-    from app.ai.client import generate_completion, _parse_json_robust
+    from app.ai.client import generate_completion
     from app.config import settings
 
     prompt = GOVT_INGEST_PROMPT.format(count=count)
@@ -449,11 +447,12 @@ async def ingest_govt_via_ai(db: AsyncSession, count: int = 20) -> int:
             prompt,
             model=settings.GEMINI_MODEL,
             temperature=0.4,
-            max_tokens=8000,
+            max_tokens=12000,
             use_cache=False,
             thinking_budget=0,
         )
-        items = _parse_json_robust(raw)
+        items = _parse_jobs_json(raw)
+        logger.info("Govt AI: parsed %d items from response", len(items))
     except Exception as e:
         logger.warning("Govt AI ingestion failed: %s", e)
         return 0
@@ -501,15 +500,18 @@ async def ingest_govt_via_ai(db: AsyncSession, count: int = 20) -> int:
 
 
 async def run_full_ingestion(db: AsyncSession) -> dict:
-    """Run all ingestion sources. Returns summary."""
+    """Run all ingestion sources. Returns summary.
+
+    Sources:
+      - RemoteOK: global English remote tech jobs
+      - Gemini AI: current Indian govt job notifications
+    """
     expired = await expire_old_jobs(db)
     remoteok = await ingest_remoteok(db)
-    arbeitnow = await ingest_arbeitnow(db)
     govt = await ingest_govt_via_ai(db)
     return {
         "expired": expired,
         "remoteok": remoteok,
-        "arbeitnow": arbeitnow,
         "govt_ai": govt,
-        "total_inserted": remoteok + arbeitnow + govt,
+        "total_inserted": remoteok + govt,
     }
