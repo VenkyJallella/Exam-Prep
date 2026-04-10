@@ -162,7 +162,7 @@ async def refill_all_low_pools(db: AsyncSession, max_batches: int = 5) -> dict:
         interleaved = []
         max_per_diff = max(len(v) for v in by_diff.values()) if by_diff else 0
         for i in range(max_per_diff):
-            for d in [3, 2, 4, 1, 5]:  # Medium first, then spread out
+            for d in [4, 5, 3, 2, 1]:  # Hard first — users need exam-level questions
                 if i < len(by_diff[d]):
                     interleaved.append(by_diff[d][i])
         by_exam[eid] = interleaved

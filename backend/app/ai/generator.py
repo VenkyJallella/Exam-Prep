@@ -69,7 +69,10 @@ async def generate_questions(
     logger.info("Generating %d questions for %s > %s > %s (difficulty=%d, existing=%d)",
                 count, exam.name, subject.name, topic.name, difficulty, len(existing_qs))
 
-    raw_questions = await generate_questions_json(prompt, model=model)
+    # Lower temperature for hard questions — forces Gemini to follow difficulty
+    # instructions more precisely instead of defaulting to easy patterns
+    temp = 0.7 if difficulty >= 4 else 0.8
+    raw_questions = await generate_questions_json(prompt, model=model, temperature=temp)
 
     questions = []
     skipped = 0

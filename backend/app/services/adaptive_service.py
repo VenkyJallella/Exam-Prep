@@ -49,9 +49,11 @@ async def get_adaptive_questions(
     mastery_result = await db.execute(mastery_q)
     masteries = {m.topic_id: m for m in mastery_result.scalars().all()}
 
-    # If no mastery data yet, fall back to random selection at medium difficulty
+    # If no mastery data yet, fall back to medium difficulty (exam-realistic)
     if not masteries:
-        return await _get_scoped_questions(db, exam_id, scope_topic_ids, seen_ids, count)
+        return await _get_scoped_questions(
+            db, exam_id, scope_topic_ids, seen_ids, count, diff_lo=2, diff_hi=4,
+        )
 
     # Classify topics by mastery level
     weak_topics: list[tuple[UUID, int]] = []   # (topic_id, recommended_difficulty)
@@ -99,10 +101,12 @@ async def get_adaptive_questions(
             used_ids.add(question.id)
         questions.extend(q)
 
-    # Fill remaining slots — widen scope progressively
+    # Fill remaining slots — widen scope but keep medium+ difficulty
     remaining = count - len(questions)
     if remaining > 0:
-        fill = await _get_scoped_questions(db, exam_id, scope_topic_ids, used_ids, remaining)
+        fill = await _get_scoped_questions(
+            db, exam_id, scope_topic_ids, used_ids, remaining, diff_lo=2, diff_hi=5,
+        )
         for q in fill:
             used_ids.add(q.id)
         questions.extend(fill)
@@ -163,8 +167,10 @@ async def _get_scoped_questions(
     scope_topic_ids: list[UUID] | None,
     exclude_ids: set[UUID],
     count: int,
+    diff_lo: int | None = None,
+    diff_hi: int | None = None,
 ) -> list[Question]:
-    """Fetch random questions within exam/subject scope."""
+    """Fetch random questions within exam/subject scope and optional difficulty range."""
     stmt = select(Question).where(Question.is_active == True)
     if exam_id:
         stmt = stmt.where(Question.exam_id == exam_id)
@@ -172,9 +178,30 @@ async def _get_scoped_questions(
         stmt = stmt.where(Question.topic_id.in_(scope_topic_ids))
     if exclude_ids:
         stmt = stmt.where(Question.id.notin_(exclude_ids))
+    if diff_lo is not None:
+        stmt = stmt.where(Question.difficulty >= diff_lo)
+    if diff_hi is not None:
+        stmt = stmt.where(Question.difficulty <= diff_hi)
     stmt = stmt.order_by(func.random()).limit(count)
     result = await db.execute(stmt)
-    return list(result.scalars().all())
+    questions = list(result.scalars().all())
+
+    # If difficulty filter returned too few, relax and fill remaining
+    if len(questions) < count and (diff_lo is not None or diff_hi is not None):
+        remaining = count - len(questions)
+        extra_exclude = exclude_ids | {q.id for q in questions}
+        fallback = select(Question).where(Question.is_active == True)
+        if exam_id:
+            fallback = fallback.where(Question.exam_id == exam_id)
+        if scope_topic_ids:
+            fallback = fallback.where(Question.topic_id.in_(scope_topic_ids))
+        if extra_exclude:
+            fallback = fallback.where(Question.id.notin_(extra_exclude))
+        fallback = fallback.order_by(func.random()).limit(remaining)
+        extra_result = await db.execute(fallback)
+        questions.extend(extra_result.scalars().all())
+
+    return questions
 
 
 async def update_mastery(
@@ -244,9 +271,9 @@ async def update_mastery(
     )
 
     # Adjust difficulty based on streaks — core adaptive mechanism
-    # 3 correct in a row → increase difficulty
+    # 2 correct in a row → increase difficulty (fast ramp to exam-level)
     # Wrong answer with 0 streak → decrease difficulty
-    if mastery.streak_count >= 3 and mastery.current_difficulty < 5:
+    if mastery.streak_count >= 2 and mastery.current_difficulty < 5:
         mastery.current_difficulty += 1
     elif not is_correct and mastery.streak_count == 0 and mastery.current_difficulty > 1:
         mastery.current_difficulty -= 1

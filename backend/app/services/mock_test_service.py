@@ -160,15 +160,15 @@ async def _get_pool_questions(
 ) -> list[UUID]:
     """Pull questions from pool with real exam-like difficulty mix.
 
-    Distribution: 20% easy(1-2), 50% medium(3), 30% hard(4-5)
+    Distribution: 10% easy(1-2), 50% medium(3), 40% hard(4-5)
     """
     all_ids: list[UUID] = []
 
-    # Difficulty mix matching real exams
+    # Difficulty mix matching real exams — harder to simulate actual exam feel
     mix = [
-        (max(1, int(count * 0.2)), [1, 2]),  # 20% easy
+        (max(1, int(count * 0.1)), [1, 2]),  # 10% easy
         (max(1, int(count * 0.5)), [3]),       # 50% medium
-        (max(1, count - int(count * 0.2) - int(count * 0.5)), [4, 5]),  # 30% hard
+        (max(1, count - int(count * 0.1) - int(count * 0.5)), [4, 5]),  # 40% hard
     ]
 
     for batch_count, diff_range in mix:
@@ -276,7 +276,7 @@ async def _ensure_section_questions(
             section_name, len(question_ids), needed, shortfall,
         )
         # Generate with different difficulties for real exam feel
-        difficulties = [2, 3, 3, 4]  # Weighted: more medium, some easy & hard
+        difficulties = [3, 3, 4, 4]  # Weighted: medium + hard, no easy
         for i, diff in enumerate(difficulties):
             if shortfall <= 0:
                 break

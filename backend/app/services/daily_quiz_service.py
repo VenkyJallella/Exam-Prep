@@ -2,7 +2,7 @@
 
 Rules:
 - 20 questions per quiz, 20-minute time limit
-- Mix: 6 Easy + 8 Medium + 6 Hard
+- Mix: 4 Easy + 7 Medium + 9 Hard
 - Cross-subject: picks from different exams/subjects for variety
 - 30-day dedup: excludes questions used in last 30 quizzes
 - One attempt per user per day (enforced by DB unique constraint)
@@ -20,7 +20,7 @@ logger = logging.getLogger("examprep.daily_quiz")
 
 QUIZ_QUESTIONS = 20
 QUIZ_DURATION_MINUTES = 20
-DIFFICULTY_MIX = {1: 3, 2: 3, 3: 5, 4: 5, 5: 4}  # total = 20
+DIFFICULTY_MIX = {1: 2, 2: 2, 3: 7, 4: 5, 5: 4}  # total = 20
 
 
 async def get_today_quiz(db: AsyncSession) -> DailyQuiz | None:
@@ -79,16 +79,30 @@ async def _generate_daily_quiz(db: AsyncSession, quiz_date: date) -> DailyQuiz:
         ids = [str(qid) for qid in result.scalars().all()]
         all_question_ids.extend(ids)
 
-    # If we still need more (not enough per difficulty), fill randomly
+    # If we still need more (not enough per difficulty), fill with medium+ questions
     shortfall = QUIZ_QUESTIONS - len(all_question_ids)
     if shortfall > 0:
         logger.warning("Daily quiz shortfall: need %d more questions (got %d/%d from difficulty mix)", shortfall, len(all_question_ids), QUIZ_QUESTIONS)
-        filler = select(Question.id).where(Question.is_active == True)
+        filler = select(Question.id).where(
+            Question.is_active == True,
+            Question.difficulty >= 3,  # prefer medium+ to avoid easy fill
+        )
         if all_question_ids:
             filler = filler.where(Question.id.notin_(all_question_ids))
+        if recent_ids:
+            filler = filler.where(Question.id.notin_(recent_ids))
         filler = filler.order_by(func.random()).limit(shortfall)
         result = await db.execute(filler)
         all_question_ids.extend(str(qid) for qid in result.scalars().all())
+        # Last resort: any difficulty if still short
+        shortfall = QUIZ_QUESTIONS - len(all_question_ids)
+        if shortfall > 0:
+            filler = select(Question.id).where(Question.is_active == True)
+            if all_question_ids:
+                filler = filler.where(Question.id.notin_(all_question_ids))
+            filler = filler.order_by(func.random()).limit(shortfall)
+            result = await db.execute(filler)
+            all_question_ids.extend(str(qid) for qid in result.scalars().all())
 
     quiz = DailyQuiz(
         quiz_date=quiz_date,

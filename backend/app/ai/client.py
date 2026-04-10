@@ -157,9 +157,11 @@ def _parse_json_robust(raw: str) -> list[dict]:
     raise ValueError(f"Failed to parse AI response. First 200 chars: {raw[:200]}")
 
 
-async def generate_questions_json(prompt: str, model: str | None = None) -> list[dict]:
+async def generate_questions_json(
+    prompt: str, model: str | None = None, temperature: float = 0.8,
+) -> list[dict]:
     """Generate questions and parse as JSON with robust error handling."""
     result = await generate_completion(
-        prompt, model=model, temperature=0.8, max_tokens=16000, use_cache=False,
+        prompt, model=model, temperature=temperature, max_tokens=16000, use_cache=False,
     )
     return _parse_json_robust(result)

@@ -13,6 +13,14 @@ DIFFICULTY LEVEL {difficulty} MEANS:
 
 CRITICAL: Every single question MUST be at difficulty level {difficulty}. If level is 4 or 5, questions should require multi-step solving, involve tricky distractors, combine multiple concepts, or need careful analysis. Do NOT produce basic recall questions for high difficulty levels.
 
+IMPORTANT FOR DIFFICULTY 4-5: These must feel like REAL PREVIOUS YEAR exam questions. Common AI mistake: generating questions that LOOK complex but are actually straightforward recall. To avoid this:
+- Include numerical problems that require 3+ calculation steps
+- Use "Which of the following statements is/are correct?" with 4 statements where 2-3 are subtly wrong
+- Combine concepts from different sub-topics within the same question
+- Add plausible distractors based on common student mistakes (wrong formula application, sign errors, off-by-one)
+- For theory: use assertion-reason format, match-the-following with tricky pairs, or "arrange in correct order"
+- The correct answer should NOT be guessable by elimination — all 4 options must seem equally plausible
+
 
 
 - MANDATORY: Each question MUST have exactly 4 options with keys "A", "B", "C", "D" — no more, no less, no other keys
