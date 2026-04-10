@@ -205,12 +205,21 @@ async def get_by_id(db: AsyncSession, job_id: UUID) -> Job:
 
 
 async def create_job(db: AsyncSession, data: dict) -> Job:
-    """Create a job. Dedupes by source_id if present."""
+    """Create a job. Dedupes by source_id, refreshing key fields on existing rows."""
     source_id = data.get("source_id")
     if source_id:
-        existing = await db.execute(select(Job).where(Job.source_id == source_id))
-        if existing.scalar_one_or_none():
-            return existing.scalar_one()  # type: ignore
+        result = await db.execute(select(Job).where(Job.source_id == source_id))
+        existing_job = result.scalar_one_or_none()
+        if existing_job:
+            # Refresh fields that may have changed (deadlines, status, posted_date)
+            existing_job.apply_deadline = _parse_date(data.get("apply_deadline"))
+            new_posted = _parse_date(data.get("posted_date"))
+            if new_posted:
+                existing_job.posted_date = new_posted
+            existing_job.status = data.get("status", "active")
+            await db.commit()
+            await db.refresh(existing_job)
+            return existing_job
 
     title = data["title"][:300]
     slug = await _unique_slug(db, _slugify(title))
@@ -280,6 +289,16 @@ async def purge_jobs_by_source(db: AsyncSession, sources: list[str]) -> int:
     await db.commit()
     count = result.rowcount or 0
     logger.info("Purged %d jobs from sources %s", count, sources)
+    return count
+
+
+async def nuke_all_jobs(db: AsyncSession) -> int:
+    """Hard-delete EVERY job in the database. Use with care."""
+    from sqlalchemy import delete
+    result = await db.execute(delete(Job))
+    await db.commit()
+    count = result.rowcount or 0
+    logger.warning("NUKED all %d jobs from DB", count)
     return count
 
 

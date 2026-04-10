@@ -2,8 +2,9 @@
 
 Usage on the VPS:
     cd /opt/Exam-Prep/backend
-    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py            # ingest only
-    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py --purge    # purge bad data first, then ingest
+    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py            # ingest only (keep existing)
+    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py --purge    # remove arbeitnow, ingest
+    PYTHONPATH=. venv/bin/python trigger_jobs_ingestion.py --nuke     # delete ALL jobs, fresh ingest
 
 (Replace `venv/bin/python` with whichever Python your venv uses.)
 """
@@ -22,6 +23,7 @@ async def main():
     from app.core.cache import init_redis, close_redis
     from app.services import job_service
 
+    nuke = "--nuke" in sys.argv
     purge = "--purge" in sys.argv
 
     print("→ Initializing DB + Redis...")
@@ -30,7 +32,12 @@ async def main():
 
     try:
         async with get_session() as db:
-            if purge:
+            if nuke:
+                print("→ NUKE: deleting ALL jobs from DB...")
+                count = await job_service.nuke_all_jobs(db)
+                print(f"  Removed {count} jobs.")
+                print()
+            elif purge:
                 print("→ Purging non-Indian / German job sources (arbeitnow)...")
                 purged = await job_service.purge_jobs_by_source(db, ["arbeitnow"])
                 print(f"  Removed {purged} jobs.")
