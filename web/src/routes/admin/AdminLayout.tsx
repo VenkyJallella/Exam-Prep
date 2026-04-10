@@ -8,6 +8,7 @@ const adminNav = [
   { to: '/admin/exams', label: 'Exams' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/blogs', label: 'Blogs' },
+  { to: '/admin/jobs', label: 'Jobs' },
   { to: '/admin/coding', label: 'Coding' },
   { to: '/admin/interview', label: 'Interview' },
   { to: '/admin/analytics', label: 'Analytics' },

@@ -396,6 +396,7 @@ def create_app() -> FastAPI:
         from app.database import AsyncSessionLocal
         from app.models.blog import BlogPost
         from app.models.exam import Exam
+        from app.models.job import Job
         from datetime import date
 
         base_url = "https://zencodio.com"
@@ -407,6 +408,7 @@ def create_app() -> FastAPI:
             (f"{base_url}/about", "monthly", "0.8", today),
             (f"{base_url}/pricing", "monthly", "0.9", today),
             (f"{base_url}/blog", "daily", "0.9", today),
+            (f"{base_url}/jobs", "daily", "0.95", today),
             (f"{base_url}/interview", "weekly", "0.9", today),
             (f"{base_url}/register", "monthly", "0.7", today),
             (f"{base_url}/terms", "monthly", "0.5", today),
@@ -415,6 +417,11 @@ def create_app() -> FastAPI:
             (f"{base_url}/disclaimer", "monthly", "0.5", today),
             (f"{base_url}/dmca", "monthly", "0.4", today),
         ]
+
+        # Job category landing pages — high SEO value
+        job_categories = ["govt-exam", "tech", "banking", "ssc", "upsc", "railway", "defense", "psu", "teaching", "police", "state-govt"]
+        for cat in job_categories:
+            urls.append((f"{base_url}/jobs/category/{cat}", "daily", "0.85", today))
 
         async with AsyncSessionLocal() as db:
             # Add exam pages + try-free pages
@@ -431,6 +438,16 @@ def create_app() -> FastAPI:
             for blog in blogs:
                 lastmod = blog.updated_at.strftime("%Y-%m-%d") if blog.updated_at else blog.created_at.strftime("%Y-%m-%d") if blog.created_at else today
                 urls.append((f"{base_url}/blog/{blog.slug}", "weekly", "0.7", lastmod))
+
+            # Add job postings (active only)
+            jobs = (await db.execute(
+                select(Job).where(Job.is_active == True, Job.status == "active")
+                .order_by(Job.posted_date.desc())
+                .limit(2000)
+            )).scalars().all()
+            for job in jobs:
+                lastmod = job.updated_at.strftime("%Y-%m-%d") if job.updated_at else today
+                urls.append((f"{base_url}/jobs/{job.slug}", "weekly", "0.7", lastmod))
 
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

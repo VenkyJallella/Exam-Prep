@@ -25,17 +25,50 @@ interface Job {
   source: string;
   view_count: number;
   meta_description: string | null;
+  related_exam_id: string | null;
+}
+
+interface SimilarJob {
+  id: string;
+  slug: string;
+  title: string;
+  company: string | null;
+  short_description: string;
+  category: string;
+  apply_deadline: string | null;
+}
+
+interface RelatedExam {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 export default function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [job, setJob] = useState<Job | null>(null);
+  const [similar, setSimilar] = useState<SimilarJob[]>([]);
+  const [relatedExam, setRelatedExam] = useState<RelatedExam | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!slug) return;
+    setLoading(true);
     apiClient.get(`/jobs/${slug}`)
-      .then((res) => setJob(res.data.data))
+      .then((res) => {
+        const j = res.data.data as Job;
+        setJob(j);
+        // Fetch similar jobs in parallel
+        apiClient.get(`/jobs/${slug}/similar`).then((r) => setSimilar(r.data.data || [])).catch(() => {});
+        // Fetch the related exam if linked
+        if (j.related_exam_id) {
+          apiClient.get('/exams').then((r) => {
+            const allExams = r.data.data as RelatedExam[];
+            const match = allExams.find((e) => e.id === j.related_exam_id);
+            if (match) setRelatedExam(match);
+          }).catch(() => {});
+        }
+      })
       .catch(() => setJob(null))
       .finally(() => setLoading(false));
   }, [slug]);
@@ -86,30 +119,69 @@ export default function JobDetailPage() {
         <meta property="og:description" content={job.meta_description || job.short_description} />
         <meta property="og:type" content="article" />
         <link rel="canonical" href={`https://zencodio.com/jobs/${job.slug}`} />
-        {/* JobPosting schema for Google Jobs */}
+        {/* JobPosting schema — Google Jobs rich result eligible */}
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'JobPosting',
           title: job.title,
           description: job.description,
           datePosted: job.posted_date,
-          validThrough: job.apply_deadline,
+          validThrough: job.apply_deadline || undefined,
           employmentType: 'FULL_TIME',
+          directApply: true,
           hiringOrganization: {
             '@type': 'Organization',
             name: job.company || 'Government of India',
+            sameAs: job.apply_url,
           },
-          jobLocation: job.location ? {
+          jobLocation: {
             '@type': 'Place',
-            address: { '@type': 'PostalAddress', addressLocality: job.location, addressCountry: 'IN' },
-          } : undefined,
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: job.location || 'India',
+              addressRegion: job.location || 'India',
+              addressCountry: 'IN',
+            },
+          },
+          applicantLocationRequirements: {
+            '@type': 'Country',
+            name: 'India',
+          },
+          jobLocationType: job.is_remote ? 'TELECOMMUTE' : undefined,
           baseSalary: job.salary_min ? {
             '@type': 'MonetaryAmount',
             currency: 'INR',
-            value: { '@type': 'QuantitativeValue', minValue: job.salary_min, maxValue: job.salary_max, unitText: 'YEAR' },
+            value: {
+              '@type': 'QuantitativeValue',
+              minValue: job.salary_min,
+              maxValue: job.salary_max || job.salary_min,
+              unitText: 'MONTH',
+            },
           } : undefined,
+          educationRequirements: job.eligibility ? {
+            '@type': 'EducationalOccupationalCredential',
+            credentialCategory: job.eligibility,
+          } : undefined,
+          qualifications: job.eligibility || undefined,
           totalJobOpenings: job.vacancies || undefined,
+          industry: job.category,
           url: `https://zencodio.com/jobs/${job.slug}`,
+          identifier: {
+            '@type': 'PropertyValue',
+            name: 'ExamPrep',
+            value: job.slug,
+          },
+        })}</script>
+        {/* BreadcrumbList schema */}
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://zencodio.com/' },
+            { '@type': 'ListItem', position: 2, name: 'Jobs', item: 'https://zencodio.com/jobs' },
+            { '@type': 'ListItem', position: 3, name: job.category, item: `https://zencodio.com/jobs/category/${job.category}` },
+            { '@type': 'ListItem', position: 4, name: job.title, item: `https://zencodio.com/jobs/${job.slug}` },
+          ],
         })}</script>
       </Helmet>
 
@@ -204,6 +276,37 @@ export default function JobDetailPage() {
             )}
           </div>
 
+          {/* Practice cross-link — converts jobs traffic to core product */}
+          {relatedExam && (
+            <div className="mt-6 rounded-2xl border-2 border-primary-200 bg-primary-50 p-6 dark:border-primary-800 dark:bg-primary-900/20">
+              <div className="flex items-start gap-4">
+                <div className="text-4xl">🎯</div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Preparing for this exam?
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Practice with 5000+ AI-generated questions, take full mock tests, and track your progress for <strong>{relatedExam.name}</strong>.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      to={`/exams/${relatedExam.slug}`}
+                      className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+                    >
+                      Start Practicing →
+                    </Link>
+                    <Link
+                      to={`/try/${relatedExam.slug}`}
+                      className="rounded-lg border border-primary-300 bg-white px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50 dark:border-primary-700 dark:bg-gray-900 dark:text-primary-300"
+                    >
+                      Try 5 Questions Free
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom apply CTA */}
           <div className="mt-6 rounded-2xl bg-gradient-to-r from-primary-600 to-accent-600 p-6 text-center">
             <h3 className="text-xl font-bold text-white">Ready to apply?</h3>
@@ -215,6 +318,30 @@ export default function JobDetailPage() {
               Apply on Official Site ↗
             </button>
           </div>
+
+          {/* Similar jobs */}
+          {similar.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Similar Jobs</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {similar.map((s) => (
+                  <Link
+                    key={s.id}
+                    to={`/jobs/${s.slug}`}
+                    className="group rounded-xl border border-gray-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-950 dark:hover:border-primary-700"
+                  >
+                    <div className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 dark:text-white line-clamp-2">
+                      {s.title}
+                    </div>
+                    {s.company && <div className="mt-1 text-xs text-gray-500">{s.company}</div>}
+                    <div className="mt-2 line-clamp-2 text-xs text-gray-600 dark:text-gray-400">
+                      {s.short_description}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

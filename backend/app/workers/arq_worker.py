@@ -49,6 +49,7 @@ class WorkerSettings:
         "app.workers.notification_tasks.send_streak_reminder",
         "app.workers.notification_tasks.send_test_completion_summary",
         "app.workers.jobs_tasks.daily_jobs_ingestion",
+        "app.workers.jobs_tasks.daily_job_alerts_dispatch",
     ]
 
     cron_jobs = [
@@ -58,6 +59,8 @@ class WorkerSettings:
         {"coroutine": "app.workers.analytics_tasks.weekly_leaderboard_snapshot", "weekday": 6, "hour": 3, "minute": 0},
         # Daily at 5 AM UTC (= 10:30 AM IST) — fresh jobs every morning
         {"coroutine": "app.workers.jobs_tasks.daily_jobs_ingestion", "hour": 5, "minute": 0},
+        # Daily at 6 AM UTC — send alerts AFTER ingestion completes
+        {"coroutine": "app.workers.jobs_tasks.daily_job_alerts_dispatch", "hour": 6, "minute": 0},
     ]
 
     redis_settings = _parse_redis_url(settings.REDIS_URL)

@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@zencodio.com"
     SMTP_USE_TLS: bool = True
 
+    # Telegram Bot (free — for job alerts)
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""
+
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",

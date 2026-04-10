@@ -19,6 +19,7 @@ from app.models.discussion import Discussion
 from app.models.page_content import PageContent
 from app.models.interview import InterviewQuestion, InterviewBookmark
 from app.models.job import Job
+from app.models.job_alert import JobAlertSubscription
 
 __all__ = [
     "Base",
@@ -58,4 +59,5 @@ __all__ = [
     "InterviewQuestion",
     "InterviewBookmark",
     "Job",
+    "JobAlertSubscription",
 ]
