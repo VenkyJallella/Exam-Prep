@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 
 export default function MarketingLayout() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMenu = () => setMobileOpen(false);
+
   return (
     <div className="min-h-screen">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-lg dark:border-gray-800 dark:bg-gray-950/80">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2" onClick={closeMenu}>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-sm font-bold text-white">
               EP
             </div>
@@ -37,15 +41,52 @@ export default function MarketingLayout() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="btn-secondary text-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link to="/login" className="hidden btn-secondary text-sm sm:inline-flex">
               Log in
             </Link>
             <Link to="/register" className="btn-primary text-sm">
               Start Free
             </Link>
+            {/* Mobile hamburger */}
+            <button
+              type="button"
+              aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 md:hidden"
+            >
+              {mobileOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile drawer */}
+        {mobileOpen && (
+          <div className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 md:hidden">
+            <div className="space-y-1 px-4 py-3">
+              <a href="/#features" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Features</a>
+              <a href="/#exams" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Exams</a>
+              <Link to="/pricing" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Pricing</Link>
+              <Link to="/about" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">About</Link>
+              <Link to="/blog" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Blog</Link>
+              <Link to="/jobs" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Jobs</Link>
+              <Link to="/interview" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Interview</Link>
+              <Link to="/login" onClick={closeMenu} className="block rounded-lg px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-900">Log in</Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Page Content */}
