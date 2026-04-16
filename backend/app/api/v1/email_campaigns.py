@@ -209,6 +209,31 @@ async def get_recipient_counts(
     }
 
 
+@router.get("/users/search")
+async def search_users_for_email(
+    q: str = "",
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role("admin")),
+):
+    """Search users by name or email for targeted email sending."""
+    from sqlalchemy import or_
+
+    query = select(User).where(User.is_active == True, User.email.isnot(None))
+    if q.strip():
+        pattern = f"%{q.strip()}%"
+        query = query.where(or_(User.email.ilike(pattern), User.full_name.ilike(pattern)))
+    query = query.order_by(User.full_name).limit(50)
+
+    users = (await db.execute(query)).scalars().all()
+    return {
+        "status": "success",
+        "data": [
+            {"id": u.id, "email": u.email, "full_name": u.full_name or ""}
+            for u in users
+        ],
+    }
+
+
 @router.post("/send")
 async def send_campaign(
     body: dict = Body(...),
@@ -221,31 +246,40 @@ async def send_campaign(
 
     subject = body.get("subject", "Update from ExamPrep")
     body_html = body.get("body_html", "")
-    target = body.get("target", "all")  # all, free, paid, inactive
+    target = body.get("target", "all")  # all, free, paid, inactive, selected
+    user_ids = body.get("user_ids", [])  # list of user IDs for target=selected
 
     if not body_html:
         from app.exceptions import AppException
         raise AppException(400, "EMPTY_BODY", "Email body is required")
 
-    # Get target users (all active users with valid email)
-    query = select(User).where(User.is_active == True, User.email.isnot(None))
-    users = (await db.execute(query)).scalars().all()
+    if target == "selected" and not user_ids:
+        from app.exceptions import AppException
+        raise AppException(400, "NO_USERS", "Select at least one user")
 
-    # Filter by target
-    if target == "paid":
-        paid_ids = set((await db.execute(
-            select(Subscription.user_id).where(Subscription.is_active == True, Subscription.plan != PlanType.FREE)
-        )).scalars().all())
-        users = [u for u in users if u.id in paid_ids]
-    elif target == "free":
-        paid_ids = set((await db.execute(
-            select(Subscription.user_id).where(Subscription.is_active == True, Subscription.plan != PlanType.FREE)
-        )).scalars().all())
-        users = [u for u in users if u.id not in paid_ids]
-    elif target == "inactive":
-        from datetime import datetime, timezone, timedelta
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        users = [u for u in users if u.updated_at and u.updated_at < week_ago]
+    # Get target users (all active users with valid email)
+    if target == "selected":
+        query = select(User).where(User.id.in_(user_ids), User.email.isnot(None))
+        users = (await db.execute(query)).scalars().all()
+    else:
+        query = select(User).where(User.is_active == True, User.email.isnot(None))
+        users = (await db.execute(query)).scalars().all()
+
+        # Filter by target
+        if target == "paid":
+            paid_ids = set((await db.execute(
+                select(Subscription.user_id).where(Subscription.is_active == True, Subscription.plan != PlanType.FREE)
+            )).scalars().all())
+            users = [u for u in users if u.id in paid_ids]
+        elif target == "free":
+            paid_ids = set((await db.execute(
+                select(Subscription.user_id).where(Subscription.is_active == True, Subscription.plan != PlanType.FREE)
+            )).scalars().all())
+            users = [u for u in users if u.id not in paid_ids]
+        elif target == "inactive":
+            from datetime import datetime, timezone, timedelta
+            week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+            users = [u for u in users if u.updated_at and u.updated_at < week_ago]
 
     # Send in background (don't block the request)
     sent = 0

@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import apiClient from '../../lib/api/client';
 import toast from 'react-hot-toast';
+
+interface UserOption {
+  id: number;
+  email: string;
+  full_name: string;
+}
 
 export default function AdminEmail() {
   const [prompt, setPrompt] = useState('');
@@ -14,8 +20,42 @@ export default function AdminEmail() {
   const [showPreview, setShowPreview] = useState(false);
   const [counts, setCounts] = useState<{ all: number; free: number; paid: number; inactive: number }>({ all: 0, free: 0, paid: 0, inactive: 0 });
 
+  // Selected users state
+  const [selectedUsers, setSelectedUsers] = useState<UserOption[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userResults, setUserResults] = useState<UserOption[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     apiClient.get('/admin/email/recipients').then(r => setCounts(r.data.data)).catch(() => {});
+  }, []);
+
+  // Debounced user search
+  useEffect(() => {
+    if (target !== 'selected') return;
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      setSearchingUsers(true);
+      try {
+        const res = await apiClient.get('/admin/email/users/search', { params: { q: userSearch } });
+        setUserResults(res.data.data.filter((u: UserOption) => !selectedUsers.some(s => s.id === u.id)));
+        setShowUserDropdown(true);
+      } catch { setUserResults([]); }
+      finally { setSearchingUsers(false); }
+    }, 300);
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, [userSearch, target, selectedUsers]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowUserDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handleGenerate = async () => {
@@ -51,17 +91,19 @@ export default function AdminEmail() {
 
   const handleSend = async () => {
     if (!bodyHtml || !subject) { toast.error('Generate email first'); return; }
-    const recipientCount = target === 'all' ? counts.all : target === 'free' ? counts.free : target === 'paid' ? counts.paid : counts.inactive;
+    const recipientCount = target === 'selected' ? selectedUsers.length : target === 'all' ? counts.all : target === 'free' ? counts.free : target === 'paid' ? counts.paid : counts.inactive;
     if (!confirm(`Send email to ${recipientCount} users? This cannot be undone.`)) return;
     setSending(true);
     try {
-      const res = await apiClient.post('/admin/email/send', { subject, body_html: bodyHtml, target });
+      const payload: Record<string, unknown> = { subject, body_html: bodyHtml, target };
+      if (target === 'selected') payload.user_ids = selectedUsers.map(u => u.id);
+      const res = await apiClient.post('/admin/email/send', payload);
       toast.success(res.data.data.message);
     } catch { toast.error('Failed to send'); }
     finally { setSending(false); }
   };
 
-  const targetCount = target === 'all' ? counts.all : target === 'free' ? counts.free : target === 'paid' ? counts.paid : counts.inactive;
+  const targetCount = target === 'selected' ? selectedUsers.length : target === 'all' ? counts.all : target === 'free' ? counts.free : target === 'paid' ? counts.paid : counts.inactive;
 
   return (
     <>
@@ -119,6 +161,7 @@ export default function AdminEmail() {
                 { id: 'free', label: 'Free users only', count: counts.free },
                 { id: 'paid', label: 'Pro/Premium users only', count: counts.paid },
                 { id: 'inactive', label: 'Inactive users (7+ days)', count: counts.inactive },
+                { id: 'selected', label: 'Selected users', count: selectedUsers.length },
               ].map(opt => (
                 <label key={opt.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-colors ${target === opt.id ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'}`}>
                   <input type="radio" name="target" value={opt.id} checked={target === opt.id} onChange={e => setTarget(e.target.value)} className="text-primary-600" />
@@ -126,6 +169,66 @@ export default function AdminEmail() {
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-400">{opt.count}</span>
                 </label>
               ))}
+
+              {/* User search & picker for "Selected users" */}
+              {target === 'selected' && (
+                <div className="mt-3 space-y-3">
+                  {/* Selected user chips */}
+                  {selectedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUsers.map(u => (
+                        <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
+                          {u.full_name || u.email}
+                          <button onClick={() => setSelectedUsers(prev => prev.filter(s => s.id !== u.id))} className="ml-1 text-primary-600 hover:text-primary-800 dark:text-primary-400">&times;</button>
+                        </span>
+                      ))}
+                      <button onClick={() => setSelectedUsers([])} className="text-xs text-gray-500 hover:text-red-600">Clear all</button>
+                    </div>
+                  )}
+
+                  {/* Search input */}
+                  <div className="relative" ref={dropdownRef}>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={e => setUserSearch(e.target.value)}
+                      onFocus={() => setShowUserDropdown(true)}
+                      placeholder="Search by name or email..."
+                      className="input w-full"
+                    />
+                    {searchingUsers && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" />
+                      </div>
+                    )}
+
+                    {/* Dropdown results */}
+                    {showUserDropdown && userResults.length > 0 && (
+                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                        {userResults.map(u => (
+                          <button
+                            key={u.id}
+                            onClick={() => {
+                              setSelectedUsers(prev => [...prev, u]);
+                              setUserResults(prev => prev.filter(r => r.id !== u.id));
+                              setUserSearch('');
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            <span className="font-medium text-gray-900 dark:text-white">{u.full_name || 'No name'}</span>
+                            <span className="text-gray-500 dark:text-gray-400">{u.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showUserDropdown && !searchingUsers && userResults.length === 0 && userSearch && (
+                      <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white p-3 text-center text-sm text-gray-500 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                        No users found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
