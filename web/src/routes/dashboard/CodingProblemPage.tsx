@@ -7,6 +7,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { java } from '@codemirror/lang-java';
 import { oneDark } from '@codemirror/theme-one-dark';
+import AffiliateCard from '@/components/affiliate/AffiliateCard';
 
 const LANGUAGES = [
   { id: 'python', label: 'Python 3', extension: () => python() },
@@ -187,6 +188,17 @@ export default function CodingProblemPage() {
               ))}
             </div>
           )}
+
+          {/* Coursera affiliate (renders only when configured) */}
+          <div className="mt-5">
+            <AffiliateCard
+              source="coursera"
+              productId="dsa"
+              placement="coding"
+              title="Master DSA on Coursera"
+              description="Top-rated Data Structures & Algorithms specializations from Stanford, Princeton & UC San Diego — exactly what FAANG interviewers look for."
+            />
+          </div>
         </div>
 
         {/* Right: Code editor + results */}

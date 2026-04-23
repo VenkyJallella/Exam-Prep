@@ -59,6 +59,7 @@ const AdminPages = lazy(() => import('./routes/admin/AdminPages'));
 const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
 const AdminEmail = lazy(() => import('./routes/admin/AdminEmail'));
 const AdminJobs = lazy(() => import('./routes/admin/AdminJobs'));
+const AdminAffiliates = lazy(() => import('./routes/admin/AdminAffiliates'));
 
 const CodingPage = lazy(() => import('./routes/dashboard/CodingPage'));
 const CodingProblemPage = lazy(() => import('./routes/dashboard/CodingProblemPage'));
@@ -69,6 +70,7 @@ const WeeklyChallengesPage = lazy(() => import('./routes/dashboard/WeeklyChallen
 const ScheduledTestsPage = lazy(() => import('./routes/dashboard/ScheduledTestsPage'));
 const PdfExportPage = lazy(() => import('./routes/dashboard/PdfExportPage'));
 const InterviewPrepPage = lazy(() => import('./routes/dashboard/InterviewPrepPage'));
+const ReferralPage = lazy(() => import('./routes/dashboard/ReferralPage'));
 
 const InterviewPage = lazy(() => import('./routes/marketing/InterviewPage'));
 const AdminInterview = lazy(() => import('./routes/admin/AdminInterview'));
@@ -144,6 +146,7 @@ export default function App() {
             <Route path="/export-pdf" element={<PdfExportPage />} />
             <Route path="/custom-test" element={<CustomTestPage />} />
             <Route path="/interview-prep" element={<InterviewPrepPage />} />
+            <Route path="/refer" element={<ReferralPage />} />
             <Route path="/dashboard/blog" element={<BlogListPage />} />
             <Route path="/dashboard/blog/:slug" element={<BlogDetailPage />} />
           </Route>
@@ -168,6 +171,7 @@ export default function App() {
               <Route path="/admin/pages" element={<AdminPages />} />
               <Route path="/admin/email" element={<AdminEmail />} />
               <Route path="/admin/jobs" element={<AdminJobs />} />
+              <Route path="/admin/affiliates" element={<AdminAffiliates />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
           </Route>

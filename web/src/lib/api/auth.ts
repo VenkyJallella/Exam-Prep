@@ -10,6 +10,7 @@ export interface RegisterPayload {
   password: string;
   full_name: string;
   phone?: string;
+  referral_code?: string;
 }
 
 export interface TokenResponse {

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_BOT_USERNAME: str = ""
 
+    # Affiliate marketing — leave empty to hide widgets
+    AMAZON_AFFILIATE_TAG: str = ""           # e.g. "examprep-21"
+    RESUME_IO_AFFILIATE_URL: str = ""        # full URL with your tracking ID
+    COURSERA_AFFILIATE_URL: str = ""         # full URL with your tracking ID
+
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",

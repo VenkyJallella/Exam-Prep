@@ -20,6 +20,8 @@ from app.models.page_content import PageContent
 from app.models.interview import InterviewQuestion, InterviewBookmark
 from app.models.job import Job
 from app.models.job_alert import JobAlertSubscription
+from app.models.referral import ReferralReward
+from app.models.affiliate import AffiliateClick
 
 __all__ = [
     "Base",
@@ -60,4 +62,6 @@ __all__ = [
     "InterviewBookmark",
     "Job",
     "JobAlertSubscription",
+    "ReferralReward",
+    "AffiliateClick",
 ]

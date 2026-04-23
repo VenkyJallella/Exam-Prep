@@ -51,6 +51,19 @@ async def register(db: AsyncSession, body: RegisterRequest) -> User:
 
     await db.commit()
     await db.refresh(user)
+
+    # Referral linking + reward eval (best-effort; never block signup on failure)
+    referral_code = getattr(body, "referral_code", None)
+    if referral_code:
+        try:
+            from app.services import referral_service
+            linked = await referral_service.attach_referrer(db, user, referral_code)
+            if linked and user.referred_by_user_id:
+                await referral_service.evaluate_and_grant_rewards(db, user.referred_by_user_id)
+        except Exception as e:
+            import logging
+            logging.getLogger("examprep.auth").warning("Referral attribution failed: %s", e)
+
     return user
 
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
+import AffiliateCard from '../../components/affiliate/AffiliateCard';
 
 interface Job {
   id: string;
@@ -306,6 +307,16 @@ export default function JobDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Resume builder affiliate (renders only if RESUME_IO_AFFILIATE_URL is configured) */}
+          <div className="mt-6">
+            <AffiliateCard
+              source="resume"
+              placement="jobs"
+              title="Make your resume stand out"
+              description="Build a professional resume in minutes with Resume.io's AI-powered templates — used by 100M+ job seekers worldwide."
+            />
+          </div>
 
           {/* Bottom apply CTA */}
           <div className="mt-6 rounded-2xl bg-gradient-to-r from-primary-600 to-accent-600 p-6 text-center">

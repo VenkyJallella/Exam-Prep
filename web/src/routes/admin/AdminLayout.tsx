@@ -9,6 +9,7 @@ const adminNav = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/blogs', label: 'Blogs' },
   { to: '/admin/jobs', label: 'Jobs' },
+  { to: '/admin/affiliates', label: 'Affiliates & Referrals' },
   { to: '/admin/coding', label: 'Coding' },
   { to: '/admin/interview', label: 'Interview' },
   { to: '/admin/analytics', label: 'Analytics' },

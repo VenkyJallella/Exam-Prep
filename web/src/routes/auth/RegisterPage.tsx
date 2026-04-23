@@ -48,14 +48,29 @@ export default function RegisterPage() {
   const [otpVerified, setOtpVerified] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('free');
+  const [referralCode, setReferralCode] = useState('');
+  const [referrerName, setReferrerName] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Pre-select plan from URL query (e.g., /register?plan=pro)
+  // Pre-select plan + capture referral code from URL
   useState(() => {
     const planFromUrl = searchParams.get('plan');
     if (planFromUrl && ['free', 'pro', 'premium'].includes(planFromUrl)) {
       setSelectedPlan(planFromUrl);
+    }
+    const refFromUrl = searchParams.get('ref');
+    if (refFromUrl) {
+      const code = refFromUrl.toUpperCase().slice(0, 16);
+      setReferralCode(code);
+      // Validate the code so we can show "You were referred by X"
+      import('../../lib/api/client').then(({ default: apiClient }) => {
+        apiClient.get(`/referrals/lookup/${encodeURIComponent(code)}`)
+          .then((r) => {
+            if (r.data.data?.valid) setReferrerName(r.data.data.referrer_name);
+          })
+          .catch(() => {});
+      });
     }
   });
 
@@ -150,7 +165,12 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await authAPI.register({ email, password, full_name: fullName });
+      await authAPI.register({
+        email,
+        password,
+        full_name: fullName,
+        ...(referralCode ? { referral_code: referralCode } : {}),
+      });
       toast.success('Account created! Please log in.');
       navigate(selectedPlan !== 'free' ? `/login?redirect=/subscription` : '/login');
     } catch (err: any) {
@@ -180,6 +200,23 @@ export default function RegisterPage() {
               <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">Log in</Link>
             </p>
           </div>
+
+          {referralCode && (
+            <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm dark:border-green-800 dark:bg-green-900/20">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🎁</span>
+                <div className="flex-1">
+                  <div className="font-semibold text-green-800 dark:text-green-300">
+                    {referrerName ? `Referred by ${referrerName}` : 'Referral code applied'}
+                  </div>
+                  <div className="text-xs text-green-700 dark:text-green-400">
+                    Code: <span className="font-mono font-semibold">{referralCode}</span>
+                    {referrerName ? ` — they'll earn rewards when you sign up!` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="card space-y-5" noValidate>
             <FormInput

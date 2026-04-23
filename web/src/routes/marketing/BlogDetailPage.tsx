@@ -4,6 +4,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import apiClient from '../../lib/api/client';
 import AdBanner from '../../components/ui/AdBanner';
 import ShareButtons from '../../components/ui/ShareButtons';
+import AffiliateCard from '../../components/affiliate/AffiliateCard';
 
 interface BlogPostDetail {
   id: string;
@@ -262,6 +263,35 @@ export default function BlogDetailPage() {
           {/* Share buttons */}
           <div className="my-6 flex items-center justify-between border-t border-gray-200 pt-6 dark:border-gray-800">
             <ShareButtons title={post.title} url={`https://zencodio.com/blog/${post.slug}`} description={post.meta_description} />
+          </div>
+
+          {/* Amazon affiliate book recommendation — tag-aware */}
+          <div className="my-6">
+            {(() => {
+              const tags = (post.tags || []).map(t => t.toLowerCase());
+              const titleLower = post.title.toLowerCase();
+              const haystack = `${titleLower} ${tags.join(' ')}`;
+              // Map common exam keywords → real bestseller ASINs on amazon.in
+              const recs: Array<{ keys: string[]; asin: string; title: string; desc: string }> = [
+                { keys: ['neet', 'biology'], asin: '9395117168', title: '37 Years NEET Chapterwise PYQs (Disha)', desc: 'Most-recommended PYQ book for NEET aspirants — chapter-wise solved papers from 1988 onwards.' },
+                { keys: ['jee', 'physics'], asin: '8194611873', title: 'Concepts of Physics by HC Verma', desc: 'The gold-standard physics reference for JEE preparation. A must-have for every aspirant.' },
+                { keys: ['upsc', 'ias'], asin: '9389186153', title: 'Indian Polity by M Laxmikanth (7th Edition)', desc: 'The single most-recommended book for UPSC Polity. Used by toppers across all attempts.' },
+                { keys: ['ssc', 'cgl', 'chsl'], asin: '9389905486', title: 'Quantum CAT — Sarvesh K Verma', desc: 'Best Quantitative Aptitude book for SSC CGL, CHSL, and competitive exams.' },
+                { keys: ['banking', 'ibps', 'sbi'], asin: '9355642008', title: 'Banking Awareness by Arihant', desc: 'Comprehensive Banking Awareness for IBPS PO, SBI PO, RBI Grade B and other bank exams.' },
+                { keys: ['gate', 'computer'], asin: '8193524586', title: 'GATE CS & IT — Made Easy', desc: 'Topic-wise practice book for GATE Computer Science with previous year solved questions.' },
+                { keys: ['coding', 'leetcode', 'interview'], asin: '0984782869', title: 'Cracking the Coding Interview — 6th Edition', desc: '189 programming questions and solutions used by every FAANG aspirant. The interview prep bible.' },
+              ];
+              const match = recs.find(r => r.keys.some(k => haystack.includes(k))) || recs[0];
+              return (
+                <AffiliateCard
+                  source="amazon"
+                  productId={match.asin}
+                  placement="blog"
+                  title={match.title}
+                  description={match.desc}
+                />
+              );
+            })()}
           </div>
 
           {/* Ad after blog content */}

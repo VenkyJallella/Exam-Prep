@@ -27,6 +27,14 @@ class User(BaseModel):
     email_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
     phone_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
 
+    # Referral system (additive — both nullable)
+    referral_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
+    referred_by_user_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Relationships
     profile: Mapped["UserProfile"] = relationship(back_populates="user", uselist=False, lazy="joined")
 
