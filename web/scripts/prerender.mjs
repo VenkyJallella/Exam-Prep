@@ -29,8 +29,8 @@ const PROD_BASE = process.env.PRERENDER_PROD_BASE || 'https://zencodio.com';
 const LOCAL_HOST = '127.0.0.1';
 const LOCAL_PORT = 4173;
 const TIMEOUT_MS = 30000;
-const WAIT_AFTER_LOAD_MS = 1200;
-const CONCURRENCY = 3;
+const WAIT_AFTER_LOAD_MS = 800;
+const CONCURRENCY = parseInt(process.env.PRERENDER_CONCURRENCY || '6', 10);
 
 // Routes that should NEVER be prerendered (auth-gated, dashboard, admin, dynamic actions)
 const SKIP_PATTERNS = [
