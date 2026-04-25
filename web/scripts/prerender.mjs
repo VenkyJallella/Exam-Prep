@@ -28,8 +28,10 @@ const DIST = path.join(ROOT, 'dist');
 const PROD_BASE = process.env.PRERENDER_PROD_BASE || 'https://zencodio.com';
 const LOCAL_HOST = '127.0.0.1';
 const LOCAL_PORT = 4173;
-const TIMEOUT_MS = 30000;
-const WAIT_AFTER_LOAD_MS = 800;
+const TIMEOUT_MS = 45000;
+const WAIT_AFTER_LOAD_MS = 1800;
+const TITLE_WAIT_MS = 8000;
+const DEFAULT_TITLE = 'ExamPrep - Free Online Mock Tests 2026 | UPSC, JEE, NEET, SSC Practice Questions';
 const CONCURRENCY = parseInt(process.env.PRERENDER_CONCURRENCY || '6', 10);
 
 // Routes that should NEVER be prerendered (auth-gated, dashboard, admin, dynamic actions)
@@ -142,8 +144,21 @@ async function renderOne(browser, pathname) {
   try {
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent('Mozilla/5.0 (compatible; ExamPrepPrerender/1.0)');
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: TIMEOUT_MS });
-    // Allow react-helmet-async + any final state updates to settle
+    // networkidle0 (strict — waits for ALL network requests to finish)
+    // ensures the API call that loads blog/job content has completed
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: TIMEOUT_MS });
+
+    // Wait for react-helmet-async to update <title>. Pages that legitimately
+    // use the default title (rare) will still proceed after the timeout.
+    await page
+      .waitForFunction(
+        (def) => document.title && document.title !== def && document.title.length > 0,
+        { timeout: TITLE_WAIT_MS, polling: 100 },
+        DEFAULT_TITLE
+      )
+      .catch(() => null);
+
+    // Final settle for any remaining helmet meta-tag updates
     await new Promise((r) => setTimeout(r, WAIT_AFTER_LOAD_MS));
     const raw = await page.content();
     return dedupeHelmetTags(raw);
