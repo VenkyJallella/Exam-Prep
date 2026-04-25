@@ -87,6 +87,55 @@ async function startPreview() {
   return server;
 }
 
+/**
+ * Remove static head tags that react-helmet-async has already replaced.
+ * Helmet marks its managed tags with data-rh="true". For SEO cleanliness we
+ * want only ONE title, ONE description, ONE og:* per page — the helmet ones.
+ */
+function dedupeHelmetTags(html) {
+  // Test: does this HTML contain a helmet-managed title?
+  const hasHelmetTitle = /<title\s[^>]*data-rh=/.test(html);
+  if (hasHelmetTitle) {
+    // Remove any title tag that does NOT have data-rh
+    html = html.replace(/<title(?![^>]*data-rh=)[^>]*>[^<]*<\/title>\s*/g, '');
+  }
+
+  // List of head fields that helmet typically manages
+  const fieldPatterns = [
+    /name=["']description["']/,
+    /name=["']keywords["']/,
+    /name=["']twitter:title["']/,
+    /name=["']twitter:description["']/,
+    /name=["']twitter:image["']/,
+    /name=["']twitter:card["']/,
+    /property=["']og:title["']/,
+    /property=["']og:description["']/,
+    /property=["']og:image["']/,
+    /property=["']og:url["']/,
+    /property=["']og:type["']/,
+    /property=["']article:published_time["']/,
+    /property=["']article:author["']/,
+    /rel=["']canonical["']/,
+  ];
+
+  for (const pat of fieldPatterns) {
+    // Detect if a helmet-managed version of this field exists
+    const helmetExistsRe = new RegExp(
+      `<(meta|link)[^>]*data-rh=[^>]*${pat.source}|<(meta|link)[^>]*${pat.source}[^>]*data-rh=`,
+      'i'
+    );
+    if (!helmetExistsRe.test(html)) continue;
+    // Remove all non-helmet versions of this field
+    const removeRe = new RegExp(
+      `<(meta|link)(?![^>]*data-rh=)[^>]*${pat.source}[^>]*>\\s*`,
+      'gi'
+    );
+    html = html.replace(removeRe, '');
+  }
+
+  return html;
+}
+
 async function renderOne(browser, pathname) {
   const url = `http://${LOCAL_HOST}:${LOCAL_PORT}${pathname}`;
   const page = await browser.newPage();
@@ -96,7 +145,8 @@ async function renderOne(browser, pathname) {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: TIMEOUT_MS });
     // Allow react-helmet-async + any final state updates to settle
     await new Promise((r) => setTimeout(r, WAIT_AFTER_LOAD_MS));
-    return await page.content();
+    const raw = await page.content();
+    return dedupeHelmetTags(raw);
   } finally {
     await page.close();
   }
