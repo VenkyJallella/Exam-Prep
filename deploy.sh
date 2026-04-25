@@ -21,6 +21,10 @@ cd "$APP_DIR"
 echo "[1/10] Installing dependencies..."
 sudo apt update -y
 sudo apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx redis-server default-jdk
+# Chromium runtime libs for headless puppeteer (used by frontend prerender step)
+sudo apt install -y libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libpango-1.0-0 libcairo2 libasound2 || true
 
 # Verify Java installed (needed for coding practice)
 echo "Java version: $(java -version 2>&1 | head -1)"
@@ -98,6 +102,18 @@ echo "[7/10] Building frontend..."
 cd "$APP_DIR/web"
 npm install --legacy-peer-deps
 VITE_API_URL=/api/v1 npx vite build
+
+# 7b. Prerender public routes to static HTML (for SEO, AdSense, social previews).
+# Reads sitemap from production — gracefully skips on first-time deploys
+# when the live site doesn't exist yet. Subsequent deploys regenerate every
+# public page's HTML with up-to-date title / og: tags / blog & job content.
+echo "[7b/10] Prerendering public routes to static HTML..."
+if curl -sfo /dev/null --max-time 5 https://zencodio.com/sitemap.xml; then
+    npm run prerender || echo "  ⚠ Prerender failed — proceeding with non-prerendered build"
+else
+    echo "  ⚠ https://zencodio.com/sitemap.xml not reachable yet — skipping prerender (first-time deploy)"
+fi
+
 sudo mkdir -p "$FRONTEND_DIR"
 sudo rm -rf "$FRONTEND_DIR"/*
 sudo cp -r dist/* "$FRONTEND_DIR/"
