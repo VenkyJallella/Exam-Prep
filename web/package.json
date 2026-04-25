@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:full": "tsc -b && vite build && node scripts/prerender.mjs",
+    "prerender": "node scripts/prerender.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
@@ -46,6 +48,7 @@
     "eslint": "^9.16.0",
     "jsdom": "^25.0.0",
     "postcss": "^8.4.49",
+    "puppeteer": "^23.0.0",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.6.3",
     "vite": "^6.0.3",
